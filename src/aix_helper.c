@@ -919,12 +919,36 @@ static void print_CuDv_Struct(const tDevice* M_NONNULL device, struct CuDv* cudv
     DECLARE_ZERO_INIT_ARRAY(char, cudvparent, 17);
     DECLARE_ZERO_INIT_ARRAY(char, cudvconnwhere, 17);
     DECLARE_ZERO_INIT_ARRAY(char, cudvPdDvLnLvalue, 49);
-    snprintf_err_handle(cudvName, 17, "%s", cudv->name);
-    snprintf_err_handle(cudvddins, 17, "%s", cudv->ddins);
-    snprintf_err_handle(cudvlocation, 17, "%s", cudv->location);
-    snprintf_err_handle(cudvparent, 17, "%s", cudv->parent);
-    snprintf_err_handle(cudvconnwhere, 17, "%s", cudv->connwhere);
-    snprintf_err_handle(cudvPdDvLnLvalue, 49, "%s", cudv->PdDvLn_Lvalue);
+    if (0 != safe_strcpy(cudvName, 17, cudv->name))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
+    if (0 != safe_strcpy(cudvddins, 17, cudv->ddins))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
+    if (0 != safe_strcpy(cudvlocation, 17, cudv->location))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
+    if (0 != safe_strcpy(cudvparent, 17, cudv->parent))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
+    if (0 != safe_strcpy(cudvconnwhere, 17, cudv->connwhere))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
+    if (0 != safe_strcpy(cudvPdDvLnLvalue, 49, cudv->PdDvLn_Lvalue))
+        M_UNLIKELY
+        {
+            perror("Error copying AIX CuDv data");
+        }
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "CuDv:\n");
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tid: %ld\n", cudv->_id);
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\treserved: %ld\n", cudv->_reserved);
@@ -954,39 +978,107 @@ static void print_CuDv_Struct(const tDevice* M_NONNULL device, struct CuDv* cudv
         DECLARE_ZERO_INIT_ARRAY(char, pddvStop, 257);
         DECLARE_ZERO_INIT_ARRAY(char, pddvuniquetype, 49);
         // making copies to ensure null termination - TJE
-        snprintf_err_handle(pddvtype, 17, "%s", cudv->PdDvLn->type);
-        snprintf_err_handle(pddvclass, 17, "%s", cudv->PdDvLn->class);
-        snprintf_err_handle(pddvsubclass, 17, "%s", cudv->PdDvLn->subclass);
-        snprintf_err_handle(pddvprefix, 17, "%s", cudv->PdDvLn->prefix);
-        snprintf_err_handle(pddvdevid, 17, "%s", cudv->PdDvLn->devid);
-        snprintf_err_handle(pddvcatalog, 17, "%s", cudv->PdDvLn->catalog);
-        snprintf_err_handle(pddvDvDr, 17, "%s", cudv->PdDvLn->DvDr);
-        snprintf_err_handle(pddvDefine, 257, "%s", cudv->PdDvLn->Define);
-        snprintf_err_handle(pddvConfigure, 257, "%s", cudv->PdDvLn->Configure);
-        snprintf_err_handle(pddvChange, 257, "%s", cudv->PdDvLn->Change);
-        snprintf_err_handle(pddvUnconfigure, 257, "%s", cudv->PdDvLn->Unconfigure);
-        snprintf_err_handle(pddvUndefine, 257, "%s", cudv->PdDvLn->Undefine);
-        snprintf_err_handle(pddvStart, 257, "%s", cudv->PdDvLn->Start);
-        snprintf_err_handle(pddvStop, 257, "%s", cudv->PdDvLn->Stop);
-        snprintf_err_handle(pddvuniquetype, 49, "%s", cudv->PdDvLn->uniquetype);
+        if (0 != safe_strcpy(pddvtype, 17, cudv->PdDvLn->type))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvclass, 17, cudv->PdDvLn->class))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvsubclass, 17, cudv->PdDvLn->subclass))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvprefix, 17, cudv->PdDvLn->prefix))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvdevid, 17, cudv->PdDvLn->devid))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvcatalog, 17, cudv->PdDvLn->catalog))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvDvDr, 17, cudv->PdDvLn->DvDr))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvDefine, 257, cudv->PdDvLn->Define))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvConfigure, 257, cudv->PdDvLn->Configure))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvChange, 257, cudv->PdDvLn->Change))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvUnconfigure, 257, cudv->PdDvLn->Unconfigure))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvUndefine, 257, cudv->PdDvLn->Undefine))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvStart, 257, cudv->PdDvLn->Start))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvStop, 257, cudv->PdDvLn->Stop))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(pddvuniquetype, 49, cudv->PdDvLn->uniquetype))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\tPdDv\n");
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tid: %ld\n", cudv->PdDvLn->_id);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\treserved: %ld\n", cudv->PdDvLn->_reserved);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\treserved: %ld\n",
+                                               cudv->PdDvLn->_reserved);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tscratch: %ld\n", cudv->PdDvLn->_scratch);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\ttype: %s\n", pddvtype);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tclass: %s\n", pddvclass);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tsubclass: %s\n", pddvsubclass);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tprefix: %s\n", pddvprefix);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tdevid: %s\n", pddvdevid);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tbase: %" PRId16 "\n", cudv->PdDvLn->base);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\thas_vpd: %" PRId16 "\n", cudv->PdDvLn->has_vpd);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tdetectable: %" PRId16 "\n", cudv->PdDvLn->detectable);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tchgstatus: %" PRId16 "\n", cudv->PdDvLn->chgstatus);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tbus_ext: %" PRId16 "\n", cudv->PdDvLn->bus_ext);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tbase: %" PRId16 "\n",
+                                               cudv->PdDvLn->base);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\thas_vpd: %" PRId16 "\n",
+                                               cudv->PdDvLn->has_vpd);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tdetectable: %" PRId16 "\n",
+                                               cudv->PdDvLn->detectable);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tchgstatus: %" PRId16 "\n",
+                                               cudv->PdDvLn->chgstatus);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tbus_ext: %" PRId16 "\n",
+                                               cudv->PdDvLn->bus_ext);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tfru: %" PRId16 "\n", cudv->PdDvLn->fru);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tled: %" PRId16 "\n", cudv->PdDvLn->led);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tsetno: %" PRId16 "\n", cudv->PdDvLn->setno);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tmsgno: %" PRId16 "\n", cudv->PdDvLn->msgno);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tsetno: %" PRId16 "\n",
+                                               cudv->PdDvLn->setno);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tmsgno: %" PRId16 "\n",
+                                               cudv->PdDvLn->msgno);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tcatalog: %s\n", pddvcatalog);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tDvDr: %s\n", pddvDvDr);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tDefine: %s\n", pddvDefine);
@@ -996,7 +1088,8 @@ static void print_CuDv_Struct(const tDevice* M_NONNULL device, struct CuDv* cudv
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tUndefine: %s\n", pddvUndefine);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tStart: %s\n", pddvStart);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tStop: %s\n", pddvStop);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tinventory_only: %" PRId16 "\n", cudv->PdDvLn->inventory_only);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tinventory_only: %" PRId16 "\n",
+                                               cudv->PdDvLn->inventory_only);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tuniquetype: %s\n", pddvuniquetype);
     }
     if (cudv->PdDvLn_info)
@@ -1004,8 +1097,16 @@ static void print_CuDv_Struct(const tDevice* M_NONNULL device, struct CuDv* cudv
         // making copies to ensure null termination -TJE
         DECLARE_ZERO_INIT_ARRAY(char, listinfoClassname, MAX_ODMI_NAME + 1);
         DECLARE_ZERO_INIT_ARRAY(char, listinfoCrit, MAX_ODMI_CRIT + 1);
-        snprintf_err_handle(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname);
-        snprintf_err_handle(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit);
+        if (0 != safe_strcpy(listinfoClassname, MAX_ODMI_NAME + 1, "%s", cudv->PdDvLn_info->classname))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
+        if (0 != safe_strcpy(listinfoCrit, MAX_ODMI_CRIT + 1, "%s", cudv->PdDvLn_info->crit))
+            M_UNLIKELY
+            {
+                perror("Error copying AIX CuDv data");
+            }
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\tlistinfo:\n");
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\t\tclassname: %s\n", listinfoClassname);
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\t\t\tcrit: %s\n", listinfoCrit);
@@ -1136,7 +1237,8 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
     eReturnValues ret            = SUCCESS;
     long          extensionFlags = 0L;
     bool          handleOpened   = false;
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\nAIX attempting to open device: %s\n", filename);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\nAIX attempting to open device: %s\n",
+                                           filename);
     if ((device->os_info.fd = openx(C_CAST(char*, filename), 0, 0, extensionFlags)) >= 0) // path, OFlag, Mode,
                                                                                           // Extension
     {
@@ -1175,7 +1277,8 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
         else
         {
             set_Device_Last_Error(device, errno);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Device IOCINFO Error: %d - ", device->os_info.last_error);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Device IOCINFO Error: %d - ",
+                                                   device->os_info.last_error);
             // Error mapping happens below based on the specific errno
             if (device->os_info.last_error == EACCES)
             {
@@ -1189,12 +1292,15 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
         set_Device_IO_Minimum_Alignment(device, sizeof(void*));
         // Now get the parent handle, open it and request the IOCINFO for the parent since that fill provide more
         // details -TJE set name and friendly name
-        set_Device_Handle_Name(device, filename);
         char*   friendlyName = M_NULLPTR;
         errno_t duperr       = safe_strdup(&friendlyName, filename);
         if (duperr == 0 && friendlyName != M_NULLPTR)
         {
-            set_Device_Handle_Friendly_Name(device, basename(friendlyName));
+            set_Device_Name_In_tDevice(device, filename, basename(friendlyName));
+        }
+        else
+        {
+            set_Device_Name_In_tDevice(device, filename, M_NULLPTR);
         }
         safe_free(&friendlyName);
         struct CuDv  cudv;
@@ -1225,7 +1331,8 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
                     DECLARE_ZERO_INIT_ARRAY(char, controllerHandle, OS_HANDLE_NAME_MAX_LENGTH);
                     snprintf_err_handle(controllerHandle, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s\n", ptrcudv->parent);
 
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "\nAIX attempting to open controller: %s\n", controllerHandle);
+                    print_tDevice_Verbose_Formatted_String(
+                        device, VERBOSITY_DEFAULT, "\nAIX attempting to open controller: %s\n", controllerHandle);
                     if ((device->os_info.ctrlfd = openx(controllerHandle, 0, 0, 0)))
                     {
                         // successfully opened the controller's handle
@@ -1234,7 +1341,9 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
                     }
                     else
                     {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "Unable to open controller handle: %s - errno: %d\n", ptrcudv->parent, errno);
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT,
+                                                               "Unable to open controller handle: %s - errno: %d\n",
+                                                               ptrcudv->parent, errno);
                     }
                     // based off the name of the controller, set up the interface info.
                     // NOLINTBEGIN(bugprone-branch-clone)
@@ -1367,7 +1476,8 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
             else
             {
                 // print error???
-                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_DEFAULT, "Unable to get parent for %s (ODM error: %d)\n", filename, odmerrno);
+                print_tDevice_Verbose_Formatted_String(
+                    device, VERBOSITY_DEFAULT, "Unable to get parent for %s (ODM error: %d)\n", filename, odmerrno);
             }
         }
         // done with using odm, so terminate it
@@ -2088,14 +2198,15 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
     set_Device_Last_Error(scsiIoCtx->device, errno);
     if (ioctlResult < 0)
     {
-        ret = OS_PASSTHROUGH_FAILURE;
+        ret           = OS_PASSTHROUGH_FAILURE;
         errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
         if (error != 0)
         {
             char* errormsg = get_strerror(error);
             if (errormsg != M_NULLPTR)
             {
-                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n",
+                                                       error, errormsg);
                 safe_free(&errormsg);
             }
         }
@@ -2103,82 +2214,83 @@ static eReturnValues send_AIX_SCSI_Passthrough(ScsiIoCtx* scsiIoCtx)
                                                  aixPassthrough.adap_status_type, aixPassthrough.adapter_status);
         if (aixPassthrough.adap_set_flags & SC_AUTOSENSE_DATA_VALID)
         {
-            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Adapter auto-sense data is valid\n");
-            }
-            if (aixPassthrough.adap_set_flags & SC_RET_ID)
-            {
-                printf("SCSI ID is different than was provided and the adapter has updated it to: %" PRIu64 "\n",
-                       aixPassthrough.scsi_id);
-            }
-            printf("Additional Device Status: %u\n", aixPassthrough.add_device_status);
-            print_Adapter_Queue_Status(aixPassthrough.adap_q_status);
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "Adapter auto-sense data is valid\n");
+        }
+        if (aixPassthrough.adap_set_flags & SC_RET_ID)
+        {
+            printf("SCSI ID is different than was provided and the adapter has updated it to: %" PRIu64 "\n",
+                   aixPassthrough.scsi_id);
+        }
+        printf("Additional Device Status: %u\n", aixPassthrough.add_device_status);
+        print_Adapter_Queue_Status(aixPassthrough.adap_q_status);
 
-            if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) == EINVAL)
+        if (get_Device_OS_Info_Last_Error(scsiIoCtx->device) == EINVAL)
+        {
+            // TODO: Some of these, upon error will return an allowed value. Look at showing these in this error
+            // output.-TJE
+            print_str("Invalid field in sc_passthru:\n");
+            switch (aixPassthrough.einval_arg)
             {
-                // TODO: Some of these, upon error will return an allowed value. Look at showing these in this error
-                // output.-TJE
-                print_str("Invalid field in sc_passthru:\n");
-                switch (aixPassthrough.einval_arg)
-                {
-                case SC_PASSTHRU_INV_VERS:
-                    print_str("\tInvalid Version\n");
-                    break;
-                case SC_PASSTHRU_INV_Q_TAG_MSG:
-                    print_str("\tQ Tag field is invalid\n");
-                    break;
-                case SC_PASSTHRU_INV_FLAGS:
-                    print_str("\tInvalid flags\n");
-                    break;
-                case SC_PASSTHRU_INV_DEVFLAGS:
-                    print_str("\tInvalid device flags\n");
-                    break;
-                case SC_PASSTHRU_INV_Q_FLAGS:
-                    print_str("\tInvalid Queue flags\n");
-                    break;
-                case SC_PASSTHRU_INV_CDB_LEN:
-                    print_str("\tInvalid CDB length\n");
-                    break;
-                case SC_PASSTHRU_INV_AS_LEN:
-                    print_str("\tInvalid autosense length\n");
-                    break;
-                case SC_PASSTHRU_INV_CDB:
-                    print_str("\tInvalid CDB\n");
-                    break;
-                case SC_PASSTHRU_INV_TO:
-                    // Supposedly this can tell what an appropriate maximum timeout is in the timeout offset when this
-                    // occurs.
-                    print_str("\tInvalid timeout\n");
-                    break;
-                case SC_PASSTHRU_INV_D_LEN:
-                    print_str("\tInvalid data length\n");
-                    break;
-                case SC_PASSTHRU_INV_SID:
-                    print_str("\tInvalid SCSI ID\n");
-                    break;
-                case SC_PASSTHRU_INV_LUN:
-                    print_str("\tInvalid LUN ID\n");
-                    break;
-                case SC_PASSTHRU_INV_BUFF:
-                    print_str("\tInvalid data buffer pointer\n");
-                    break;
-                case SC_PASSTHRU_INV_AS_BUFF:
-                    print_str("\tInvalid autosense buffer pointer\n");
-                    break;
-                case SC_PASSTHRU_INV_VAR_CDB_LEN:
-                    print_str("\tInvalid variable CDB length\n");
-                    break;
-                case SC_PASSTHRU_INV_VAR_CDB:
-                    print_str("\tInvalid variable length CDB pointer\n");
-                    break;
-                default:
-                    printf("\tUnknown invalid field: %u\n", aixPassthrough.einval_arg);
-                    break;
-                }
+            case SC_PASSTHRU_INV_VERS:
+                print_str("\tInvalid Version\n");
+                break;
+            case SC_PASSTHRU_INV_Q_TAG_MSG:
+                print_str("\tQ Tag field is invalid\n");
+                break;
+            case SC_PASSTHRU_INV_FLAGS:
+                print_str("\tInvalid flags\n");
+                break;
+            case SC_PASSTHRU_INV_DEVFLAGS:
+                print_str("\tInvalid device flags\n");
+                break;
+            case SC_PASSTHRU_INV_Q_FLAGS:
+                print_str("\tInvalid Queue flags\n");
+                break;
+            case SC_PASSTHRU_INV_CDB_LEN:
+                print_str("\tInvalid CDB length\n");
+                break;
+            case SC_PASSTHRU_INV_AS_LEN:
+                print_str("\tInvalid autosense length\n");
+                break;
+            case SC_PASSTHRU_INV_CDB:
+                print_str("\tInvalid CDB\n");
+                break;
+            case SC_PASSTHRU_INV_TO:
+                // Supposedly this can tell what an appropriate maximum timeout is in the timeout offset when this
+                // occurs.
+                print_str("\tInvalid timeout\n");
+                break;
+            case SC_PASSTHRU_INV_D_LEN:
+                print_str("\tInvalid data length\n");
+                break;
+            case SC_PASSTHRU_INV_SID:
+                print_str("\tInvalid SCSI ID\n");
+                break;
+            case SC_PASSTHRU_INV_LUN:
+                print_str("\tInvalid LUN ID\n");
+                break;
+            case SC_PASSTHRU_INV_BUFF:
+                print_str("\tInvalid data buffer pointer\n");
+                break;
+            case SC_PASSTHRU_INV_AS_BUFF:
+                print_str("\tInvalid autosense buffer pointer\n");
+                break;
+            case SC_PASSTHRU_INV_VAR_CDB_LEN:
+                print_str("\tInvalid variable CDB length\n");
+                break;
+            case SC_PASSTHRU_INV_VAR_CDB:
+                print_str("\tInvalid variable length CDB pointer\n");
+                break;
+            default:
+                printf("\tUnknown invalid field: %u\n", aixPassthrough.einval_arg);
+                break;
             }
         }
     }
-    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
-    return ret;
+}
+set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
+return ret;
 }
 
 // IOCTL IDEIOIDENT with struct ide_identify may be helpful to identify when IDE or SATA passthrough are available-TJE
@@ -2276,14 +2388,15 @@ static eReturnValues send_AIX_IDE_ATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     set_Device_Last_Error(scsiIoCtx->device, errno);
     if (ioctlResult < 0)
     {
-        ret = OS_PASSTHROUGH_FAILURE;
+        ret           = OS_PASSTHROUGH_FAILURE;
         errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
         if (error != 0)
         {
             char* errormsg = get_strerror(error);
             if (errormsg != M_NULLPTR)
             {
-                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n",
+                                                       error, errormsg);
                 safe_free(&errormsg);
             }
         }
@@ -2391,19 +2504,22 @@ static eReturnValues send_AIX_IDE_ATAPI_Passthrough(ScsiIoCtx* scsiIoCtx)
     set_Device_Last_Error(scsiIoCtx->device, errno);
     if (ioctlResult < 0)
     {
-        ret = OS_PASSTHROUGH_FAILURE;
+        ret           = OS_PASSTHROUGH_FAILURE;
         errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
         if (error != 0)
         {
             char* errormsg = get_strerror(error);
             if (errormsg != M_NULLPTR)
             {
-                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n",
+                                                       error, errormsg);
                 safe_free(&errormsg);
             }
         }
-        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "IDE ATAPI Passthru Status: %02" PRIX8 "h\n", idePassthrough.ata_status);
-        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "IDE ATAPI Passthru Error:  %02" PRIX8 "h\n", idePassthrough.ata_error);
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                               "IDE ATAPI Passthru Status: %02" PRIX8 "h\n", idePassthrough.ata_status);
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                               "IDE ATAPI Passthru Error:  %02" PRIX8 "h\n", idePassthrough.ata_error);
     }
 
 #if !defined IDE_PASSTHRU_VERSION_01
@@ -2616,14 +2732,15 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     set_Device_Last_Error(scsiIoCtx->device, errno);
     if (ioctlResult < 0)
     {
-        ret = OS_PASSTHROUGH_FAILURE;
+        ret           = OS_PASSTHROUGH_FAILURE;
         errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
         if (error != 0)
         {
             char* errormsg = get_strerror(error);
             if (errormsg != M_NULLPTR)
             {
-                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n",
+                                                       error, errormsg);
                 safe_free(&errormsg);
             }
         }
@@ -2731,7 +2848,7 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
         else
         {
             print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_QUIET,
-                                        "No Raid PassThrough IO Routine present for this device\n");
+                                         "No Raid PassThrough IO Routine present for this device\n");
         }
         break;
     default:
@@ -2742,8 +2859,8 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
     {
         delay_Milliseconds(scsiIoCtx->device->delay_io);
         print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES,
-                                              "Delaying between commands %d milliseconds to reduce IO impact",
-                                              scsiIoCtx->device->delay_io);
+                                               "Delaying between commands %d milliseconds to reduce IO impact",
+                                               scsiIoCtx->device->delay_io);
     }
     return ret;
 }
@@ -2888,8 +3005,14 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptr
             {
                 continue;
             }
-            safe_memset(name, AIX_NAME_LEN, 0, AIX_NAME_LEN); // clear name before reusing it
-            snprintf_err_handle(name, AIX_NAME_LEN, "%s", devs[driveNumber]);
+            M_IGNORE_SAFE_ERRNO_CALL(safe_memset(name, AIX_NAME_LEN, 0, AIX_NAME_LEN),
+                                     "Clearing device handle name in get_Device_List for exact allocated size will "
+                                     "never fail"); // clear name before reusing it
+            if (0 != safe_strcpy(name, AIX_NAME_LEN, devs[driveNumber]))
+            {
+                perror("Error copying AIX handle name in get_Device_List");
+                continue;
+            }
             fd = -1;
             // lets try to open the device.
             // NOTE: When opening a handle, there may be an issue if SC_DIAGNOSTIC is not specified.
@@ -3025,45 +3148,42 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
 
 // Helper function to handle NVMe passthrough error evaluation and printing
 // Returns appropriate eReturnValues based on error code and passthrough response status
-static eReturnValues handle_NVMe_Passthrough_Error(const tDevice* M_NONNULL device, int error,
-                                                    struct nvme_passthru* M_NONNULL nvmePassthrough)
+static eReturnValues handle_NVMe_Passthrough_Error(const tDevice* M_NONNULL        device,
+                                                   int                             error,
+                                                   struct nvme_passthru* M_NONNULL nvmePassthrough)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
 
     if (error != 0)
     {
         char* errormsg = get_strerror(error);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                              "NVMe Passthrough Error: %s\n",
-                                              errormsg);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "NVMe Passthrough Error: %s\n",
+                                               errormsg);
         safe_free(errormsg);
 
         if (error == EINVAL)
         {
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                        "Invalid field in nvme passthrough struct:\n");
+                                         "Invalid field in nvme passthrough struct:\n");
             // response status has a code set to help indicate what was not allowed
             switch (nvmePassthrough->resp.status)
             {
             case NVME_PASSTHRU_INVAL_DATA_LENGTH:
-                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                            "\tInvalid data length\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tInvalid data length\n");
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
             case NVME_PASSTHRU_BLOCKED_OP_CODE:
-                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                            "\tOperation code blocked\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tOperation code blocked\n");
                 ret = OS_COMMAND_BLOCKED;
                 break;
             case NVME_PASSTHRU_CMD_HAS_NO_DATA:
-                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                            "\tCommand has no data\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tCommand has no data\n");
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
             default:
                 print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                                      "\tUnknown invalid field: %04" PRIX16 "\n",
-                                                      nvmePassthrough->resp.status);
+                                                       "\tUnknown invalid field: %04" PRIX16 "\n",
+                                                       nvmePassthrough->resp.status);
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
             }
@@ -3171,7 +3291,7 @@ M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
     if (ioctlResult < 0)
     {
         errno_t error = M_STATIC_CAST(errno_t, nvmeIoCtx->device->os_info.last_error);
-        ret = handle_NVMe_Passthrough_Error(nvmeIoCtx->device, error, &nvmePassthrough);
+        ret           = handle_NVMe_Passthrough_Error(nvmeIoCtx->device, error, &nvmePassthrough);
     }
     else // ret == 0. NOTE: Positive return values will currently fall here too but those are not documented as far as I
          // can see - TJE
@@ -3190,8 +3310,8 @@ M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
     {
         delay_Milliseconds(nvmeIoCtx->device->delay_io);
         print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES,
-                                              "Delaying between commands %d milliseconds to reduce IO impact",
-                                              nvmeIoCtx->device->delay_io);
+                                               "Delaying between commands %d milliseconds to reduce IO impact",
+                                               nvmeIoCtx->device->delay_io);
     }
 
     return ret;

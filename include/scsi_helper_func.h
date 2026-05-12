@@ -264,8 +264,11 @@ extern "C"
 
     M_PARAM_RO(1) OPENSEA_TRANSPORT_API void print_Sense_Fields(constPtrSenseDataFields M_NONNULL senseFields);
 
-    M_PARAM_RO(1) M_PARAM_RO(3) OPENSEA_TRANSPORT_API void print_Sense_Fields_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity,
-        constPtrSenseDataFields M_NONNULL senseFields);
+    M_PARAM_RO(1)
+    M_PARAM_RO(3)
+    OPENSEA_TRANSPORT_API void print_Sense_Fields_Verbose(const tDevice* M_NONNULL          device,
+                                                          eVerbosityLevels                  verbosity,
+                                                          constPtrSenseDataFields M_NONNULL senseFields);
 
     //-----------------------------------------------------------------------------
     //
@@ -3443,9 +3446,20 @@ extern "C"
     //  Exit:
     //
     //-----------------------------------------------------------------------------
+    M_DEPRECATED_REASON("Use decypher_SCSI_Version_Descriptors_Len instead to prevent buffer overflows!")
     M_PARAM_WO(2)
     OPENSEA_TRANSPORT_API void decypher_SCSI_Version_Descriptors(uint16_t        versionDescriptor,
                                                                  char* M_NONNULL versionString);
+
+    M_PARAM_WO_SIZE(2, 3)
+    OPENSEA_TRANSPORT_API void decypher_SCSI_Version_Descriptors_Len(uint16_t        versionDescriptor,
+                                                                     char* M_NONNULL versionString,
+                                                                     rsize_t         versionStringLen)
+        // clang-format off
+            M_DIAG_ERR(!versionString, "Version string pointer is NULL")
+            M_DIAG_ERR(versionStringLen < MAX_VERSION_DESCRIPTOR_STRING_LENGTH, "Version string length should be at least MAX_VERSION_DESCRIPTOR_STRING_LENGTH bytes in size")
+        // clang-format on
+        ;
 
     //-----------------------------------------------------------------------------
     //

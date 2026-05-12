@@ -53,7 +53,10 @@ ptrRaidHandleToScan add_RAID_Handle(ptrRaidHandleToScan M_NULLABLE currentPtr,
     if (currentPtr != M_NULLPTR)
     {
         currentPtr->next = M_NULLPTR;
-        snprintf_err_handle(currentPtr->handle, RAID_HANDLE_STRING_MAX_LEN, "%s", handleToScan);
+        if (safe_strcpy(currentPtr->handle, RAID_HANDLE_STRING_MAX_LEN, handleToScan) != 0)
+        {
+            return M_NULLPTR;
+        }
         currentPtr->raidHint = raidHint;
     }
     else

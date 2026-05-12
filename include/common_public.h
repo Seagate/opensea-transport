@@ -17,6 +17,7 @@
 #include "code_attributes.h"
 #include "common_types.h"
 #include "memory_safety.h"
+#include "string_utils.h"
 #include "type_conversion.h"
 
 #include <stdarg.h>
@@ -1051,24 +1052,28 @@ extern "C"
     typedef enum eSATFixedFormatSenseHack
     {
         SAT_FIXED_SENSE_HACK_NONE = 0, // no hack, use sense data as is as this response is compliant
-        SAT_FIXED_SENSE_HACK_ONLY_ASC_ASCQ_ATA_INFO_ALLOWED, //only trust sense when ASC and ASCQ is set to ATA response information
-        SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED, // Trust that translation of error fields is valid for any sense codes as SAT allows since
-                                                // testing shows that even other sense codes still put the registers where SAT specifies
-        SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, // Sometimes with a response of unaligned write we can get partial data, but in the wrong locations
-        SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER, // Some SATLs (e.g., PMCS) return LBA bytes in Command Specific Information with swapped byte order
+        SAT_FIXED_SENSE_HACK_ONLY_ASC_ASCQ_ATA_INFO_ALLOWED, // only trust sense when ASC and ASCQ is set to ATA
+                                                             // response information
+        SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED,   // Trust that translation of error fields is valid for any sense codes
+                                                  // as SAT allows since testing shows that even other sense codes still
+                                                  // put the registers where SAT specifies
+        SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, // Sometimes with a response of unaligned write we can get partial
+                                                  // data, but in the wrong locations
+        SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER, // Some SATLs (e.g., PMCS) return LBA bytes in Command
+                                                                  // Specific Information with swapped byte order
     } eSATFixedFormatSenseHack;
 
     typedef enum eNonDataTest
     {
         // add possible cases here for other issues we detect.
         ATA_NON_DATA_TEST_LBA_ZERO_AND_COUNT_ZERO = -3,
-        ATA_NON_DATA_TEST_LBA_ZERO_ONLY = -2,
-        ATA_NON_DATA_TEST_COUNT_ZERO_ONLY = -1,
-        ATA_NON_DATA_TEST_NONE = 0, // not tested yet
-        ATA_NON_DATA_TEST_INDETERMINATE, //Tested, but received inconclusive results, so allow things as "normal"
+        ATA_NON_DATA_TEST_LBA_ZERO_ONLY           = -2,
+        ATA_NON_DATA_TEST_COUNT_ZERO_ONLY         = -1,
+        ATA_NON_DATA_TEST_NONE                    = 0, // not tested yet
+        ATA_NON_DATA_TEST_INDETERMINATE, // Tested, but received inconclusive results, so allow things as "normal"
         // Add possible cases here
-        ATA_NON_DATA_TEST_ALLOW_ALL = 0xFF //Setting a max here.
-    }eNonDataTest;
+        ATA_NON_DATA_TEST_ALLOW_ALL = 0xFF // Setting a max here.
+    } eNonDataTest;
 
 // This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error
 // processing (USB mostly)
@@ -1264,16 +1269,17 @@ extern "C"
             bool retryWithJMicronPT;   // Needed for some JMicron adapters. Newer may support SAT, older support their
                                        // lagacy passthrough, so this is to retry on these devices.
             bool jmPTDevSet; // for JMicron's passthrough we need to set dev 0 or 1. This gets turned to true once set
-            bool nonDataCountBroken; // Implemented due to Broadcom HBA firmware bug. When issuing a non-data command with
-                                     // non-zero count, it zeroes it to the drive. So this creates unexpected behavior for
-                                     // numerous commands.
-            bool nonDataLBABroken; // Similar to above, but not observed. Just here in case we detect it as an issue.
-            eNonDataTest nonDataTest; // 0 = not yet tested so before discovery has happened. -1 (default) is to be safe and only
-                                // allow zero values through when things work as we expect them to when above hacks are set.
-                                // 1 is to allow overriding and accept that things may not work quite as expected on this device/adapter for any
-                                // pass-through non-data command. when above hacks are set or everything is working properly
-            eSATFixedFormatSenseHack fixedSenseHack; // Various methods to handle fixed format sense data responses from SATLs
-                                                     // which may or may not implement the standard correctly.
+            bool nonDataCountBroken;  // Implemented due to Broadcom HBA firmware bug. When issuing a non-data command
+                                      // with non-zero count, it zeroes it to the drive. So this creates unexpected
+                                      // behavior for numerous commands.
+            bool nonDataLBABroken;    // Similar to above, but not observed. Just here in case we detect it as an issue.
+            eNonDataTest nonDataTest; // 0 = not yet tested so before discovery has happened. -1 (default) is to be safe
+                                      // and only allow zero values through when things work as we expect them to when
+                                      // above hacks are set. 1 is to allow overriding and accept that things may not
+                                      // work quite as expected on this device/adapter for any pass-through non-data
+                                      // command. when above hacks are set or everything is working properly
+            eSATFixedFormatSenseHack fixedSenseHack; // Various methods to handle fixed format sense data responses from
+                                                     // SATLs which may or may not implement the standard correctly.
         } ataPTHacks;
         // NVMe Hacks
         struct
@@ -1885,7 +1891,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                  issue_nvme_io; // nvme IO function pointer for raid or other driver/custom interface to send commands
         uint64_t dFlags;
         eVerbosityLevels deviceVerbosity;
-        uint32_t         delay_io; // milliseconds
+        uint32_t         delay_io;            // milliseconds
         FILE* M_NULLABLE verboseOutputStream; // can be a real file, stdout, stderr, a pipe, etc.
     } tDevice;
 
@@ -1929,11 +1935,15 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                                                                       const char* M_NONNULL    format,
                                                                       va_list                  args);
 
-                                                                        M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API void print_Command_Time_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity, uint64_t timeInNanoSeconds);
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API void print_Command_Time_Verbose(const tDevice* M_NONNULL device,
+                                                          eVerbosityLevels         verbosity,
+                                                          uint64_t                 timeInNanoSeconds);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API void print_Time_Verbose(const tDevice* M_NONNULL device, eVerbosityLevels verbosity, uint64_t timeInNanoSeconds);
+    OPENSEA_TRANSPORT_API void print_Time_Verbose(const tDevice* M_NONNULL device,
+                                                  eVerbosityLevels         verbosity,
+                                                  uint64_t                 timeInNanoSeconds);
 
     M_PARAM_RO(1)
     OPENSEA_TRANSPORT_API int flush_tDevice_Verbose_Stream(const tDevice* M_NONNULL device);
@@ -1947,7 +1957,65 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     M_PARAM_RO(1)
     M_PARAM_RO_SIZE(3, 4)
-    OPENSEA_TRANSPORT_API int print_tDevice_Data_Buffer(const tDevice * M_NONNULL device, eVerbosityLevels verboseLevel, const uint8_t* M_NONNULL buffer, size_t bufferLen, bool showPrintableASCII);
+    OPENSEA_TRANSPORT_API int print_tDevice_Data_Buffer(const tDevice* M_NONNULL device,
+                                                        eVerbosityLevels         verboseLevel,
+                                                        const uint8_t* M_NONNULL buffer,
+                                                        uint32_t                 bufferLen,
+                                                        bool                     showPrintableASCII);
+
+    M_PARAM_RW(1)
+    M_PARAM_RO(2)
+    M_PARAM_RO(3)
+    M_NULL_TERM_STRING(2)
+    M_NULL_TERM_STRING(3)
+    static M_INLINE void set_Device_Name_In_tDevice(tDevice* M_NONNULL     device,
+                                                    const char* M_NONNULL  name,
+                                                    const char* M_NULLABLE friendlyName)
+    {
+        if (device != M_NULLPTR && name != M_NULLPTR)
+        {
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_strncpy(device->os_info.name, sizeof(device->os_info.name), name, OS_HANDLE_NAME_MAX_LENGTH),
+                "This should always fit within this buffer.");
+            if (friendlyName != M_NULLPTR)
+            {
+                M_IGNORE_SAFE_ERRNO_CALL(safe_strncpy(device->os_info.friendlyName,
+                                                      sizeof(device->os_info.friendlyName), friendlyName,
+                                                      OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH),
+                                         "This should always fit within this buffer.");
+            }
+        }
+    }
+
+    M_PARAM_RW(1)
+    M_PARAM_RO(2)
+    M_PARAM_RO(3)
+    M_NULL_TERM_STRING(2)
+    M_NULL_TERM_STRING(3)
+    static M_INLINE void set_Second_Device_Name_In_tDevice(tDevice* M_NONNULL     device,
+                                                           const char* M_NONNULL  name,
+                                                           const char* M_NULLABLE friendlyName)
+    {
+        if (device != M_NULLPTR && name != M_NULLPTR)
+        {
+#if defined(__linux__) || defined(__sun)
+            M_IGNORE_SAFE_ERRNO_CALL(safe_strncpy(device->os_info.secondName, sizeof(device->os_info.secondName), name,
+                                                  OS_SECOND_HANDLE_NAME_LENGTH),
+                                     "This should always fit within this buffer.");
+            if (friendlyName != M_NULLPTR)
+            {
+                M_IGNORE_SAFE_ERRNO_CALL(safe_strncpy(device->os_info.secondFriendlyName,
+                                                      sizeof(device->os_info.secondFriendlyName), friendlyName,
+                                                      OS_SECOND_HANDLE_NAME_LENGTH),
+                                         "This should always fit within this buffer.");
+            }
+#else
+        M_USE_UNUSED(friendlyName);
+#endif
+            // TODO: Make second handles available for all systems since this can come in handy  and make everything
+            // easier to manage.
+        }
+    }
 
     M_PARAM_RW(1)
     M_PARAM_RO(2)
@@ -1958,18 +2026,158 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         if (device != M_NULLPTR && M_REINTERPRET_CAST(uintptr_t, &device->drive_info.IdentifyData.ata) !=
                                        M_REINTERPRET_CAST(uintptr_t, identifyData))
         {
-            safe_memcpy(M_REINTERPRET_CAST(void*, &device->drive_info.IdentifyData.ata), 512, identifyData, 512);
+            M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(M_REINTERPRET_CAST(void*, &device->drive_info.IdentifyData.ata),
+                                                 sizeof(device->drive_info.IdentifyData.ata), identifyData, 512),
+                                     "Destination and source for identify data are equivalent at 512B");
+        }
+    }
+
+    M_PARAM_RW(1)
+    M_PARAM_RO(2)
+    static M_INLINE void copy_NVMe_Controller_Identify_To_tDevice(tDevice* M_NONNULL device,
+                                                                  const uint8_t      identifyData[M_NONNULL_ARRAY 4096])
+    {
+        if (device != M_NULLPTR && M_REINTERPRET_CAST(uintptr_t, &device->drive_info.IdentifyData.nvme.ctrl) !=
+                                       M_REINTERPRET_CAST(uintptr_t, identifyData))
+        {
+            M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(M_REINTERPRET_CAST(void*, &device->drive_info.IdentifyData.nvme.ctrl),
+                                                 sizeof(device->drive_info.IdentifyData.nvme.ctrl), identifyData, 4096),
+                                     "Destination and source for identify data are equivalent at 4096B");
+        }
+    }
+
+    M_PARAM_RW(1)
+    M_PARAM_RO(2)
+    static M_INLINE void copy_NVMe_Namespace_Identify_To_tDevice(tDevice* M_NONNULL device,
+                                                                 const uint8_t      identifyData[M_NONNULL_ARRAY 4096])
+    {
+        if (device != M_NULLPTR && M_REINTERPRET_CAST(uintptr_t, &device->drive_info.IdentifyData.nvme.ns) !=
+                                       M_REINTERPRET_CAST(uintptr_t, identifyData))
+        {
+            M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(M_REINTERPRET_CAST(void*, &device->drive_info.IdentifyData.nvme.ns),
+                                                 sizeof(device->drive_info.IdentifyData.nvme.ns), identifyData, 4096),
+                                     "Destination and source for identify data are equivalent at 4096B");
         }
     }
 
     M_PARAM_RW(1)
     static M_INLINE void set_Device_Last_Error(tDevice* M_NONNULL device, lasterror_t error)
     {
-
         if (device != M_NULLPTR)
         {
             device->os_info.last_error = error;
         }
+    }
+
+    M_PARAM_RW(1)
+    M_PARAM_RO_SIZE(2, 3)
+    M_NONNULL_IF_NONZERO_SIZE(2, 3)
+    static M_INLINE void copy_Last_Command_Sense_Data_To_tDevice(tDevice* M_NONNULL        device,
+                                                                 const uint8_t* M_NULLABLE sense,
+                                                                 uint32_t                  senseDataLength)
+    {
+        if (device != M_NULLPTR && sense != M_NULLPTR &&
+            M_REINTERPRET_CAST(uintptr_t, device->drive_info.lastCommandSenseData) !=
+                M_REINTERPRET_CAST(uintptr_t, sense))
+        {
+            uint32_t copyLength = senseDataLength < SPC3_SENSE_LEN ? senseDataLength : SPC3_SENSE_LEN;
+            if (senseDataLength > 0)
+            {
+                M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(device->drive_info.lastCommandSenseData,
+                                                     sizeof(device->drive_info.lastCommandSenseData), sense,
+                                                     copyLength),
+                                         "Copying sense data to tDevice should always fit!");
+            }
+            if (copyLength < sizeof(device->drive_info.lastCommandSenseData))
+            {
+                // memset remaining bytes
+                M_IGNORE_SAFE_ERRNO_CALL(safe_memset(device->drive_info.lastCommandSenseData + copyLength,
+                                                     sizeof(device->drive_info.lastCommandSenseData) - copyLength, 0,
+                                                     sizeof(device->drive_info.lastCommandSenseData) - copyLength),
+                                         "Clearing remaining sense data in tDevice should always pass!");
+            }
+        }
+    }
+
+    M_PARAM_RW(1)
+    static M_INLINE void clear_Last_Command_Sense_Data_In_tDevice(tDevice* M_NONNULL device)
+    {
+        if (device != M_NULLPTR)
+        {
+            M_IGNORE_SAFE_ERRNO_CALL(safe_memset(device->drive_info.lastCommandSenseData,
+                                                 sizeof(device->drive_info.lastCommandSenseData), 0,
+                                                 sizeof(device->drive_info.lastCommandSenseData)),
+                                     "Clearing last command sense data in tDevice should always pass!");
+        }
+    }
+
+    M_PARAM_RW(1)
+    static M_INLINE void copy_Last_Command_ATA_Sense_Data_To_tDevice(tDevice* M_NONNULL device,
+                                                                     bool               valid,
+                                                                     uint8_t            senseKey,
+                                                                     uint8_t            asc,
+                                                                     uint8_t            ascq)
+    {
+        if (device != M_NULLPTR)
+        {
+            if (valid)
+            {
+                device->drive_info.ataSenseData.validData                    = true;
+                device->drive_info.ataSenseData.senseKey                     = senseKey;
+                device->drive_info.ataSenseData.additionalSenseCode          = asc;
+                device->drive_info.ataSenseData.additionalSenseCodeQualifier = ascq;
+            }
+            else
+            {
+                device->drive_info.ataSenseData.validData                    = false;
+                device->drive_info.ataSenseData.senseKey                     = 0;
+                device->drive_info.ataSenseData.additionalSenseCode          = 0;
+                device->drive_info.ataSenseData.additionalSenseCodeQualifier = 0;
+            }
+        }
+    }
+
+    M_PARAM_RW(1)
+    M_PARAM_RO(2)
+    static M_INLINE void copy_Last_Command_RTFRs_To_tDevice(tDevice* M_NONNULL             device,
+                                                            const ataReturnTFRs* M_NONNULL lastCommandRTFRs)
+    {
+        if (device != M_NULLPTR && lastCommandRTFRs != M_NULLPTR)
+        {
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memcpy(&device->drive_info.lastCommandRTFRs, sizeof(device->drive_info.lastCommandRTFRs),
+                            lastCommandRTFRs, sizeof(ataReturnTFRs)),
+                "Destination and source for RTFRs is the same and has the same size. This should always pass!");
+        }
+    }
+
+    M_PARAM_RW(1)
+    static M_INLINE void copy_Last_NVMe_Command_Result_To_tDevice(tDevice* M_NONNULL device, uint32_t dw0, uint32_t dw3)
+    {
+        if (device != M_NULLPTR)
+        {
+            device->drive_info.lastNVMeResult.lastNVMeCommandSpecific = dw0;
+            device->drive_info.lastNVMeResult.lastNVMeStatus          = dw3;
+        }
+    }
+
+    M_PARAM_RW(1)
+    static M_INLINE void set_Last_Command_Time_To_tDevice(tDevice* M_NONNULL device, uint64_t timeInNanoseconds)
+    {
+        if (device != M_NULLPTR)
+        {
+            device->drive_info.lastCommandTimeNanoSeconds = timeInNanoseconds;
+        }
+    }
+
+    M_PARAM_RO(1)
+    static M_INLINE uint64_t get_Last_Command_Time_From_tDevice(const tDevice* M_NONNULL device)
+    {
+        if (device != M_NULLPTR)
+        {
+            return device->drive_info.lastCommandTimeNanoSeconds;
+        }
+        return 0;
     }
 
     // Common enum for getting/setting power states.
@@ -3055,7 +3263,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     M_PARAM_RO(1) OPENSEA_TRANSPORT_API M_NODISCARD bool is_Removable_Media(const tDevice* M_NONNULL device);
 
-    M_PARAM_RW(1) bool setup_Passthrough_Hacks_By_ID(tDevice* M_NONNULL device);
+    M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool setup_Passthrough_Hacks_By_ID(tDevice* M_NONNULL device);
 
     // This is exposed for retrying from SAT to Jmicron passthrough - TJE
     M_PARAM_RW(1)
@@ -3511,15 +3719,18 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     //! \fn eVerbosityLevels set_tDevice_Verbosity(tDevice *M_NONNULL device, eVerbosityLevels verbosity)
     //! \brief Sets the verbosity level in the tDevice struct using the eVerbosityLevels enum.
-    //! \details This function takes an already created tDevice and modifies the current verbosity level to the one specified.
-    //! The previously set verbosity level is returned when this is changed. If attempting to set a level higher than
-    //! the maximum value of the enum, then the highest supported level will be set. Same applies for attempting to set a level
-    //! lower than the lowest value allowed by the enum.
+    //! \details This function takes an already created tDevice and modifies the current verbosity level to the one
+    //! specified. The previously set verbosity level is returned when this is changed. If attempting to set a level
+    //! higher than the maximum value of the enum, then the highest supported level will be set. Same applies for
+    //! attempting to set a level lower than the lowest value allowed by the enum.
     //! \param device Pointer to the tDevice struct. Must not be null.
     //! \param verbosity The verbosity level to set, specified as an eVerbosityLevels enum.
     //! \return Previously set verbosity level. Can be stored to return to this level again later as needed.
     M_PARAM_RW(1)
-    OPENSEA_TRANSPORT_API eVerbosityLevels set_tDevice_Verbosity(tDevice *M_NONNULL device, eVerbosityLevels verbosity);
+    OPENSEA_TRANSPORT_API eVerbosityLevels set_tDevice_Verbosity(tDevice* M_NONNULL device, eVerbosityLevels verbosity);
+
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API M_NODISCARD eVerbosityLevels get_Device_Verbosity(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //

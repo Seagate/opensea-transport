@@ -140,7 +140,8 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Cmd(const tDevice* M_NONNULL device, nv
 #if defined(_DEBUG)
         if (cmdCtx->cmd.nvmCmd.nsid != device->drive_info.namespaceID)
         {
-            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "WARNING: NVM Cmd NSID does not match expected value in tDevice\n");
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES,
+                                         "WARNING: NVM Cmd NSID does not match expected value in tDevice\n");
         }
 #endif //_DEBUG
     }
@@ -183,8 +184,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Cmd(const tDevice* M_NONNULL device, nv
         if (cmdCtx->ptrData != M_NULLPTR)
 #else
         // Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-        if (cmdCtx->ptrData != M_NULLPTR &&
-            cmdCtx->commandDirection == XFER_DATA_OUT)
+        if (cmdCtx->ptrData != M_NULLPTR && cmdCtx->commandDirection == XFER_DATA_OUT)
 #endif
         {
             print_tDevice_Verbose_String(device, VERBOSITY_BUFFERS, "\t  Data Buffer being sent:\n");
@@ -220,7 +220,8 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Cmd(const tDevice* M_NONNULL device, nv
     print_tDevice_Verbose_NVMe_Cmd_Result(device, VERBOSITY_COMMAND_VERBOSE, cmdCtx);
     if (device->drive_info.passThroughHacks.passthroughType == NVME_PASSTHROUGH_SYSTEM)
     {
-        print_Command_Time_Verbose(device, VERBOSITY_COMMAND_VERBOSE, get_tDevice_Last_Command_Completion_Time_NS(device));
+        print_Command_Time_Verbose(device, VERBOSITY_COMMAND_VERBOSE,
+                                   get_tDevice_Last_Command_Completion_Time_NS(device));
 #if defined(_DEBUG)
         // This is different for debug because sometimes we need to see if the data buffer actually changed after
         // issuing a command. This was very important for debugging windows issues, which is why I have this ifdef in
@@ -228,8 +229,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Cmd(const tDevice* M_NONNULL device, nv
         if (cmdCtx->ptrData != M_NULLPTR)
 #else
         // Only print the data buffer being sent when it is a data transfer to the drive (data out command)
-        if (cmdCtx->ptrData != M_NULLPTR &&
-            cmdCtx->commandDirection == XFER_DATA_IN)
+        if (cmdCtx->ptrData != M_NULLPTR && cmdCtx->commandDirection == XFER_DATA_IN)
 #endif
         {
             print_tDevice_Verbose_String(device, VERBOSITY_BUFFERS, "\t  Data Buffer being returned:\n");
@@ -251,7 +251,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Abort_Command(const tDevice* M_NONNULL 
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
-    safe_memset(&adminCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&adminCommand, sizeof(nvmeCmdCtx));
     adminCommand.commandType         = NVM_ADMIN_CMD;
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_ABORT_CMD;
     adminCommand.cmd.adminCmd.cdw10  = M_WordsTo4ByteValue(commandIdentifier, submissionQueueIdentifier);
@@ -277,7 +277,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Asynchronous_Event_Request(const tDevic
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
-    safe_memset(&adminCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&adminCommand, sizeof(nvmeCmdCtx));
     adminCommand.commandType         = NVM_ADMIN_CMD;
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_ASYNC_EVENT;
     adminCommand.commandDirection    = XFER_NO_DATA;
@@ -313,7 +313,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Device_Self_Test(const tDevice* M_NONNU
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
-    safe_memset(&adminCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&adminCommand, sizeof(nvmeCmdCtx));
     adminCommand.commandType         = NVM_ADMIN_CMD;
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_DEVICE_SELF_TEST;
     adminCommand.commandDirection    = XFER_NO_DATA;
@@ -346,7 +346,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Security_Send(const tDevice* M_NONNULL 
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
-    safe_memset(&adminCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&adminCommand, sizeof(nvmeCmdCtx));
     adminCommand.commandType         = NVM_ADMIN_CMD;
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SECURITY_SEND;
     adminCommand.commandDirection    = XFER_DATA_OUT;
@@ -374,7 +374,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Security_Receive(const tDevice* M_NONNU
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    adminCommand;
-    safe_memset(&adminCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&adminCommand, sizeof(nvmeCmdCtx));
     adminCommand.commandType         = NVM_ADMIN_CMD;
     adminCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SECURITY_RECV;
     adminCommand.commandDirection    = XFER_DATA_IN;
@@ -409,7 +409,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Verify(const tDevice* M_NONNULL device,
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
-    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCommand, sizeof(nvmeCmdCtx));
     nvmCommand.commandType       = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_VERIFY;
     nvmCommand.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
@@ -442,7 +442,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Write_Uncorrectable(const tDevice* M_NO
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
-    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCommand, sizeof(nvmeCmdCtx));
     nvmCommand.commandType       = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_WRITE_UNCOR;
     nvmCommand.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
@@ -472,7 +472,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Dataset_Management(const tDevice* M_NON
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
-    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCommand, sizeof(nvmeCmdCtx));
     nvmCommand.commandType       = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_DATA_SET_MANAGEMENT;
     nvmCommand.commandDirection  = XFER_DATA_OUT;
@@ -506,7 +506,7 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues nvme_Flush(const tDevice* M_NO
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
-    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCommand, sizeof(nvmeCmdCtx));
     nvmCommand.commandType       = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_FLUSH;
     nvmCommand.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
@@ -534,7 +534,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Write(const tDevice* M_NONNULL device,
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
-    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCommand, sizeof(nvmeCmdCtx));
     nvmCommand.commandType       = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_WRITE;
     nvmCommand.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
@@ -577,7 +577,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Read(const tDevice* M_NONNULL device,
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
-    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCommand, sizeof(nvmeCmdCtx));
     nvmCommand.commandType       = NVM_CMD;
     nvmCommand.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_READ;
@@ -625,7 +625,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Compare(const tDevice* M_NONNULL device
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
-    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCommand, sizeof(nvmeCmdCtx));
     nvmCommand.commandType       = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_COMPARE;
     nvmCommand.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
@@ -666,7 +666,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Firmware_Image_Dl(const tDevice* M_NONN
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    ImageDl;
-    safe_memset(&ImageDl, sizeof(ImageDl), 0, sizeof(ImageDl));
+    M_INITIALIZE_STRUCTURE(&ImageDl, sizeof(ImageDl));
 
     ImageDl.cmd.adminCmd.opcode = NVME_ADMIN_CMD_DOWNLOAD_FW;
     ImageDl.commandType         = NVM_ADMIN_CMD;
@@ -704,7 +704,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Firmware_Commit(const tDevice* M_NONNUL
     {
         return BAD_PARAMETER; // returning this for now.
     }
-    safe_memset(&FirmwareCommit, sizeof(FirmwareCommit), 0, sizeof(FirmwareCommit));
+    M_INITIALIZE_STRUCTURE(&FirmwareCommit, sizeof(FirmwareCommit));
 
     FirmwareCommit.cmd.adminCmd.opcode = NVME_ADMIN_CMD_ACTIVATE_FW;
     FirmwareCommit.commandType         = NVM_ADMIN_CMD;
@@ -734,7 +734,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Identify(const tDevice* M_NONNULL devic
 {
     nvmeCmdCtx    identify;
     eReturnValues ret = SUCCESS;
-    safe_memset(&identify, sizeof(identify), 0, sizeof(identify));
+    M_INITIALIZE_STRUCTURE(&identify, sizeof(identify));
     identify.cmd.adminCmd.opcode = NVME_ADMIN_CMD_IDENTIFY;
     identify.commandType         = NVM_ADMIN_CMD;
     identify.commandDirection    = XFER_DATA_IN;
@@ -764,7 +764,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Get_Features(const tDevice* M_NONNULL  
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    getFeatures;
     uint32_t      dWord10 = UINT32_C(0);
-    safe_memset(&getFeatures, sizeof(getFeatures), 0, sizeof(getFeatures));
+    M_INITIALIZE_STRUCTURE(&getFeatures, sizeof(getFeatures));
     getFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_FEATURES;
     getFeatures.commandType         = NVM_ADMIN_CMD;
     getFeatures.commandDirection    = XFER_DATA_IN;
@@ -805,7 +805,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Set_Features(const tDevice* M_NONNULL  
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    setFeatures;
     uint32_t      dWord10 = UINT32_C(0);
-    safe_memset(&setFeatures, sizeof(setFeatures), 0, sizeof(setFeatures));
+    M_INITIALIZE_STRUCTURE(&setFeatures, sizeof(setFeatures));
     setFeatures.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SET_FEATURES;
     setFeatures.commandType         = NVM_ADMIN_CMD;
     setFeatures.commandDirection    = XFER_DATA_OUT;
@@ -840,7 +840,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Sanitize(const tDevice* M_NONNULL devic
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCommand;
-    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCommand, sizeof(nvmeCmdCtx));
     nvmCommand.commandType         = NVM_ADMIN_CMD;
     nvmCommand.cmd.adminCmd.opcode = NVME_ADMIN_CMD_SANITIZE;
     nvmCommand.commandDirection    = XFER_NO_DATA;
@@ -882,7 +882,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Get_Log_Page(const tDevice* M_NONNULL  
     nvmeCmdCtx    getLogPage;
     uint32_t      dWord10   = UINT32_C(0);
     uint32_t      numDwords = UINT32_C(0);
-    safe_memset(&getLogPage, sizeof(getLogPage), 0, sizeof(getLogPage));
+    M_INITIALIZE_STRUCTURE(&getLogPage, sizeof(getLogPage));
     getLogPage.cmd.adminCmd.opcode = NVME_ADMIN_CMD_GET_LOG_PAGE;
     getLogPage.commandType         = NVM_ADMIN_CMD;
     getLogPage.commandDirection    = XFER_DATA_IN;
@@ -939,7 +939,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Format(const tDevice* M_NONNULL     dev
         return BAD_PARAMETER;
     }
 
-    safe_memset(&formatCmd, sizeof(formatCmd), 0, sizeof(formatCmd));
+    M_INITIALIZE_STRUCTURE(&formatCmd, sizeof(formatCmd));
     formatCmd.cmd.adminCmd.opcode = NVME_ADMIN_CMD_FORMAT_NVM;
     formatCmd.commandType         = NVM_ADMIN_CMD;
     formatCmd.commandDirection    = XFER_NO_DATA;
@@ -978,7 +978,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Report(const tDevice* M_NON
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
-    safe_memset(&nvmCmd, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCmd, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_REPORT;
     nvmCmd.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
     nvmCmd.cmd.nvmCmd.prp1   = C_CAST(uintptr_t, ptrData);
@@ -1018,7 +1018,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Register(const tDevice* M_N
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
-    safe_memset(&nvmCmd, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCmd, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_REGISTER;
     nvmCmd.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
     nvmCmd.cmd.nvmCmd.prp1   = C_CAST(uintptr_t, ptrData);
@@ -1053,7 +1053,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Acquire(const tDevice* M_NO
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
-    safe_memset(&nvmCmd, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCmd, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_ACQUIRE;
     nvmCmd.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
     nvmCmd.cmd.nvmCmd.prp1   = C_CAST(uintptr_t, ptrData);
@@ -1088,7 +1088,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Reservation_Release(const tDevice* M_NO
 {
     eReturnValues ret = UNKNOWN;
     nvmeCmdCtx    nvmCmd;
-    safe_memset(&nvmCmd, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCmd, sizeof(nvmeCmdCtx));
     nvmCmd.cmd.nvmCmd.opcode = NVME_CMD_RESERVATION_RELEASE;
     nvmCmd.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
     nvmCmd.cmd.nvmCmd.prp1   = C_CAST(uintptr_t, ptrData);
@@ -1124,7 +1124,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Write_Zeroes(const tDevice* M_NONNULL d
 {
     eReturnValues ret = SUCCESS;
     nvmeCmdCtx    nvmCommand;
-    safe_memset(&nvmCommand, sizeof(nvmeCmdCtx), 0, sizeof(nvmeCmdCtx));
+    M_INITIALIZE_STRUCTURE(&nvmCommand, sizeof(nvmeCmdCtx));
     nvmCommand.commandType       = NVM_CMD;
     nvmCommand.cmd.nvmCmd.opcode = NVME_CMD_WRITE_ZEROS;
     nvmCommand.cmd.nvmCmd.nsid   = device->drive_info.namespaceID;
@@ -1174,7 +1174,9 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Read_Ctrl_Reg(const tDevice* M_NONNULL 
         ret = pci_Read_Bar_Reg(device, barRegs, C_CAST(uint32_t, dataSize));
         if (ret == SUCCESS)
         {
-            safe_memcpy(ctrlRegs, sizeof(nvmeBarCtrlRegisters), barRegs, sizeof(nvmeBarCtrlRegisters));
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memcpy(ctrlRegs, sizeof(nvmeBarCtrlRegisters), barRegs, sizeof(nvmeBarCtrlRegisters)),
+                "Destination and source as same size and type");
         }
         safe_free_aligned(&barRegs);
     }

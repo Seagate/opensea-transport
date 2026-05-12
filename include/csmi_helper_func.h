@@ -55,7 +55,7 @@ extern "C"
     OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE                            deviceHandle,
                                                              uint32_t                               controllerNumber,
                                                              PCSMI_SAS_DRIVER_INFO_BUFFER M_NONNULL driverInfoBuffer,
-                                                             const tDevice* M_NULLABLE               device);
+                                                             const tDevice* M_NULLABLE              device);
 
     //-----------------------------------------------------------------------------
     //
@@ -65,8 +65,8 @@ extern "C"
     //! \brief   Description:  Sends the CSMI Get Controller Configuration IOCTL
     //
     //  Entry:
-    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\.\SCSIX: on Windows, /dev/<hba> on
-    //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\.\SCSIX: on Windows, /dev/<hba>
+    //!   on other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
     //!   IOCTL_HEADER \param[in] ctrlConfigBuffer - CSMI spec controller configuration buffer buffer to use. \param[in]
     //!   device - device pointer for logging, can be M_NULLABLE
     //!
@@ -92,8 +92,8 @@ extern "C"
     //! \brief   Description:  Sends the CSMI Controller Status IOCTL
     //
     //  Entry:
-    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\.\SCSIX: on Windows, /dev/<hba> on
-    //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\.\SCSIX: on Windows, /dev/<hba>
+    //!   on other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
     //!   IOCTL_HEADER \param[in] ctrlStatusBuffer - CSMI spec controller status buffer buffer to use. \param[in]
     //!   device - device pointer for logging, can be M_NULLABLE
     //!
@@ -169,7 +169,7 @@ extern "C"
     OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE                          deviceHandle,
                                                            uint32_t                             controllerNumber,
                                                            PCSMI_SAS_RAID_INFO_BUFFER M_NONNULL raidInfoBuffer,
-                                                           const tDevice* M_NULLABLE             device);
+                                                           const tDevice* M_NULLABLE            device);
 
     //-----------------------------------------------------------------------------
     //
@@ -201,10 +201,10 @@ extern "C"
     OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE                            deviceHandle,
                                                              uint32_t                               controllerNumber,
                                                              PCSMI_SAS_RAID_CONFIG_BUFFER M_NONNULL raidConfigBuffer,
-                                                             uint32_t         raidConfigBufferTotalSize,
-                                                             uint32_t         raidSetIndex,
-                                                             uint8_t          dataType,
-                                                             const tDevice* M_NULLABLE              device);
+                                                             uint32_t                  raidConfigBufferTotalSize,
+                                                             uint32_t                  raidSetIndex,
+                                                             uint8_t                   dataType,
+                                                             const tDevice* M_NULLABLE device);
 
     //-----------------------------------------------------------------------------
     //
@@ -215,8 +215,8 @@ extern "C"
     //! was not part of the original CSMI proposal.
     //
     //  Entry:
-    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\.\SCSIX: on Windows, /dev/<hba> on
-    //!   other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
+    //!   \param[in] deviceHandle - operating system device handle value. Opened as \\.\.\SCSIX: on Windows, /dev/<hba>
+    //!   on other OSs \param[in] controllerNumber - Linux only, controller number since Linux needs this in the
     //!   IOCTL_HEADER \param[in] raidFeaturesBuffer - CSMI spec buffer to use. This should be empty. \param[in]
     //!   device - device pointer for logging, can be M_NULLABLE
     //!
@@ -410,7 +410,7 @@ extern "C"
                             uint8_t                                       path,
                             uint8_t                                       target,
                             uint8_t                                       lun,
-                            const tDevice* M_NULLABLE                      device);
+                            const tDevice* M_NULLABLE                     device);
 
     //-----------------------------------------------------------------------------
     //

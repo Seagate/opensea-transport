@@ -337,13 +337,16 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* M_NONNULL dev
 
         if (device->os_info.cam_dev != M_NULLPTR)
         {
-            // Set name and friendly name
-            // name
-            set_Device_Handle_Name(device, filename);
-            // friendly name
-            DECLARE_ZERO_INIT_ARRAY(char, formatFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH)
-            snprintf_err_handle(formatFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH, "%s%d", devName, devUnit);
-            set_Device_Handle_Friendly_Name(device, formatFriendlyName);
+            char* tempFriendlyName = M_NULLPTR;
+            if (asprintf(&tempFriendlyName, "%s%d", devName, devUnit) > 0)
+            {
+                set_Device_Name_In_tDevice(device, filename, tempFriendlyName);
+                safe_free(&tempFriendlyName);
+            }
+            else
+            {
+                set_Device_Name_In_tDevice(device, filename, M_NULLPTR);
+            }
 
             device->os_info.fd = devUnit;
 
@@ -624,7 +627,7 @@ static eReturnValues send_Legacy_ATA_PT(ScsiIoCtx* scsiIoCtx)
         // commands -TJE
         return OS_COMMAND_NOT_AVAILABLE;
     }
-    safe_memset(&atareq, sizeof(struct ata_ioc_request), 0, sizeof(struct ata_ioc_request));
+    M_INITIALIZE_STRUCTURE(&atareq, sizeof(struct ata_ioc_request));
     atareq.u.ata.command = scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus;
     atareq.u.ata.feature = scsiIoCtx->pAtaCmdOpts->tfr.ErrorFeature;
     if (scsiIoCtx->pAtaCmdOpts->commandType > ATA_CMD_TYPE_TASKFILE)
@@ -978,15 +981,22 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Ata_Cam_IO(ScsiIoCtx* M_N
                         if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_ATA_STATUS_ERROR)
                         {
                             ret = COMMAND_FAILURE;
-                            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "WARN: I/O went through but drive returned status=0x%02" PRIX8 " error=0x%02" PRIX8 "\n", ataio->res.status, ataio->res.error);
+                            print_tDevice_Verbose_Formatted_String(
+                                scsiIoCtx->device, VERBOSITY_QUIET,
+                                "WARN: I/O went through but drive returned status=0x%02" PRIX8 " error=0x%02" PRIX8
+                                "\n",
+                                ataio->res.status, ataio->res.error);
                         }
                         else if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT)
                         {
-                            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "WARN: I/O CAM_CMD_TIMEOUT occured\n");
+                            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                                                   "WARN: I/O CAM_CMD_TIMEOUT occured\n");
                         }
                         else
                         {
-                            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
+                            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                                                   "WARN: I/O error occurred %d\n",
+                                                                   (ccb->ccb_h.status & CAM_STATUS_MASK));
                         }
                     }
                     else
@@ -1028,7 +1038,9 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Ata_Cam_IO(ScsiIoCtx* M_N
         }
         else
         {
-            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_DEFAULT, "WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT Specification]\n");
+            print_tDevice_Verbose_Formatted_String(
+                scsiIoCtx->device, VERBOSITY_DEFAULT,
+                "WARN: Sending non-ATA commnad to ATA Drive [FreeBSD CAM driver does not support SAT Specification]\n");
             ret = BAD_PARAMETER;
         }
         if (ccb != M_NULLPTR)
@@ -1139,7 +1151,8 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* M_
 #endif // __DragonFly
        // NOLINTEND(bugprone-branch-clone)
         default:
-            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "%s Didn't understand direction\n", __FUNCTION__);
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                                   "%s Didn't understand direction\n", __FUNCTION__);
             return BAD_PARAMETER;
         }
 
@@ -1211,7 +1224,9 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* M_
         {
             ret = COMMAND_FAILURE;
 
-            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_DEFAULT, "%s cam error %d, scsi error %d\n", __FUNCTION__, (ccb->ccb_h.status & CAM_STATUS_MASK), ccb->csio.scsi_status);
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_DEFAULT,
+                                                   "%s cam error %d, scsi error %d\n", __FUNCTION__,
+                                                   (ccb->ccb_h.status & CAM_STATUS_MASK), ccb->csio.scsi_status);
 
             if (((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_SCSI_STATUS_ERROR) &&
                 (ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND) && ((ccb->ccb_h.status & CAM_AUTOSNS_VALID) != 0))
@@ -1291,17 +1306,22 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
         }
         else
         {
-            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "No Raid PassThrough IO Routine present for this device\n");
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                                   "No Raid PassThrough IO Routine present for this device\n");
         }
         break;
     default:
-        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "Target Device does not have a valid interface %d\n", scsiIoCtx->get_Device_InterfaceType(device));
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                               "Target Device does not have a valid interface %d\n",
+                                               scsiIoCtx->get_Device_InterfaceType(device));
     }
     // printf("<-- %s\n",__FUNCTION__);
     if (scsiIoCtx->device->delay_io)
     {
         delay_Milliseconds(scsiIoCtx->device->delay_io);
-        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES, "Delaying between commands %d milliseconds to reduce IO impact\n", scsiIoCtx->device->delay_io);
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES,
+                                               "Delaying between commands %d milliseconds to reduce IO impact\n",
+                                               scsiIoCtx->device->delay_io);
     }
 
     return ret;
@@ -1660,8 +1680,12 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptr
             {
                 continue;
             }
-            safe_memset(name, CAM_DEV_NAME_LEN, 0, CAM_DEV_NAME_LEN); // clear name before reusing it
-            snprintf_err_handle(name, CAM_DEV_NAME_LEN, "%s", devs[driveNumber]);
+            M_INITIALIZE_STRUCTURE(name, CAM_DEV_NAME_LEN); // clear name before reusing it
+            if (0 != safe_strcpy(name, CAM_DEV_NAME_LEN, devs[driveNumber]))
+            {
+                perror("Error copying device name for CAM handle");
+                continue;
+            }
             fd = -1;
             // lets try to open the device.
             if (is_NVMe_Handle(name)
@@ -1693,7 +1717,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptr
                     d->os_info.cam_dev = M_NULLPTR;
                 }*/
                 eVerbosityLevels temp = d->deviceVerbosity;
-                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
+                M_INITIALIZE_STRUCTURE(d, sizeof(tDevice));
                 d->deviceVerbosity = temp;
                 d->sanity.size     = ver.size;
                 d->sanity.version  = ver.version;
@@ -1977,11 +2001,14 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
                 }
                 else if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT)
                 {
-                    print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_QUIET, "WARN: I/O CAM_CMD_TIMEOUT occured\n");
+                    print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_QUIET,
+                                                           "WARN: I/O CAM_CMD_TIMEOUT occured\n");
                 }
                 else
                 {
-                    print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_QUIET, "WARN: I/O error occurred %d\n", (ccb->ccb_h.status & CAM_STATUS_MASK));
+                    print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_QUIET,
+                                                           "WARN: I/O error occurred %d\n",
+                                                           (ccb->ccb_h.status & CAM_STATUS_MASK));
                 }
             }
             else
@@ -2005,7 +2032,9 @@ static eReturnValues send_CAM_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
         if (nvmeIoCtx->device->delay_io)
         {
             delay_Milliseconds(nvmeIoCtx->device->delay_io);
-            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES, "Delaying between commands %d milliseconds to reduce IO impact\n", nvmeIoCtx->device->delay_io);
+            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES,
+                                                   "Delaying between commands %d milliseconds to reduce IO impact\n",
+                                                   nvmeIoCtx->device->delay_io);
         }
         if (ccb != M_NULLPTR)
         {
@@ -2027,7 +2056,7 @@ static eReturnValues send_IOCTL_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     DECLARE_SEATIMER(commandTimer);
     struct nvme_get_nsid   gnsid;
     struct nvme_pt_command pt;
-    safe_memset(&pt, sizeof(pt), 0, sizeof(pt));
+    M_INITIALIZE_STRUCTURE(&pt, sizeof(pt));
 
     switch (nvmeIoCtx->commandType)
     {
@@ -2135,7 +2164,9 @@ static eReturnValues send_IOCTL_NVMe_IO(nvmeCmdCtx* nvmeIoCtx)
     if (nvmeIoCtx->device->delay_io)
     {
         delay_Milliseconds(nvmeIoCtx->device->delay_io);
-        print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES, "Delaying between commands %d milliseconds to reduce IO impact\n", nvmeIoCtx->device->delay_io);
+        print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_NAMES,
+                                               "Delaying between commands %d milliseconds to reduce IO impact\n",
+                                               nvmeIoCtx->device->delay_io);
     }
     return ret;
 }

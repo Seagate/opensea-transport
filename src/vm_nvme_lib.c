@@ -83,11 +83,20 @@ struct nvme_handle* Nvme_Open(struct nvme_adapter_list* adapters, const char* na
         return M_NULLPTR;
     }
 
-    snprintf_err_handle(handle->name, VMK_MISC_NAME_MAX, "%s", name);
+    if (0 != safe_strcpy(handle->name, VMK_MISC_NAME_MAX, name))
+    {
+        perror("Error copying VMWare NVMe handle data");
+    }
 
     signature.version = VMK_REVISION_FROM_NUMBERS(NVME_MGMT_MAJOR, NVME_MGMT_MINOR, NVME_MGMT_UPDATE, NVME_MGMT_PATCH);
-    snprintf_err_handle(signature.name.string, sizeof(signature.name.string), "%s", adapter->signature);
-    snprintf_err_handle(signature.vendor.string, sizeof(signature.vendor.string), NVME_MGMT_VENDOR);
+    if (0 != safe_strcpy(signature.name.string, sizeof(signature.name.string), adapter->signature))
+    {
+        perror("Error copying VMWare NVMe handle data");
+    }
+    if (0 != safe_strcpy(signature.vendor.string, sizeof(signature.vendor.string), NVME_MGMT_VENDOR))
+    {
+        perror("Error copying VMWare NVMe handle data");
+    }
     signature.numCallbacks = NVME_MGMT_CTRLR_NUM_CALLBACKS;
     signature.callbacks    = nvmeCallbacks;
 

@@ -40,15 +40,21 @@ static void fill_NVMe_Strings_From_Ctrl_Data(uint8_t* ptrCtrlData,
     {
         nvmeIDCtrl* ctrlData = C_CAST(nvmeIDCtrl*, ptrCtrlData);
         // make sure buffers all all zeroed out before filling them
-        safe_memset(nvmMN, NVME_CTRL_IDENTIFY_MN_LEN + 1, 0, NVME_CTRL_IDENTIFY_MN_LEN + 1);
-        safe_memset(nvmSN, NVME_CTRL_IDENTIFY_SN_LEN + 1, 0, NVME_CTRL_IDENTIFY_SN_LEN + 1);
-        safe_memset(nvmFW, NVME_CTRL_IDENTIFY_FW_LEN + 1, 0, NVME_CTRL_IDENTIFY_FW_LEN + 1);
+        explicit_zeroes(nvmMN, NVME_CTRL_IDENTIFY_MN_LEN + 1);
+        explicit_zeroes(nvmSN, NVME_CTRL_IDENTIFY_SN_LEN + 1);
+        explicit_zeroes(nvmFW, NVME_CTRL_IDENTIFY_FW_LEN + 1);
         // fill each buffer with data from NVMe ctrl data
-        safe_memcpy(nvmSN, NVME_CTRL_IDENTIFY_SN_LEN + 1, ctrlData->sn, NVME_CTRL_IDENTIFY_SN_LEN);
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(nvmSN, NVME_CTRL_IDENTIFY_SN_LEN + 1, ctrlData->sn, NVME_CTRL_IDENTIFY_SN_LEN),
+            "Always copying into an array larger will a null terminator");
         remove_Leading_And_Trailing_Whitespace(nvmSN);
-        safe_memcpy(nvmFW, NVME_CTRL_IDENTIFY_FW_LEN + 1, ctrlData->fr, NVME_CTRL_IDENTIFY_FW_LEN);
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(nvmFW, NVME_CTRL_IDENTIFY_FW_LEN + 1, ctrlData->fr, NVME_CTRL_IDENTIFY_FW_LEN),
+            "Always copying into an array larger will a null terminator");
         remove_Leading_And_Trailing_Whitespace(nvmFW);
-        safe_memcpy(nvmMN, NVME_CTRL_IDENTIFY_MN_LEN + 1, ctrlData->mn, NVME_CTRL_IDENTIFY_MN_LEN);
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(nvmMN, NVME_CTRL_IDENTIFY_MN_LEN + 1, ctrlData->mn, NVME_CTRL_IDENTIFY_MN_LEN),
+            "Always copying into an array larger will a null terminator");
         remove_Leading_And_Trailing_Whitespace(nvmMN);
     }
 }
@@ -114,7 +120,11 @@ M_PARAM_RW(1) eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
                                              device->drive_info.serialNumber, device->drive_info.product_revision);
         }
         // set the t10 vendor id to NVMe
-        snprintf_err_handle(device->drive_info.T10_vendor_ident, T10_VENDOR_ID_LEN + 1, "NVMe");
+        if (0 != safe_strcpy(device->drive_info.T10_vendor_ident, sizeof(device->drive_info.T10_vendor_ident), "NVMe"))
+            M_UNLIKELY
+            {
+                perror("Error setting T10 vendor identifier to NVMe");
+            }
         set_Device_MediaType(
             device, MEDIA_NVM); // This will bite us someday when someone decided to put non-ssds on NVMe interface.
         // set scsi version to 6 if it is not already set
@@ -170,7 +180,7 @@ M_PARAM_RW(1) eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
                 if (supportedLogs)
                 {
                     nvmeGetLogPageCmdOpts supLogs;
-                    safe_memset(&supLogs, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+                    M_INITIALIZE_STRUCTURE(&supLogs, sizeof(nvmeGetLogPageCmdOpts));
                     supLogs.addr    = supportedLogs;
                     supLogs.dataLen = 1024;
                     supLogs.lid     = NVME_LOG_SUPPORTED_PAGES_ID;
@@ -658,7 +668,7 @@ const nvmeStatus* get_NVMe_Status(uint32_t nvmeStatusDWord)
 {
     nvmeStatus        key;
     const nvmeStatus* result = M_NULLPTR;
-    safe_memset(&key, sizeof(nvmeStatus), 0, sizeof(nvmeStatus));
+    M_INITIALIZE_STRUCTURE(&key, sizeof(nvmeStatus));
     key.statusCodeType = get_8bit_range_uint32(nvmeStatusDWord, 27, 25);
     key.statusCode     = get_8bit_range_uint32(nvmeStatusDWord, 24, 17);
 
@@ -751,39 +761,78 @@ void print_NVMe_Cmd_Result_Verbose(const nvmeCmdCtx* M_NONNULL cmdCtx)
         switch (statusCodeType)
         {
         case NVME_SCT_GENERIC_COMMAND_STATUS:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Generic Command Status");
+            if (0 != safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
+                                            "Generic Command Status"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         case NVME_SCT_COMMAND_SPECIFIC_STATUS:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Command Specific Status");
+            if (0 != safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
+                                            "Command Specific Status"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         case NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
-                                "Media And Data Integrity Errors");
+            if (0 != safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
+                                            "Media And Data Integrity Errors"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         case NVME_SCT_PATH_RELATED_STATUS:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Path Related Status");
+            if (0 != safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
+                                            "Path Related Status"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         case NVME_SCT_VENDOR_SPECIFIC_STATUS:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Vendor Specific");
+            if (0 !=
+                safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Vendor Specific"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         default:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Unknown");
+            if (0 != safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Unknown"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         }
         if (stat != M_NULLPTR)
         {
-            snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "%s", stat->description);
+            if (0 != safe_strcpy_no_overlap(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, stat->description))
+            {
+                perror("Error copying NVMe status code description for output");
+            }
         }
         else
         {
             if (statusCodeType == NVME_SCT_VENDOR_SPECIFIC_STATUS)
             {
 
-                snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Vendor Specific");
+                if (0 != safe_strcpy_no_overlap(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Vendor Specific"))
+                    M_UNLIKELY
+                    {
+                        perror("Error copying NVMe status code description for output");
+                    }
             }
             else
             {
-                snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
+                if (0 != safe_strcpy_no_overlap(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown"))
+                    M_UNLIKELY
+                    {
+                        perror("Error copying NVMe status code description for output");
+                    }
             }
         }
         printf("\t\tStatus Code Type: %s (%" PRIX8 "h)\n", statusCodeTypeString, statusCodeType);
@@ -869,39 +918,78 @@ OPENSEA_TRANSPORT_API void print_tDevice_Verbose_NVMe_Cmd_Result(const tDevice* 
         switch (statusCodeType)
         {
         case NVME_SCT_GENERIC_COMMAND_STATUS:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Generic Command Status");
+            if (0 != safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
+                                            "Generic Command Status"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         case NVME_SCT_COMMAND_SPECIFIC_STATUS:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Command Specific Status");
+            if (0 != safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
+                                            "Command Specific Status"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         case NVME_SCT_MEDIA_AND_DATA_INTEGRITY_ERRORS:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
-                                "Media And Data Integrity Errors");
+            if (0 != safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
+                                            "Media And Data Integrity Errors"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         case NVME_SCT_PATH_RELATED_STATUS:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Path Related Status");
+            if (0 != safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH,
+                                            "Path Related Status"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         case NVME_SCT_VENDOR_SPECIFIC_STATUS:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Vendor Specific");
+            if (0 !=
+                safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Vendor Specific"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         default:
-            snprintf_err_handle(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Unknown");
+            if (0 != safe_strcpy_no_overlap(statusCodeTypeString, NVME_STATUS_CODE_TYPE_STRING_LENGTH, "Unknown"))
+                M_UNLIKELY
+                {
+                    perror("Error copying NVMe status code description for output");
+                }
             break;
         }
         if (stat != M_NULLPTR)
         {
-            snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "%s", stat->description);
+            if (0 != safe_strcpy_no_overlap(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, stat->description))
+            {
+                perror("Error copying NVMe status code description for output");
+            }
         }
         else
         {
             if (statusCodeType == NVME_SCT_VENDOR_SPECIFIC_STATUS)
             {
 
-                snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Vendor Specific");
+                if (0 != safe_strcpy_no_overlap(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Vendor Specific"))
+                    M_UNLIKELY
+                    {
+                        perror("Error copying NVMe status code description for output");
+                    }
             }
             else
             {
-                snprintf_err_handle(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown");
+                if (0 != safe_strcpy_no_overlap(statusCodeString, NVME_STATUS_CODE_STRING_LENGTH, "Unknown"))
+                    M_UNLIKELY
+                    {
+                        perror("Error copying NVMe status code description for output");
+                    }
             }
         }
         print_tDevice_Verbose_Formatted_String(device, verboseLevel, "\t\tStatus Code Type: %s (%" PRIX8 "h)\n",
@@ -1030,7 +1118,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Get_SMART_Log_Page(const tDevice* M_NON
         return ret;
     }
 
-    safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts));
     smartLog = C_CAST(nvmeSmartLog*, pData);
 
     cmdOpts.nsid = nsid;
@@ -1062,7 +1150,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Get_ERROR_Log_Page(const tDevice* M_NON
         return ret;
     }
 
-    safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid     = NVME_LOG_ERROR_ID;
@@ -1090,7 +1178,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Get_FWSLOTS_Log_Page(const tDevice* M_N
         return ret;
     }
 
-    safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid     = NVME_LOG_FW_SLOT_ID;
@@ -1118,7 +1206,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Get_CmdSptEfft_Log_Page(const tDevice* 
         return ret;
     }
 
-    safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid     = NVME_LOG_CMD_SPT_EFET_ID;
@@ -1146,7 +1234,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Get_DevSelfTest_Log_Page(const tDevice*
         return ret;
     }
 
-    safe_memset(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&cmdOpts, sizeof(nvmeGetLogPageCmdOpts));
     cmdOpts.addr    = pData;
     cmdOpts.dataLen = dataLen;
     cmdOpts.lid     = NVME_LOG_DEV_SELF_TEST_ID;
@@ -1166,7 +1254,7 @@ OPENSEA_TRANSPORT_API eReturnValues nvme_Read_Ext_Smt_Log(const tDevice* M_NONNU
 {
     eReturnValues         ret = SUCCESS;
     nvmeGetLogPageCmdOpts getExtSMARTLog;
-    safe_memset(&getExtSMARTLog, sizeof(nvmeGetLogPageCmdOpts), 0, sizeof(nvmeGetLogPageCmdOpts));
+    M_INITIALIZE_STRUCTURE(&getExtSMARTLog, sizeof(nvmeGetLogPageCmdOpts));
     getExtSMARTLog.dataLen = sizeof(EXTENDED_SMART_INFO_T);
     getExtSMARTLog.lid     = 0xC4;
     getExtSMARTLog.nsid    = device->drive_info.namespaceID;

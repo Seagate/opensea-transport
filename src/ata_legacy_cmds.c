@@ -47,7 +47,7 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Format_Track(const tDevice* M_NON
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    safe_memset(&ataCommandOptions, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
+    M_INITIALIZE_STRUCTURE(&ataCommandOptions, sizeof(ataPassthroughCommand));
     ataCommandOptions.commandDirection         = XFER_NO_DATA;
     ataCommandOptions.ataCommandLengthLocation = ATA_PT_LEN_NO_DATA;
     ataCommandOptions.ataTransferBlocks        = ATA_PT_NO_DATA_TRANSFER;
@@ -390,7 +390,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Multiple_CHS(const tDevice*
     }
 
     const char* writeMultipleCHSCmdName = extendedCmd ? "Write Multiple Ext (CHS)" : "Write Multiple (CHS)";
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", writeMultipleCHSCmdName);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n",
+                                           writeMultipleCHSCmdName);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -639,8 +640,7 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Same_CHS(const tDevice* M_N
     }
 
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Write Same (CHS), subcommand %" PRIX8 "h\n",
-                                          subcommand);
+                                           "Sending ATA Write Same (CHS), subcommand %" PRIX8 "h\n", subcommand);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -697,8 +697,7 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Legacy_Write_Same(const tDevice* M_NONNU
     }
 
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Write Same, subcommand %" PRIX8 "h\n",
-                                          subcommand);
+                                           "Sending ATA Write Same, subcommand %" PRIX8 "h\n", subcommand);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 

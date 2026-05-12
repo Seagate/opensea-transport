@@ -120,8 +120,8 @@ M_FUNC_ATTR_MALLOC static char* M_NULLABLE get_OFNVMe_SRB_Status_String(uint32_t
         statusString = "Unknown Status";
         break;
     }
-    char* result = M_NULLPTR;
-    errno_t error = safe_strdup(&result, statusString);
+    char*   result = M_NULLPTR;
+    errno_t error  = safe_strdup(&result, statusString);
     if (error != 0)
     {
         return M_NULLPTR;
@@ -129,20 +129,6 @@ M_FUNC_ATTR_MALLOC static char* M_NULLABLE get_OFNVMe_SRB_Status_String(uint32_t
     else
     {
         return result;
-    }
-}
-
-static void print_Ofnvme_SRB_Status(uint32_t srbStatus)
-{
-    char* statusString = get_OFNVMe_SRB_Status_String(srbStatus);
-    if (statusString != M_NULLPTR)
-    {
-        print_str(statusString);
-        safe_free(&statusString);
-    }
-    else
-    {
-        print_str("Unknown Status");
     }
 }
 
@@ -161,7 +147,9 @@ OPENSEA_TRANSPORT_API bool supports_OFNVME_IO(HANDLE deviceHandle)
         BOOL                     success = TRUE;
         PNVME_PASS_THROUGH_IOCTL ioctl   = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
         ioctl->SrbIoCtrl.HeaderLength    = sizeof(SRB_IO_CONTROL);
-        safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN),
+            "Copying OF NVMe signature should always pass as destination and source are always equal");
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length      = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
         ioctl->SrbIoCtrl.Timeout     = DEFAULT_COMMAND_TIMEOUT;
@@ -181,7 +169,7 @@ OPENSEA_TRANSPORT_API bool supports_OFNVME_IO(HANDLE deviceHandle)
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         DWORD      last_error = ERROR_SUCCESS;
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         DWORD returned_data     = DWORD_C(0);
         start_Timer(&commandTimer);
@@ -222,17 +210,18 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(const tDevic
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
+    M_INITIALIZE_STRUCTURE(&ofnvmeReset, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN),
+                             "Copying OF NVMe signature should always pass as destination and source are always equal");
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_RESET_DEVICE);
     ofnvmeReset.Length      = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     set_Device_Last_Error(M_CONST_CAST(tDevice*, device), 0);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data     = DWORD_C(0);
     BOOL  success =
@@ -258,9 +247,8 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Reset(const tDevic
     if (MSFT_BOOL_TRUE(success))
     {
         char* nvmeStatusStr = get_OFNVMe_SRB_Status_String(ofnvmeReset.ReturnCode);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                              "OFNVME Error: %s",
-                                              nvmeStatusStr ? nvmeStatusStr : "Unknown");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "OFNVME Error: %s",
+                                               nvmeStatusStr ? nvmeStatusStr : "Unknown");
         safe_free(&nvmeStatusStr);
         switch (ofnvmeReset.ReturnCode)
         {
@@ -282,17 +270,18 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(cons
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
+    M_INITIALIZE_STRUCTURE(&ofnvmeReset, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN),
+                             "Copying OF NVMe signature should always pass as destination and source are always equal");
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_ADD_NAMESPACE);
     ofnvmeReset.Length      = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     set_Device_Last_Error(M_CONST_CAST(tDevice*, device), 0);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data     = DWORD_C(0);
     BOOL  success =
@@ -318,9 +307,8 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Add_Namespace(cons
     if (MSFT_BOOL_TRUE(success))
     {
         char* nvmeStatusStr = get_OFNVMe_SRB_Status_String(ofnvmeReset.ReturnCode);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                              "OFNVME Error: %s",
-                                              nvmeStatusStr ? nvmeStatusStr : "Unknown");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "OFNVME Error: %s",
+                                               nvmeStatusStr ? nvmeStatusStr : "Unknown");
         safe_free(&nvmeStatusStr);
         switch (ofnvmeReset.ReturnCode)
         {
@@ -342,17 +330,18 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(c
 {
     eReturnValues  ret = OS_COMMAND_NOT_AVAILABLE; // Start with this since older drivers may or may not support this.
     SRB_IO_CONTROL ofnvmeReset;
-    safe_memset(&ofnvmeReset, sizeof(SRB_IO_CONTROL), 0, sizeof(SRB_IO_CONTROL));
+    M_INITIALIZE_STRUCTURE(&ofnvmeReset, sizeof(SRB_IO_CONTROL));
 
     ofnvmeReset.HeaderLength = sizeof(SRB_IO_CONTROL);
-    safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ofnvmeReset.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN),
+                             "Copying OF NVMe signature should always pass as destination and source are always equal");
     ofnvmeReset.ControlCode = C_CAST(ULONG, NVME_HOT_REMOVE_NAMESPACE);
     ofnvmeReset.Length      = sizeof(SRB_IO_CONTROL);
 
     SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
     set_Device_Last_Error(M_CONST_CAST(tDevice*, device), 0);
     OVERLAPPED overlappedStruct;
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     DWORD returned_data     = DWORD_C(0);
     BOOL  success =
@@ -378,9 +367,8 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_Remove_Namespace(c
     if (MSFT_BOOL_TRUE(success))
     {
         char* nvmeStatusStr = get_OFNVMe_SRB_Status_String(ofnvmeReset.ReturnCode);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                              "OFNVME Error: %s",
-                                              nvmeStatusStr ? nvmeStatusStr : "Unknown");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "OFNVME Error: %s",
+                                               nvmeStatusStr ? nvmeStatusStr : "Unknown");
         safe_free(&nvmeStatusStr);
         switch (ofnvmeReset.ReturnCode)
         {
@@ -415,7 +403,9 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_N
         BOOL                     success = TRUE;
         PNVME_PASS_THROUGH_IOCTL ioctl   = C_CAST(PNVME_PASS_THROUGH_IOCTL, passthroughBuffer);
         ioctl->SrbIoCtrl.HeaderLength    = sizeof(SRB_IO_CONTROL);
-        safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN);
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(ioctl->SrbIoCtrl.Signature, 8, NVME_SIG_STR, NVME_SIG_STR_LEN),
+            "Copying OF NVMe signature should always pass as destination and source are always equal");
         ioctl->SrbIoCtrl.ControlCode = C_CAST(ULONG, NVME_PASS_THROUGH_SRB_IO_CODE);
         ioctl->SrbIoCtrl.Length      = C_CAST(ULONG, bufferSize - sizeof(SRB_IO_CONTROL));
         ioctl->SrbIoCtrl.Timeout     = nvmeIoCtx->timeout;
@@ -495,7 +485,12 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_N
                                      // is interleaved or at the beginning of the buffer
             if (nvmeIoCtx->dataSize > 0 && nvmeIoCtx->ptrData != M_NULLPTR)
             {
-                safe_memcpy(ioctl->DataBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize);
+                if (0 != safe_memcpy(ioctl->DataBuffer, nvmeIoCtx->dataSize, nvmeIoCtx->ptrData, nvmeIoCtx->dataSize))
+                {
+                    safe_free_aligned(&passthroughBuffer);
+                    perror("Error coping data out for OF NVMe passthrough\n");
+                    return MEMORY_FAILURE;
+                }
             }
             break;
         case XFER_DATA_IN_OUT:
@@ -511,7 +506,7 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_N
         SetLastError(ERROR_SUCCESS); // clear any cached errors before we try to send the command
         set_Device_Last_Error(nvmeIoCtx->device, 0);
         OVERLAPPED overlappedStruct;
-        safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+        M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
         overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
         DWORD returned_data     = DWORD_C(0);
         start_Timer(&commandTimer);
@@ -540,9 +535,8 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_N
         if (MSFT_BOOL_TRUE(success))
         {
             char* nvmeStatusStr = get_OFNVMe_SRB_Status_String(ioctl->SrbIoCtrl.ReturnCode);
-            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
-                                                  "OFNVME Error: %s",
-                                                  nvmeStatusStr ? nvmeStatusStr : "Unknown");
+            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "OFNVME Error: %s",
+                                                   nvmeStatusStr ? nvmeStatusStr : "Unknown");
             safe_free(&nvmeStatusStr);
             if (ioctl->SrbIoCtrl.ReturnCode == NVME_IOCTL_SUCCESS)
             {
@@ -550,8 +544,13 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_N
                     nvmeIoCtx->ptrData != M_NULLPTR)
                 {
                     // copy back in the data that was read from the device.
-                    safe_memcpy(nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, ioctl->DataBuffer,
-                                M_Min(nvmeIoCtx->dataSize, ioctl->ReturnBufferLen - sizeof(NVME_PASS_THROUGH_IOCTL)));
+                    if (0 != safe_memcpy(
+                                 nvmeIoCtx->ptrData, nvmeIoCtx->dataSize, ioctl->DataBuffer,
+                                 M_Min(nvmeIoCtx->dataSize, ioctl->ReturnBufferLen - sizeof(NVME_PASS_THROUGH_IOCTL))))
+                    {
+                        perror("Error coping data in for OF NVMe passthrough\n");
+                        ret = MEMORY_FAILURE;
+                    }
                 }
                 // copy back completion data
                 nvmeIoCtx->commandCompletionData.commandSpecific = ioctl->CplEntry[0];
@@ -584,15 +583,14 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues send_OFNVME_IO(nvmeCmdCtx* M_N
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
             }
-            char* winErrorStr = get_windows_error_str(M_STATIC_CAST(winsyserror_t, nvmeIoCtx->device->os_info.last_error));
-            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
-                                                  "Windows Error: %s",
-                                                  winErrorStr ? winErrorStr : "Unknown");
+            char* winErrorStr =
+                get_windows_error_str(M_STATIC_CAST(winsyserror_t, nvmeIoCtx->device->os_info.last_error));
+            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Windows Error: %s",
+                                                   winErrorStr ? winErrorStr : "Unknown");
             safe_free(&winErrorStr);
             char* nvmeStatusStr = get_OFNVMe_SRB_Status_String(ioctl->SrbIoCtrl.ReturnCode);
-            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
-                                                  "OFNVME Error: %s",
-                                                  nvmeStatusStr ? nvmeStatusStr : "Unknown");
+            print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "OFNVME Error: %s",
+                                                   nvmeStatusStr ? nvmeStatusStr : "Unknown");
             safe_free(&nvmeStatusStr);
         }
 

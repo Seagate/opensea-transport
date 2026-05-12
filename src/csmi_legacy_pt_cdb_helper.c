@@ -216,7 +216,7 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* M_NONNULL         
 
         // TODO: get the RTFRs if this is even possible...it's not documented
         // ret = get_RTFRs_From_CSMI_Legacy(device, ataCommandOptions, ret);
-        //print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
+        // print_tDevice_Verbose_ATA_Command_Result_Information(device, VERBOSITY_COMMAND_VERBOSE, ataCommandOptions);
         ////set return code
         ////Based on the RTFRs or sense data, generate a return value
         // if (ataCommandOptions->rtfr.status == (ATA_STATUS_BIT_READY | ATA_STATUS_BIT_SEEK_COMPLETE))
@@ -239,14 +239,9 @@ eReturnValues send_CSMI_Legacy_ATA_Passthrough(const tDevice* M_NONNULL         
         //     ret = FAILURE;
         // }
     }
-    // before we get rid of the sense data, copy it back to the last command sense data
-    safe_memset(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN, 0,
-                SPC3_SENSE_LEN); // clear before copying over data
-    safe_memcpy(M_CONST_CAST(uint8_t*, device->drive_info.lastCommandSenseData), SPC3_SENSE_LEN,
-                &ataCommandOptions->ptrSenseData, M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
-    // safe_memcpy(M_CONST_CAST(ataReturnTFRs*, &device->drive_info.lastCommandRTFRs), sizeof(ataReturnTFRs),
-    // &ataCommandOptions->rtfr,
-    //             sizeof(ataReturnTFRs));
+    copy_Last_Command_Sense_Data_To_tDevice(M_CONST_CAST(tDevice*, device), ataCommandOptions->ptrSenseData,
+                                            M_Min(SPC3_SENSE_LEN, ataCommandOptions->senseDataSize));
+    // copy_Last_Command_RTFRs_To_tDevice(M_CONST_CAST(tDevice*, device), &ataCommandOptions->rtfr);
     safe_free_aligned(&senseData);
     if (localSenseData)
     {

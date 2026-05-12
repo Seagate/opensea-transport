@@ -41,7 +41,7 @@ M_NODISCARD
 M_NODISCARD eReturnValues posix_Resolve_Filename_Link(const char* filename, char** resolvedFilename)
 {
     struct stat handleStat;
-    safe_memset(&handleStat, sizeof(struct stat), 0, sizeof(struct stat));
+    M_INITIALIZE_STRUCTURE(&handleStat, sizeof(struct stat));
     if (lstat(filename, &handleStat) != 0)
     {
         errno_t err = errno;

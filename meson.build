@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2021-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
-project('opensea-transport', 'c', license: 'MPL-2.0', version: '10.3.0', default_options: ['warning_level=2', 'default_library=static'])
+project('opensea-transport', 'c', license: 'MPL-2.0', version: '10.3.0', meson_version: '>=0.50.0', default_options: ['warning_level=2', 'default_library=static', 'c_winlibs=kernel32,user32,gdi32,winspool,shell32,ole32,oleaut32,uuid,comdlg32,advapi32,cfgmgr32'])
 
 c = meson.get_compiler('c')
 
@@ -233,8 +233,11 @@ elif c.get_id().contains('msvc')
         warning_flags += '/QIntel-jcc-erratum'
     endif
 
+    # If this MSVC version supports /std:c17, force C17 mode. MSVC defaults to a
+    # pre-C99 dialect without this flag, which means _Generic and other C11/C17
+    # features are unavailable even though the compiler supports them.
     if c.has_argument('/std:c17')
-        c_std = 'c17'
+        warning_flags += '/std:c17'
     endif
 
     linker_flags += [
@@ -269,16 +272,10 @@ if not (target_machine.system() == 'sunos') and c.get_id().contains('gcc')
     if c.version().version_compare('<5.0')
         #4.7.4+ has C11 support, but c89 is the default standard so we need to change it.
         if c.has_argument('-std=gnu11')
-            c_std = 'gnu11'
-            if meson.version().version_compare('<1.0.0')
-                add_project_arguments('-std=gnu11', language: 'c')
-            endif
+            add_project_arguments('-std=gnu11', language: 'c')
         elif c.has_argument('-std=gnu99')
             #Add this argument to the list since C99 is a minimum required C compiler standard
-            c_std = 'gnu99'
-            if meson.version().version_compare('<1.0.0')
-                add_project_arguments('-std=gnu99', language: 'c')
-            endif
+            add_project_arguments('-std=gnu99', language: 'c')
         else
             error('C99/GNU99 standard is required but was not able to be set!')
         endif

@@ -329,8 +329,14 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptr
             {
                 continue;
             }
-            safe_memset(name, BSD_DEV_NAME_LEN, 0, BSD_DEV_NAME_LEN); // clear name before reusing it
-            snprintf_err_handle(name, BSD_DEV_NAME_LEN, "%s", devs[driveNumber]);
+            M_IGNORE_SAFE_ERRNO_CALL(safe_memset(name, BSD_DEV_NAME_LEN, 0, BSD_DEV_NAME_LEN),
+                                     "Zeroing device name before use in get_Device_List will never fail since this "
+                                     "matches the allocated size"); // clear name before reusing it
+            if (0 != safe_strcpy(name, BSD_DEV_NAME_LEN, devs[driveNumber]))
+            {
+                perror("Error coping handle value during get_Device_List (likely truncation)");
+                continue;
+            }
             fd = -1;
             // lets try to open the device.
             fd = open(name, O_RDWR | O_NONBLOCK);
@@ -338,7 +344,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptr
             {
                 close(fd);
                 eVerbosityLevels temp = d->deviceVerbosity;
-                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
+                M_INITIALIZE_STRUCTURE(d, sizeof(tDevice));
                 d->deviceVerbosity = temp;
                 d->sanity.size     = ver.size;
                 d->sanity.version  = ver.version;

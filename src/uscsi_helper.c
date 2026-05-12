@@ -62,7 +62,10 @@ e.g. return c?t?d? from /dev/rdsk/c?t?d?
 static void set_Device_Name(const char* filename, char* name, size_t sizeOfName)
 {
     const char* s = strrchr(filename, '/') + 1;
-    snprintf_err_handle(name, sizeOfName, "%s", s);
+    if (0 != safe_strcpy(name, sizeOfName, s))
+    {
+        perror("Error copying device name in set_Device_Name");
+    }
 }
 
 static M_INLINE void close_mnttab(FILE** mnttab)
@@ -137,15 +140,19 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
 
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
-        // set the name
-        set_Device_Handle_Name(device, deviceHandle);
+        DECLARE_ZERO_INIT_ARRAY(char, tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
         // set the friendly name
-        DECLARE_ZERO_INIT_ARRAY(char, friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
-        set_Device_Name(deviceHandle, friendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
-        set_Device_Handle_Friendly_Name(device, friendlyName);
+        set_Device_Name(deviceHandle, &tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+
+        set_Device_Name_In_tDevice(device, deviceHandle, tempFriendlyName);
+
+        DECLARE_ZERO_INIT_ARRAY(char, tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH);
+
         // set the block handle
-        snprintf_err_handle(device->os_info.secondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s",
-                            get_Device_Handle_Friendly_Name(device));
+        snprintf_err_handle(&tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s", tempFriendlyName);
+
+        set_Second_Device_Name_In_tDevice(device, tempSecondName, tempFriendlyName);
+
         // set the partition info
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondName);
 
@@ -175,7 +182,7 @@ static eReturnValues uscsi_Reset(int fd, int resetFlag)
     struct uscsi_cmd uscsi_io;
     eReturnValues    ret = SUCCESS;
 
-    safe_memset(&uscsi_io, sizeof(uscsi_io), 0, sizeof(uscsi_io));
+    M_INITIALIZE_STRUCTURE(&uscsi_io, sizeof(uscsi_io));
 
     uscsi_io.uscsi_flags |= resetFlag;
     int ioctlResult = ioctl(fd, USCSICMD, &uscsi_io);
@@ -226,7 +233,8 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
         }
         else
         {
-            print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_QUIET, "No Raid PassThrough IO Routine present for this device\n");
+            print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                         "No Raid PassThrough IO Routine present for this device\n");
         }
         break;
     case NVME_INTERFACE:
@@ -234,13 +242,17 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
         ret = send_uscsi_io(scsiIoCtx);
         break;
     default:
-        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "Target Device does not have a valid interface %d\n", get_Device_InterfaceType(scsiIoCtx->device));
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET,
+                                               "Target Device does not have a valid interface %d\n",
+                                               get_Device_InterfaceType(scsiIoCtx->device));
     }
 
     if (scsiIoCtx->device->delay_io)
     {
         delay_Milliseconds(scsiIoCtx->device->delay_io);
-        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES, "Delaying between commands %d seconds to reduce IO impact\n", scsiIoCtx->device->delay_io);
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_NAMES,
+                                               "Delaying between commands %d seconds to reduce IO impact\n",
+                                               scsiIoCtx->device->delay_io);
     }
 
     return ret;
@@ -252,7 +264,7 @@ M_PARAM_RO(1) eReturnValues send_uscsi_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
     struct uscsi_cmd uscsi_io;
     eReturnValues    ret = SUCCESS;
 
-    safe_memset(&uscsi_io, sizeof(uscsi_io), 0, sizeof(uscsi_io));
+    M_INITIALIZE_STRUCTURE(&uscsi_io, sizeof(uscsi_io));
     print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "Sending command with send_IO\n");
 
     if (scsiIoCtx->timeout > USCSI_MAX_CMD_TIMEOUT_SECONDS ||
@@ -297,7 +309,8 @@ M_PARAM_RO(1) eReturnValues send_uscsi_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
         break;
         // NOLINTEND(bugprone-branch-clone)
     default:
-        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "%s Didn't understand direction\n", __func__);
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "%s Didn't understand direction\n",
+                                               __func__);
         return BAD_PARAMETER;
     }
 
@@ -315,24 +328,29 @@ M_PARAM_RO(1) eReturnValues send_uscsi_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
     stop_Timer(&commandTimer);
     if (ioctlResult < 0)
     {
-        ret = FAILURE;
+        ret           = FAILURE;
         errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
         if (error != 0)
         {
             char* errormsg = get_strerror(error);
             if (errormsg != M_NULLPTR)
             {
-                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "send_IO error: %d - %s\n", error, errormsg);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "send_IO error: %d - %s\n",
+                                                       error, errormsg);
                 safe_free(&errormsg);
             }
         }
     }
 
     print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "USCSI Results\n");
-    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tSCSI Status: %hu\n", uscsi_io.uscsi_status);
-    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tResid: %zu\n", uscsi_io.uscsi_resid);
-    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tRQS SCSI Status: %hu\n", uscsi_io.uscsi_rqstatus);
-    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tRQS Resid: %hhu\n", uscsi_io.uscsi_rqresid);
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tSCSI Status: %hu\n",
+                                           uscsi_io.uscsi_status);
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tResid: %zu\n",
+                                           uscsi_io.uscsi_resid);
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tRQS SCSI Status: %hu\n",
+                                           uscsi_io.uscsi_rqstatus);
+    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "\tRQS Resid: %hhu\n",
+                                           uscsi_io.uscsi_rqresid);
 
     set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
     return ret;
@@ -518,8 +536,14 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device_List(tDevice* M_NONNULL const ptr
             {
                 continue;
             }
-            safe_memset(name, USCSI_NAME_LEN, 0, USCSI_NAME_LEN); // clear name before reusing it
-            snprintf_err_handle(name, USCSI_NAME_LEN, "%s", devs[driveNumber]);
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memset(name, USCSI_NAME_LEN, 0, USCSI_NAME_LEN),
+                "Clearing name buffer for exact size it was allocated as before reuse. Should never fail");
+            if (0 != safe_strcpy(name, USCSI_NAME_LEN, devs[driveNumber]))
+            {
+                perror("Error copying handle in get_Device_List");
+                continue;
+            }
             fd = -1;
             // lets try to open the device.
             fd = open(name, O_RDWR | O_NONBLOCK);
@@ -655,7 +679,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* 
     if (device->os_info.lockCount == UINT16_C(1))
     {
         struct flock locks;
-        safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+        M_INITIALIZE_STRUCTURE(&locks, sizeof(struct flock));
         locks.l_type   = F_WRLCK;
         locks.l_whence = SEEK_SET;
         locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
@@ -669,7 +693,9 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* 
                 char* errormsg = get_strerror(error);
                 if (errormsg != M_NULLPTR)
                 {
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Failed to set POSIX F_SETLK %s flags with fcntl: %d - %s\n", "lock", error, errormsg);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                                           "Failed to set POSIX F_SETLK %s flags with fcntl: %d - %s\n",
+                                                           "lock", error, errormsg);
                     safe_free(&errormsg);
                 }
             }
@@ -690,7 +716,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice
     if (device->os_info.lockCount == UINT16_C(1))
     {
         struct flock locks;
-        safe_memset(&locks, sizeof(struct flock), 0, sizeof(struct flock));
+        M_INITIALIZE_STRUCTURE(&locks, sizeof(struct flock));
         locks.l_type   = F_UNLCK;
         locks.l_whence = SEEK_SET;
         locks.l_start  = DRIVE_HANDLE_LOCK_RANGE_START;
@@ -704,7 +730,9 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice
                 char* errormsg = get_strerror(error);
                 if (errormsg != M_NULLPTR)
                 {
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Failed to set POSIX F_SETLK %s flags with fcntl: %d - %s\n", "unlock", error, errormsg);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                                           "Failed to set POSIX F_SETLK %s flags with fcntl: %d - %s\n",
+                                                           "unlock", error, errormsg);
                     safe_free(&errormsg);
                 }
             }

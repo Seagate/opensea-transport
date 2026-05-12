@@ -83,7 +83,7 @@ M_PARAM_RO(1) eReturnValues ata_Soft_Reset(const tDevice* M_NONNULL device, uint
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand softReset;
-    safe_memset(&softReset, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
+    M_INITIALIZE_STRUCTURE(&softReset, sizeof(ataPassthroughCommand));
     softReset.commadProtocol   = ATA_PROTOCOL_SOFT_RESET;
     softReset.commandType      = ATA_CMD_TYPE_TASKFILE;
     softReset.commandDirection = XFER_NO_DATA;
@@ -103,7 +103,7 @@ M_PARAM_RO(1) eReturnValues ata_Hard_Reset(const tDevice* M_NONNULL device, uint
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand hardReset;
-    safe_memset(&hardReset, sizeof(ataPassthroughCommand), 0, sizeof(ataPassthroughCommand));
+    M_INITIALIZE_STRUCTURE(&hardReset, sizeof(ataPassthroughCommand));
     hardReset.commadProtocol   = ATA_PROTOCOL_HARD_RESET;
     hardReset.commandType      = ATA_CMD_TYPE_TASKFILE;
     hardReset.commandDirection = XFER_NO_DATA;
@@ -146,7 +146,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Identify(const tDevice* M_NONNULL device
             if (!is_Checksum_Valid(ptrData, LEGACY_DRIVE_SEC_SIZE, &invalidSec))
             {
                 ret = WARN_INVALID_CHECKSUM;
-                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Warning: Identify Checksum is invalid\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES,
+                                             "Warning: Identify Checksum is invalid\n");
             }
         }
         else
@@ -315,8 +316,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Read_Log_Ext(const tDevice* M_NONNULL de
     // Determine log read command variant
     const char* readLogName = useDMA ? "Read Log Ext DMA" : "Read Log Ext";
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA %s - Log %02" PRIX8 "h, Page %" PRIu16 ", Count %" PRIu32 "\n",
-                                          readLogName, logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
+                                           "Sending ATA %s - Log %02" PRIX8 "h, Page %" PRIu16 ", Count %" PRIu32 "\n",
+                                           readLogName, logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
 
     if (ptrData == M_NULLPTR || dataSize < LEGACY_DRIVE_SEC_SIZE || dataSize % LEGACY_DRIVE_SEC_SIZE)
     {
@@ -391,8 +392,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Write_Log_Ext(const tDevice* M_NONNULL d
     // Determine log write command variant
     const char* writeLogName = useDMA ? "Write Log Ext DMA" : "Write Log Ext";
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA %s - Log %02" PRIX8 "h, Page %" PRIu16 ", Count %" PRIu32 "\n",
-                                          writeLogName, logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
+                                           "Sending ATA %s - Log %02" PRIX8 "h, Page %" PRIu16 ", Count %" PRIu32 "\n",
+                                           writeLogName, logAddress, pageNumber, (dataSize / LEGACY_DRIVE_SEC_SIZE));
 
     if (ptrData == M_NULLPTR || dataSize < LEGACY_DRIVE_SEC_SIZE || dataSize % LEGACY_DRIVE_SEC_SIZE)
     {
@@ -441,14 +442,14 @@ OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Command(const tDevice* M_NONNULL d
 {
     eReturnValues         ret = UNKNOWN;
     ataPassthroughCommand ataCommandOptions;
-    const char* smartFeatureName = "Unknown SMART command";
+    const char*           smartFeatureName = "Unknown SMART command";
     switch (feature)
     {
     case ATA_SMART_READ_LOG:
         smartFeatureName = "SMART Read Log";
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                              "Sending ATA %s - Log %02" PRIX8 "h, Count %" PRIu32 "\n",
-                                              smartFeatureName, lbaLo, (dataSize / LEGACY_DRIVE_SEC_SIZE));
+                                               "Sending ATA %s - Log %02" PRIX8 "h, Count %" PRIu32 "\n",
+                                               smartFeatureName, lbaLo, (dataSize / LEGACY_DRIVE_SEC_SIZE));
         ataCommandOptions =
             create_ata_pio_in_cmd(device, ATA_SMART_CMD, ATA_CMD_TYPE_TASKFILE,
                                   M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
@@ -470,8 +471,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Command(const tDevice* M_NONNULL d
     case ATA_SMART_WRITE_LOG:
         smartFeatureName = "SMART Write Log";
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                              "Sending ATA %s - Log %02" PRIX8 "h, Count %" PRIu32 "\n",
-                                              smartFeatureName, lbaLo, (dataSize / LEGACY_DRIVE_SEC_SIZE));
+                                               "Sending ATA %s - Log %02" PRIX8 "h, Count %" PRIu32 "\n",
+                                               smartFeatureName, lbaLo, (dataSize / LEGACY_DRIVE_SEC_SIZE));
         ataCommandOptions =
             create_ata_pio_out_cmd(device, ATA_SMART_CMD, ATA_CMD_TYPE_TASKFILE,
                                    M_STATIC_CAST(uint16_t, dataSize / LEGACY_DRIVE_SEC_SIZE), ptrData, dataSize);
@@ -497,9 +498,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_SMART_Command(const tDevice* M_NONNULL d
         break;
     case ATA_SMART_EXEC_OFFLINE_IMM:
         smartFeatureName = "SMART Offline Immediate";
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                              "Sending ATA %s - test %02" PRIX8 "h\n",
-                                              smartFeatureName, lbaLo);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s - test %02" PRIX8 "h\n",
+                                               smartFeatureName, lbaLo);
         ataCommandOptions = create_ata_nondata_cmd(device, ATA_SMART_CMD, ATA_CMD_TYPE_TASKFILE, forceRTFRs);
         ataCommandOptions.tfr.SectorCount = countReg;
         break;
@@ -839,14 +839,19 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Accessible_Max_Address_Feature(const tDe
     }
 
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Accessible Max Address Command - Feature = 0x%04" PRIX16 ", LBA = %" PRIu64 ", Count = %" PRIu16 "\n",
-                                          feature, lba, sectorCount);
+                                           "Sending ATA Accessible Max Address Command - Feature = 0x%04" PRIX16
+                                           ", LBA = %" PRIu64 ", Count = %" PRIu16 "\n",
+                                           feature, lba, sectorCount);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
     if (rtfrs != M_NULLPTR)
     {
-        safe_memcpy(rtfrs, sizeof(ataReturnTFRs), &(ataCommandOptions.rtfr), sizeof(ataReturnTFRs));
+        if (0 != safe_memcpy(rtfrs, sizeof(ataReturnTFRs), &(ataCommandOptions.rtfr), sizeof(ataReturnTFRs)))
+            M_UNLIKELY
+            {
+                return MEMORY_FAILURE;
+            }
     }
 
     print_tDevice_Return_Enum(device, "Accessible Max Address Command", ret);
@@ -861,7 +866,7 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Get_Native_Max_Address_Ext(const tDevice
 {
     eReturnValues ret = UNKNOWN;
     ataReturnTFRs rtfrs;
-    safe_memset(&rtfrs, sizeof(rtfrs), 0, sizeof(rtfrs));
+    M_INITIALIZE_STRUCTURE(&rtfrs, sizeof(rtfrs));
     ret = ata_Accessible_Max_Address_Feature(device, AMAC_GET_NATIVE_MAX_ADDRESS, 0, &rtfrs, 0);
 
     if (ret == SUCCESS && nativeMaxLBA != M_NULLPTR)
@@ -952,8 +957,7 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max(const tDevice* M_NONNULL device,
     // Format message with volatility mode
     const char* volatilityStr = volatileValue ? "Volatile" : "Non-Volatile";
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Set Max, LBA = %" PRIu32 ", %s\n",
-                                          newMaxLBA, volatilityStr);
+                                           "Sending ATA Set Max, LBA = %" PRIu32 ", %s\n", newMaxLBA, volatilityStr);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1009,8 +1013,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Set_Max_Address_Ext(const tDevice* M_NON
 
     const char* volatilityStr = volatileValue ? "Volatile" : "Non-Volatile";
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Set Native Max Address Ext, LBA = %" PRIu64 ", %s\n",
-                                          newMaxLBA, volatilityStr);
+                                           "Sending ATA Set Native Max Address Ext, LBA = %" PRIu64 ", %s\n", newMaxLBA,
+                                           volatilityStr);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1074,9 +1078,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Download_Microcode(const tDevice* M_NONN
     }
 
     const char* fwdlCmdName = useDMA ? "Download Microcode DMA" : "Download Microcode";
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA %s, subcommand 0x%" PRIX8 "\n",
-                                          fwdlCmdName, C_CAST(uint8_t, subCommand));
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s, subcommand 0x%" PRIX8 "\n",
+                                           fwdlCmdName, C_CAST(uint8_t, subCommand));
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1167,9 +1170,7 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Data_Set_Management(const tDevice* M_NON
     }
 
     const char* dsmCmdName = xl ? "Data Set Management XL" : "Data Set Management";
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA %s\n",
-                                          dsmCmdName);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA %s\n", dsmCmdName);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1226,8 +1227,7 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Idle(const tDevice* M_NONNULL device, ui
         create_ata_nondata_cmd(device, ATA_IDLE_CMD, ATA_CMD_TYPE_TASKFILE, false);
     ataCommandOptions.tfr.SectorCount = standbyTimerPeriod;
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Idle, standby timer = %" PRIX8 "h\n",
-                                          standbyTimerPeriod);
+                                           "Sending ATA Idle, standby timer = %" PRIX8 "h\n", standbyTimerPeriod);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1249,9 +1249,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Idle_Immediate(const tDevice* M_NONNULL 
         // NOTE: RTFR's set C4h in LBA lo on success. Not currently looking for this -TJE
     }
 
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Idle Immediate %s\n",
-                                          (unloadFeature ? " - Unload" : ""));
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Idle Immediate %s\n",
+                                           (unloadFeature ? " - Unload" : ""));
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1546,9 +1545,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Set_Date_And_Time(const tDevice* M_NONNU
         create_ata_nondata_cmd(device, ATA_SET_DATE_AND_TIME_EXT, ATA_CMD_TYPE_EXTENDED_TASKFILE, false);
     set_ata_pt_LBA_48_sig(&ataCommandOptions, timeStamp);
 
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Set Data & Time Ext - time stamp: %016" PRIX64 "h\n",
-                                          timeStamp);
+    print_tDevice_Verbose_Formatted_String(
+        device, VERBOSITY_COMMAND_NAMES, "Sending ATA Set Data & Time Ext - time stamp: %016" PRIX64 "h\n", timeStamp);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1566,8 +1564,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Set_Multiple_Mode(const tDevice* M_NONNU
     ataCommandOptions.tfr.SectorCount = drqDataBlockCount;
 
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Set Multiple Mode - DRQ block count: %" PRIu8 "\n",
-                                          drqDataBlockCount);
+                                           "Sending ATA Set Multiple Mode - DRQ block count: %" PRIu8 "\n",
+                                           drqDataBlockCount);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1600,8 +1598,7 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Standby(const tDevice* M_NONNULL device,
     ataCommandOptions.tfr.SectorCount = standbyTimerPeriod;
 
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Standby, standby timer - %" PRIX8 "h\n",
-                                          standbyTimerPeriod);
+                                           "Sending ATA Standby, standby timer - %" PRIX8 "h\n", standbyTimerPeriod);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1643,8 +1640,9 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Trusted_Non_Data(const tDevice* M_NONNUL
     }
 
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Trusted Non-Data - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n",
-                                          securityProtocol, securityProtocolSpecific);
+                                           "Sending ATA Trusted Non-Data - Security Protocol %02" PRIX8
+                                           ", Specific: %04" PRIX16 "\n",
+                                           securityProtocol, securityProtocolSpecific);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1690,8 +1688,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Trusted_Receive(const tDevice* M_NONNULL
     // Determine command variant
     const char* commandStr = useDMA ? "ATA Trusted Receive DMA" : "ATA Trusted Receive";
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending %s - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n",
-                                          commandStr, securityProtocol, securityProtocolSpecific);
+                                           "Sending %s - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n",
+                                           commandStr, securityProtocol, securityProtocolSpecific);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1736,8 +1734,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Trusted_Send(const tDevice* M_NONNULL de
     // Determine command variant
     const char* commandStr = useDMA ? "ATA Trusted Send DMA" : "ATA Trusted Send";
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending %s - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n",
-                                          commandStr, securityProtocol, securityProtocolSpecific);
+                                           "Sending %s - Security Protocol %02" PRIX8 ", Specific: %04" PRIX16 "\n",
+                                           commandStr, securityProtocol, securityProtocolSpecific);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -1972,8 +1970,9 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Write_Uncorrectable(const tDevice* M_NON
     }
 
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Write Uncorrectable Ext - %02" PRIX8 "h, LBA = %" PRIu64 ", Count: %" PRIu16 "\n",
-                                          unrecoverableOptions, LBA, numberOfSectors);
+                                           "Sending ATA Write Uncorrectable Ext - %02" PRIX8 "h, LBA = %" PRIu64
+                                           ", Count: %" PRIu16 "\n",
+                                           unrecoverableOptions, LBA, numberOfSectors);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -2155,8 +2154,7 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Set_Features(const tDevice* M_NONNULL de
     ataCommandOptions.tfr.ErrorFeature = subcommand;
 
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Set Features - subcommand %02" PRIX8 "h\n",
-                                          subcommand);
+                                           "Sending ATA Set Features - subcommand %02" PRIX8 "h\n", subcommand);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -2679,8 +2677,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Zeros_Ext(const tDevice* M_NONNULL devic
     }
 
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
-                                          "Sending ATA Zeros Ext - LBA %" PRIu64 ", count %" PRIu16 " %s\n",
-                                          lba, numberOfLogicalSectors, (trim ? "(TRIM)" : ""));
+                                           "Sending ATA Zeros Ext - LBA %" PRIu64 ", count %" PRIu16 " %s\n", lba,
+                                           numberOfLogicalSectors, (trim ? "(TRIM)" : ""));
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -2887,7 +2885,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Non_Data(const tDevice* M_NONNULL de
     ataCommandOptions.tfr.SectorCount48 = subCommandSpecificCount;
     ataCommandOptions.tfr.SectorCount   = M_STATIC_CAST(uint8_t, ncqTag << 3); // shift into bits 7:3
 
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA NCQ Non Data, Subcommand %u\n", subCommand);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA NCQ Non Data, Subcommand %u\n",
+                                           subCommand);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -2975,7 +2974,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Receive_FPDMA_Queued(const tDevice* 
     set_ata_pt_aux_icc(&ataCommandOptions, auxilary, 0);
     M_USE_UNUSED(sectorCount);
 
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Receive FPDMA Queued, Subcommand %u\n", subCommand);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                           "Sending ATA Receive FPDMA Queued, Subcommand %u\n", subCommand);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -3022,7 +3022,8 @@ OPENSEA_TRANSPORT_API eReturnValues ata_NCQ_Send_FPDMA_Queued(const tDevice* M_N
     set_ata_pt_aux_icc(&ataCommandOptions, auxilary, 0);
     M_USE_UNUSED(sectorCount);
 
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA Send FPDMA Queued, Subcommand %u\n", subCommand);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                           "Sending ATA Send FPDMA Queued, Subcommand %u\n", subCommand);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
@@ -3198,17 +3199,25 @@ OPENSEA_TRANSPORT_API eReturnValues ata_NOP(const tDevice* M_NONNULL device,
     ataCommandOptions.needRTFRs = true; // This shouldn't be needed since this always triggers an abort, but setting
                                         // just to be sure we try to get them.
 
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Sending ATA NOP with Count %02" PRIX8 " and LBA %07" PRIX32 "\n", countToReturn, lbaToReturn);
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                           "Sending ATA NOP with Count %02" PRIX8 " and LBA %07" PRIX32 "\n",
+                                           countToReturn, lbaToReturn);
 
     ret = ata_Passthrough_Command(device, &ataCommandOptions);
 
-
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "ata_NOP: After ata_Passthrough_Command, ataCommandOptions.rtfr.secCnt = 0x%02X\n", ataCommandOptions.rtfr.secCnt);
+    print_tDevice_Verbose_Formatted_String(
+        device, VERBOSITY_COMMAND_NAMES,
+        "ata_NOP: After ata_Passthrough_Command, ataCommandOptions.rtfr.secCnt = 0x%02X\n",
+        ataCommandOptions.rtfr.secCnt);
 
     if (returnTFRs)
     {
-        safe_memcpy(returnTFRs, sizeof(ataReturnTFRs), &ataCommandOptions.rtfr, sizeof(ataReturnTFRs));
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,"ata_NOP: After memcpy, returnTFRs->secCnt = 0x%02X\n", returnTFRs->secCnt);
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(returnTFRs, sizeof(ataReturnTFRs), &ataCommandOptions.rtfr, sizeof(ataReturnTFRs)),
+            "Destination and source buffers are same structure and therefore the same size and will never overflow");
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES,
+                                               "ata_NOP: After memcpy, returnTFRs->secCnt = 0x%02X\n",
+                                               returnTFRs->secCnt);
     }
 
     print_tDevice_Return_Enum(device, "NOP", ret);

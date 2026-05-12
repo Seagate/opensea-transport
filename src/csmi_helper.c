@@ -68,8 +68,8 @@ void print_Last_Error(lasterror_t lastError);
 
 M_FUNC_ATTR_MALLOC static char* M_NULLABLE get_CSMI_IOCTL_Return_Code_String(uint32_t returnCode)
 {
-    char * returnStr = M_NULLPTR;
-    errno_t error = 0;
+    char*   returnStr = M_NULLPTR;
+    errno_t error     = 0;
     switch (returnCode)
     {
     case CSMI_SAS_STATUS_SUCCESS:
@@ -144,7 +144,7 @@ M_FUNC_ATTR_MALLOC static char* M_NULLABLE get_CSMI_IOCTL_Return_Code_String(uin
     default:
         if (asprintf(&returnStr, "Unknown CSMI IOCTL Return Code - 0x%" PRIX32, returnCode) < 0)
         {
-            error = 1;//just needs to be non-zero
+            error = 1; // just needs to be non-zero
         }
         break;
     }
@@ -156,32 +156,15 @@ M_FUNC_ATTR_MALLOC static char* M_NULLABLE get_CSMI_IOCTL_Return_Code_String(uin
     return returnStr;
 }
 
-M_DEPRECATED_REASON("Use get_CSMI_IOCTL_Return_Code_String to get the string and output it yourself instead.")
-static void print_IOCTL_Return_Code(uint32_t returnCode)
-{
-    print_str("IOCTL Status: ");
-    char* returnStr = get_CSMI_IOCTL_Return_Code_String(returnCode);
-    if (returnStr != M_NULLPTR)
-    {
-        print_str(returnStr);
-        safe_free(&returnStr);
-    }
-    else
-    {
-        printf("Unknown CSMI IOCTL Return Code - 0x%" PRIX32, returnCode);
-    }
-        print_str("\n");
-}
-
 M_FUNC_ATTR_MALLOC static char* M_NULLABLE get_CSMI_Last_Error_String(lasterror_t lastError)
 {
-    #if defined (_WIN32)
-        // Windows-specific implementation
-        return get_windows_error_str(lastError);
-    #else
-        // Non-Windows implementation
-        return get_strerror(lastError);
-    #endif
+#    if defined(_WIN32)
+    // Windows-specific implementation
+    return get_windows_error_str(lastError);
+#    else
+    // Non-Windows implementation
+    return get_strerror(lastError);
+#    endif
 }
 
 M_DEPRECATED_REASON("Use get_CSMI_Last_Error_String to get the string and output it yourself instead.")
@@ -237,29 +220,30 @@ static eReturnValues csmi_Return_To_OpenSea_Result(uint32_t returnCode)
 
 typedef struct s_csmiIOin
 {
-    CSMI_HANDLE                   deviceHandle;
-    uint32_t                      ioctlBufferSize;
-    M_SIZED_BY(ioctlBufferSize) void*  M_NONNULL                       ioctlBuffer;
-    uint32_t                      ioctlCode; // CSMI IOCTL code. Linux needs this, Windows doesn't since it's in the header for Windows.
-    char                          ioctlSignature[8]; // Signature of the IOCTL to send
-    uint32_t                      timeoutInSeconds;
-    uint32_t                      dataLength; // The length of all the data AFTER the ioctl header. This helps track how much to
-                             // send/receive. The structure trying to read or write sizeof(CSMI struct) or possibly larger
-                             // for those that have variable length data
-    uint32_t                      controllerNumber; // For Linux drivers, we need to specify the controller number since the drivers may
-                                   // manage more than a single controller at a time. This will be ignored in Linux
-    const tDevice* M_NULLABLE     device;     // Device pointer for device-aware printing. Can be NULL in device discovery functions.
-    eVerbosityLevels              csmiVerbosity;
-    uint16_t                      ioctlDirection; // Is this sending data (set) or receiving data (get). Needed for Linux
+    CSMI_HANDLE deviceHandle;
+    uint32_t    ioctlBufferSize;
+    M_SIZED_BY(ioctlBufferSize) void* M_NONNULL ioctlBuffer;
+    uint32_t ioctlCode; // CSMI IOCTL code. Linux needs this, Windows doesn't since it's in the header for Windows.
+    char     ioctlSignature[8]; // Signature of the IOCTL to send
+    uint32_t timeoutInSeconds;
+    uint32_t dataLength; // The length of all the data AFTER the ioctl header. This helps track how much to
+                         // send/receive. The structure trying to read or write sizeof(CSMI struct) or possibly larger
+                         // for those that have variable length data
+    uint32_t controllerNumber; // For Linux drivers, we need to specify the controller number since the drivers may
+                               // manage more than a single controller at a time. This will be ignored in Linux
+    const tDevice* M_NULLABLE
+                     device; // Device pointer for device-aware printing. Can be NULL in device discovery functions.
+    eVerbosityLevels csmiVerbosity;
+    uint16_t         ioctlDirection; // Is this sending data (set) or receiving data (get). Needed for Linux
 } csmiIOin, *ptrCsmiIOin;
 
 typedef struct s_csmiIOout
 {
     unsigned long bytesReturned; // Windows only and returned because it may be needed to fully process the result. Will
                                  // be 0 for other OSs
-    int         sysIoctlReturn;  // to save return from calling DeviceIoControl or Ioctl functions.
-    uint32_t* M_NULLABLE  lastError;       // pointer to store last error in. Optional
-    seatimer_t *M_NULLABLE ioctlTimer;      // pointer to a timer to start and stop if the IOCTL needs timing.
+    int                    sysIoctlReturn; // to save return from calling DeviceIoControl or Ioctl functions.
+    uint32_t* M_NULLABLE   lastError;      // pointer to store last error in. Optional
+    seatimer_t* M_NULLABLE ioctlTimer;     // pointer to a timer to start and stop if the IOCTL needs timing.
 } csmiIOout, *ptrCsmiIOout;
 
 // static because this should be an internal function to be reused below for getting the other data
@@ -290,7 +274,7 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
 
     // setup the IOCTL header for each OS
     // memset to zero first
-    safe_memset(ioctlHeader, sizeof(IOCTL_HEADER), 0, sizeof(IOCTL_HEADER));
+    M_INITIALIZE_STRUCTURE(ioctlHeader, sizeof(IOCTL_HEADER));
     // fill in common things
     ioctlHeader->Timeout    = csmiIoInParams->timeoutInSeconds;
     ioctlHeader->ReturnCode = CSMI_SAS_STATUS_SUCCESS;
@@ -301,9 +285,10 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
     // finish OS specific IOHEADER setup
     ioctlHeader->ControlCode  = csmiIoInParams->ioctlCode;
     ioctlHeader->HeaderLength = sizeof(SRB_IO_CONTROL);
-    safe_memcpy(ioctlHeader->Signature, 8, csmiIoInParams->ioctlSignature, 8);
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioctlHeader->Signature, 8, csmiIoInParams->ioctlSignature, 8),
+                             "Signatures should always be 8 bytes for Windows IOCTLs. This should always pass!");
     // overlapped support
-    safe_memset(&overlappedStruct, sizeof(OVERLAPPED), 0, sizeof(OVERLAPPED));
+    M_INITIALIZE_STRUCTURE(&overlappedStruct, sizeof(OVERLAPPED));
     overlappedStruct.hEvent = CreateEvent(M_NULLPTR, TRUE, FALSE, M_NULLPTR);
     if (!overlappedStruct.hEvent)
     {
@@ -356,7 +341,8 @@ static eReturnValues issue_CSMI_IO(ptrCsmiIOin csmiIoInParams, ptrCsmiIOout csmi
     }
 #    endif //_WIN32
     print_tDevice_Verbose_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\tCSMI IO results:\n");
-    print_tDevice_Verbose_Formatted_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\t\tIO returned: %d\n", localIoctlReturn);
+    print_tDevice_Verbose_Formatted_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\t\tIO returned: %d\n",
+                                           localIoctlReturn);
     print_tDevice_Verbose_String(csmiIoInParams->device, VERBOSITY_COMMAND_NAMES, "\t\tLast error meaning: ");
     char* lastErrorStr = get_CSMI_Last_Error_String(lastError);
     if (lastErrorStr)
@@ -513,12 +499,17 @@ static void print_CSMI_Driver_Info(const tDevice* M_NULLABLE device, PCSMI_SAS_D
     if (driverInfo)
     {
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI Driver Info====\n");
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tDriver Name: %s\n", driverInfo->szName);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tDescription: %s\n", driverInfo->szDescription);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tDriver Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", driverInfo->usMajorRevision,
-               driverInfo->usMinorRevision, driverInfo->usBuildRevision, driverInfo->usReleaseRevision);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tCSMI Version: %" CPRIu16 ".%" CPRIu16 "\n", driverInfo->usCSMIMajorRevision,
-               driverInfo->usCSMIMinorRevision);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tDriver Name: %s\n",
+                                               driverInfo->szName);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tDescription: %s\n",
+                                               driverInfo->szDescription);
+        print_tDevice_Verbose_Formatted_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
+            "\tDriver Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", driverInfo->usMajorRevision,
+            driverInfo->usMinorRevision, driverInfo->usBuildRevision, driverInfo->usReleaseRevision);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "\tCSMI Version: %" CPRIu16 ".%" CPRIu16 "\n",
+                                               driverInfo->usCSMIMajorRevision, driverInfo->usCSMIMinorRevision);
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n");
     }
 }
@@ -527,14 +518,14 @@ M_PARAM_RW(3)
 OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE                  deviceHandle,
                                                          uint32_t                     controllerNumber,
                                                          PCSMI_SAS_DRIVER_INFO_BUFFER driverInfoBuffer,
-                                                         const tDevice* M_NULLABLE   device)
+                                                         const tDevice* M_NULLABLE    device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(driverInfoBuffer, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER), 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(driverInfoBuffer, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -545,8 +536,11 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Driver_Info(CSMI_HANDLE            
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_DRIVER_INFO;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_ALL_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Driver Info\n");
     // issue command
@@ -572,12 +566,17 @@ static void print_CSMI_Controller_Configuration(const tDevice* M_NULLABLE device
     if (config)
     {
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI Controller Configuration====\n");
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBase IO Address: %08" CPRIX32 "h\n", config->uBaseIoAddress);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBase Memory Address: %08" CPRIX32 "%08" CPRIX32 "h\n", config->BaseMemoryAddress.uHighPart,
-               config->BaseMemoryAddress.uLowPart);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBoard ID: %08" CPRIX32 "h\n", config->uBoardID);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tVendor ID: %04" CPRIX16 "h\n", M_Word0(M_STATIC_CAST(uint32_t, config->uBoardID)));
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSubsystem ID: %04" CPRIX16 "h\n", M_Word1(M_STATIC_CAST(uint32_t, config->uBoardID)));
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "\tBase IO Address: %08" CPRIX32 "h\n", config->uBaseIoAddress);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "\tBase Memory Address: %08" CPRIX32 "%08" CPRIX32 "h\n",
+                                               config->BaseMemoryAddress.uHighPart, config->BaseMemoryAddress.uLowPart);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBoard ID: %08" CPRIX32 "h\n",
+                                               config->uBoardID);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tVendor ID: %04" CPRIX16 "h\n",
+                                               M_Word0(M_STATIC_CAST(uint32_t, config->uBoardID)));
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSubsystem ID: %04" CPRIX16 "h\n",
+                                               M_Word1(M_STATIC_CAST(uint32_t, config->uBoardID)));
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSlot Number: ");
         if (SLOT_NUMBER_UNKNOWN == config->usSlotNumber)
         {
@@ -585,7 +584,8 @@ static void print_CSMI_Controller_Configuration(const tDevice* M_NULLABLE device
         }
         else
         {
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "%" CPRIu16 "\n", config->usSlotNumber);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "%" CPRIu16 "\n",
+                                                   config->usSlotNumber);
         }
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tController Class: ");
         if (CSMI_SAS_CNTLR_CLASS_HBA == config->bControllerClass)
@@ -594,7 +594,8 @@ static void print_CSMI_Controller_Configuration(const tDevice* M_NULLABLE device
         }
         else
         {
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIu8 "\n", config->bControllerClass);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIu8 "\n",
+                                                   config->bControllerClass);
         }
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tIO Bus Type: ");
         switch (config->bIoBusType)
@@ -606,19 +607,29 @@ static void print_CSMI_Controller_Configuration(const tDevice* M_NULLABLE device
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "PCMCIA\n");
             break;
         default:
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIu8 "\n", config->bIoBusType);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIu8 "\n",
+                                                   config->bIoBusType);
             break;
         }
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBus Address\n");
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tBus Number: %" CPRIu8 "\n", config->BusAddress.PciAddress.bBusNumber);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDevice Number: %" CPRIu8 "\n", config->BusAddress.PciAddress.bDeviceNumber);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tFunction Number: %" CPRIu8 "\n", config->BusAddress.PciAddress.bFunctionNumber);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSerial Number: %s\n", config->szSerialNumber);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tController Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", config->usMajorRevision,
-               config->usMinorRevision, config->usBuildRevision, config->usReleaseRevision);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tBIOS Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", config->usBIOSMajorRevision,
-               config->usBIOSMinorRevision, config->usBIOSBuildRevision, config->usBIOSReleaseRevision);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tController Flags (%08" CPRIX32 "h):\n", config->uControllerFlags);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tBus Number: %" CPRIu8 "\n",
+                                               config->BusAddress.PciAddress.bBusNumber);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDevice Number: %" CPRIu8 "\n",
+                                               config->BusAddress.PciAddress.bDeviceNumber);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tFunction Number: %" CPRIu8 "\n",
+                                               config->BusAddress.PciAddress.bFunctionNumber);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSerial Number: %s\n",
+                                               config->szSerialNumber);
+        print_tDevice_Verbose_Formatted_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
+            "\tController Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n", config->usMajorRevision,
+            config->usMinorRevision, config->usBuildRevision, config->usReleaseRevision);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "\tBIOS Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n",
+                                               config->usBIOSMajorRevision, config->usBIOSMinorRevision,
+                                               config->usBIOSBuildRevision, config->usBIOSReleaseRevision);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "\tController Flags (%08" CPRIX32 "h):\n", config->uControllerFlags);
         if (config->uControllerFlags & CSMI_SAS_CNTLR_SAS_HBA)
         {
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSAS HBA\n");
@@ -639,12 +650,16 @@ static void print_CSMI_Controller_Configuration(const tDevice* M_NULLABLE device
         {
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSmart Array\n");
         }
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tRedundant Controller Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n",
-               config->usRromMajorRevision, config->usRromMinorRevision, config->usRromBuildRevision,
-               config->usRromReleaseRevision);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tRedundant BIOS Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 ".%" CPRIu16 "\n",
-               config->usRromBIOSMajorRevision, config->usRromBIOSMinorRevision, config->usRromBIOSBuildRevision,
-               config->usRromBIOSReleaseRevision);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "\tRedundant Controller Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16
+                                               ".%" CPRIu16 "\n",
+                                               config->usRromMajorRevision, config->usRromMinorRevision,
+                                               config->usRromBuildRevision, config->usRromReleaseRevision);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "\tRedundant BIOS Version: %" CPRIu16 ".%" CPRIu16 ".%" CPRIu16
+                                               ".%" CPRIu16 "\n",
+                                               config->usRromBIOSMajorRevision, config->usRromBIOSMinorRevision,
+                                               config->usRromBIOSBuildRevision, config->usRromBIOSReleaseRevision);
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n");
     }
 }
@@ -653,14 +668,14 @@ OPENSEA_TRANSPORT_API eReturnValues
 csmi_Get_Controller_Configuration(CSMI_HANDLE                             deviceHandle,
                                   uint32_t                                controllerNumber,
                                   PCSMI_SAS_CNTLR_CONFIG_BUFFER M_NONNULL ctrlConfigBuffer,
-                                  const tDevice* M_NULLABLE              device)
+                                  const tDevice* M_NULLABLE               device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(ctrlConfigBuffer, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER), 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(ctrlConfigBuffer, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -671,8 +686,11 @@ csmi_Get_Controller_Configuration(CSMI_HANDLE                             device
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_CNTLR_CONFIG;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_ALL_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Controller Configuration\n");
     // issue command
@@ -745,14 +763,14 @@ static void print_CSMI_Controller_Status(const tDevice* M_NULLABLE device, PCSMI
 OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE                             deviceHandle,
                                                                uint32_t                                controllerNumber,
                                                                PCSMI_SAS_CNTLR_STATUS_BUFFER M_NONNULL ctrlStatusBuffer,
-                                                               const tDevice* M_NULLABLE              device)
+                                                               const tDevice* M_NULLABLE               device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(ctrlStatusBuffer, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER), 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(ctrlStatusBuffer, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -763,8 +781,11 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Controller_Status(CSMI_HANDLE      
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_CNTLR_STATUS;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_ALL_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Controller Status\n");
     // issue command
@@ -794,18 +815,21 @@ csmi_Controller_Firmware_Download(CSMI_HANDLE                                  d
                                   PCSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER M_NONNULL firmwareBuffer,
                                   uint32_t                                     firmwareBufferTotalLength,
                                   uint32_t                                     downloadFlags,
-                                  const tDevice* M_NULLABLE                   device,
+                                  const tDevice* M_NULLABLE                    device,
                                   uint32_t                                     timeoutSeconds)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(
-        firmwareBuffer, firmwareBufferTotalLength, 0,
-        sizeof(CSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER) -
-            1); // Memsetting ONLY the header and flags section so that the firmware we are sending is left untouched.
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    if (0 != safe_memset(firmwareBuffer, firmwareBufferTotalLength, 0,
+                         sizeof(CSMI_SAS_FIRMWARE_DOWNLOAD_BUFFER) -
+                             1)) // Memsetting ONLY the header and flags section so that the firmware we are sending is
+                                 // left untouched.
+    {
+        return MEMORY_FAILURE;
+    }
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -816,8 +840,11 @@ csmi_Controller_Firmware_Download(CSMI_HANDLE                                  d
     ioIn.ioctlCode        = CC_CSMI_SAS_FIRMWARE_DOWNLOAD;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_WRITE;
     ioIn.timeoutInSeconds = timeoutSeconds;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_ALL_SIGNATURE, safe_strlen(CSMI_ALL_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     firmwareBuffer->Information.uDownloadFlags = downloadFlags;
     firmwareBuffer->Information.uBufferLength =
@@ -846,25 +873,39 @@ static void print_CSMI_RAID_Info(const tDevice* M_NULLABLE device, PCSMI_SAS_RAI
     if (raidInfo)
     {
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI RAID Info====\n");
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tNumber of RAID Sets: %" CPRIu32 "\n", raidInfo->uNumRaidSets);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum # of drives per set: %" CPRIu32 "\n", raidInfo->uMaxDrivesPerSet);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "\tNumber of RAID Sets: %" CPRIu32 "\n", raidInfo->uNumRaidSets);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "\tMaximum # of drives per set: %" CPRIu32 "\n",
+                                               raidInfo->uMaxDrivesPerSet);
         // Check if remaining bytes are zeros. This helps track differences between original CSMI spec and some drivers
         // that added onto it.
         if (!is_Empty(M_REINTERPRET_CAST(void*, raidInfo),
                       92)) // 92 is original reserved length from original documentation...can
                            // change to something else based on actual structure size if needed
         {
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum # of RAID Sets: %" CPRIu32 "\n", raidInfo->uMaxRaidSets);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum # of RAID Types: %" CPRIu8 "\n", raidInfo->bMaxRaidTypes);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMinimum RAID Set Blocks: %" PRIu64 "\n",
-                   M_DWordsTo8ByteValue(raidInfo->ulMinRaidSetBlocks.uHighPart, raidInfo->ulMinRaidSetBlocks.uLowPart));
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum RAID Set Blocks: %" PRIu64 "\n",
-                   M_DWordsTo8ByteValue(raidInfo->ulMaxRaidSetBlocks.uHighPart, raidInfo->ulMaxRaidSetBlocks.uLowPart));
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum Physical Drives: %" CPRIu32 "\n", raidInfo->uMaxPhysicalDrives);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum Extents: %" CPRIu32 "\n", raidInfo->uMaxExtents);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum Modules: %" CPRIu32 "\n", raidInfo->uMaxModules);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum Transformational Memory: %" CPRIu32 "\n", raidInfo->uMaxTransformationMemory);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tChange Count: %" CPRIu32 "\n", raidInfo->uChangeCount);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "\tMaximum # of RAID Sets: %" CPRIu32 "\n", raidInfo->uMaxRaidSets);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "\tMaximum # of RAID Types: %" CPRIu8 "\n", raidInfo->bMaxRaidTypes);
+            print_tDevice_Verbose_Formatted_String(
+                device, VERBOSITY_COMMAND_VERBOSE, "\tMinimum RAID Set Blocks: %" PRIu64 "\n",
+                M_DWordsTo8ByteValue(raidInfo->ulMinRaidSetBlocks.uHighPart, raidInfo->ulMinRaidSetBlocks.uLowPart));
+            print_tDevice_Verbose_Formatted_String(
+                device, VERBOSITY_COMMAND_VERBOSE, "\tMaximum RAID Set Blocks: %" PRIu64 "\n",
+                M_DWordsTo8ByteValue(raidInfo->ulMaxRaidSetBlocks.uHighPart, raidInfo->ulMaxRaidSetBlocks.uLowPart));
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "\tMaximum Physical Drives: %" CPRIu32 "\n",
+                                                   raidInfo->uMaxPhysicalDrives);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "\tMaximum Extents: %" CPRIu32 "\n", raidInfo->uMaxExtents);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "\tMaximum Modules: %" CPRIu32 "\n", raidInfo->uMaxModules);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "\tMaximum Transformational Memory: %" CPRIu32 "\n",
+                                                   raidInfo->uMaxTransformationMemory);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tChange Count: %" CPRIu32 "\n",
+                                                   raidInfo->uChangeCount);
             // Add another is_Empty here for 44 bytes if other things get added here.
         }
     }
@@ -904,9 +945,9 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE              
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(raidInfoBuffer, sizeof(CSMI_SAS_RAID_INFO_BUFFER), 0, sizeof(CSMI_SAS_RAID_INFO_BUFFER));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(raidInfoBuffer, sizeof(CSMI_SAS_RAID_INFO_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -917,8 +958,11 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Info(CSMI_HANDLE              
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_RAID_INFO;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get RAID Info\n");
     // issue command
@@ -1088,14 +1132,19 @@ static M_INLINE bool is_Config_Last_20B_Empty(PCSMI_SAS_RAID_CONFIG config)
 }
 
 // TODO: Need to pass in CSMI version information
-static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device, PCSMI_SAS_RAID_CONFIG config, uint32_t configLength)
+static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device,
+                                   PCSMI_SAS_RAID_CONFIG     config,
+                                   uint32_t                  configLength)
 {
     if (config)
     {
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI RAID Configuration====\n");
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tRAID Set Index: %" CPRIu32 "\n", config->uRaidSetIndex);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tCapacity (MB): %" CPRIu32 "\n", config->uCapacity);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tStripe Size (KB): %" CPRIu32 "\n", config->uStripeSize);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tRAID Set Index: %" CPRIu32 "\n",
+                                               config->uRaidSetIndex);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tCapacity (MB): %" CPRIu32 "\n",
+                                               config->uCapacity);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tStripe Size (KB): %" CPRIu32 "\n",
+                                               config->uStripeSize);
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tRAID Type: ");
         print_CSMI_RaidType(config->bRaidType);
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tStatus: ");
@@ -1106,19 +1155,23 @@ static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device, PCSMI_SAS_R
             break;
         case CSMI_SAS_RAID_SET_STATUS_DEGRADED:
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Degraded\n");
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tFailed Drive Index: %" CPRIu8 "\n", config->bInformation);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "\tFailed Drive Index: %" CPRIu8 "\n", config->bInformation);
             break;
         case CSMI_SAS_RAID_SET_STATUS_REBUILDING:
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Rebuilding - %" CPRIu8 "%%\n", config->bInformation);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Rebuilding - %" CPRIu8 "%%\n",
+                                                   config->bInformation);
             break;
         case CSMI_SAS_RAID_SET_STATUS_FAILED:
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Failed - %" CPRIu8 "\n", config->bInformation);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Failed - %" CPRIu8 "\n",
+                                                   config->bInformation);
             break;
         case CSMI_SAS_RAID_SET_STATUS_OFFLINE:
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Offline\n");
             break;
         case CSMI_SAS_RAID_SET_STATUS_TRANSFORMING:
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Transforming - %" CPRIu8 "%%\n", config->bInformation);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Transforming - %" CPRIu8 "%%\n",
+                                                   config->bInformation);
             break;
         case CSMI_SAS_RAID_SET_STATUS_QUEUED_FOR_REBUILD:
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Queued for Rebuild\n");
@@ -1142,13 +1195,15 @@ static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device, PCSMI_SAS_R
                 print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Supressed\n");
                 break;
             default:
-                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown reserved value - %" CPRIX8 "h\n", config->bDriveCount);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                       "Unknown reserved value - %" CPRIX8 "h\n", config->bDriveCount);
                 break;
             }
         }
         else
         {
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "%" CPRIu8 "\n", config->bDriveCount);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "%" CPRIu8 "\n",
+                                                   config->bDriveCount);
         }
         // Use DataType to switch between what was reported back
         // this is being checked since failure code and change count were added later
@@ -1156,7 +1211,8 @@ static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device, PCSMI_SAS_R
         {
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tFailure Code: ");
             print_CSMI_RAID_Failure_Code(config->uFailureCode);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tChange Count: %" CPRIu32 "\n", config->uChangeCount);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tChange Count: %" CPRIu32 "\n",
+                                                   config->uChangeCount);
         }
         bool driveDataValid = true;
         // If an ASCII character is in the bDataType offset, this is Intel's driver
@@ -1171,12 +1227,14 @@ static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device, PCSMI_SAS_R
                 break;
             case CSMI_SAS_RAID_DATA_DEVICE_ID:
                 // TODO: Print this out...device identification VPD page
-                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Device ID (Debug info not supported at this time)\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                             "Device ID (Debug info not supported at this time)\n");
                 driveDataValid = false;
                 break;
             case CSMI_SAS_RAID_DATA_ADDITIONAL_DATA:
                 // TODO: Print this out
-                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Additional Data (Debug info not supported at this time)\n");
+                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                             "Additional Data (Debug info not supported at this time)\n");
                 driveDataValid = false;
                 break;
             default:
@@ -1197,25 +1255,39 @@ static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device, PCSMI_SAS_R
                     DECLARE_ZERO_INIT_ARRAY(char, model, 41);
                     DECLARE_ZERO_INIT_ARRAY(char, firmware, 9);
                     DECLARE_ZERO_INIT_ARRAY(char, serialNumber, 41);
-                    safe_memcpy(model, 41, config->Drives[iter].bModel, 40);
-                    safe_memcpy(firmware, 9, config->Drives[iter].bFirmware, 8);
-                    safe_memcpy(serialNumber, 41, config->Drives[iter].bSerialNumber, 40);
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t----RAID Drive %" PRIu32 "----\n", iter);
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tModel #: %s\n", model);
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tFirmware: %s\n", firmware);
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSerial #: %s\n", serialNumber);
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
-                           "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "h\n",
-                           config->Drives[iter].bSASAddress[0], config->Drives[iter].bSASAddress[1],
-                           config->Drives[iter].bSASAddress[2], config->Drives[iter].bSASAddress[3],
-                           config->Drives[iter].bSASAddress[4], config->Drives[iter].bSASAddress[5],
-                           config->Drives[iter].bSASAddress[6], config->Drives[iter].bSASAddress[7]);
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSAS LUN: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
-                           "%02" CPRIX8 "%02" CPRIX8 "h\n",
-                           config->Drives[iter].bSASLun[0], config->Drives[iter].bSASLun[1],
-                           config->Drives[iter].bSASLun[2], config->Drives[iter].bSASLun[3],
-                           config->Drives[iter].bSASLun[4], config->Drives[iter].bSASLun[5],
-                           config->Drives[iter].bSASLun[6], config->Drives[iter].bSASLun[7]);
+                    M_IGNORE_SAFE_ERRNO_CALL(
+                        safe_memcpy(model, SIZE_OF_STACK_ARRAY(model), config->Drives[iter].bModel, 40),
+                        "Always copies MN into array 1 larger that is null terminated");
+                    M_IGNORE_SAFE_ERRNO_CALL(
+                        safe_memcpy(firmware, SIZE_OF_STACK_ARRAY(firmware), config->Drives[iter].bFirmware, 8),
+                        "Always copies FW into array 1 larger that is null terminated");
+                    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(serialNumber, SIZE_OF_STACK_ARRAY(serialNumber),
+                                                         config->Drives[iter].bSerialNumber, 40),
+                                             "Always copies SN into array 1 larger that is null terminated");
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                           "\t----RAID Drive %" PRIu32 "----\n", iter);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tModel #: %s\n",
+                                                           model);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tFirmware: %s\n",
+                                                           firmware);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSerial #: %s\n",
+                                                           serialNumber);
+                    print_tDevice_Verbose_Formatted_String(
+                        device, VERBOSITY_COMMAND_VERBOSE,
+                        "\t\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+                        "%02" CPRIX8 "%02" CPRIX8 "h\n",
+                        config->Drives[iter].bSASAddress[0], config->Drives[iter].bSASAddress[1],
+                        config->Drives[iter].bSASAddress[2], config->Drives[iter].bSASAddress[3],
+                        config->Drives[iter].bSASAddress[4], config->Drives[iter].bSASAddress[5],
+                        config->Drives[iter].bSASAddress[6], config->Drives[iter].bSASAddress[7]);
+                    print_tDevice_Verbose_Formatted_String(
+                        device, VERBOSITY_COMMAND_VERBOSE,
+                        "\t\tSAS LUN: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+                        "%02" CPRIX8 "%02" CPRIX8 "h\n",
+                        config->Drives[iter].bSASLun[0], config->Drives[iter].bSASLun[1],
+                        config->Drives[iter].bSASLun[2], config->Drives[iter].bSASLun[3],
+                        config->Drives[iter].bSASLun[4], config->Drives[iter].bSASLun[5],
+                        config->Drives[iter].bSASLun[6], config->Drives[iter].bSASLun[7]);
                     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDrive Status: ");
                     switch (config->Drives[iter].bDriveStatus)
                     {
@@ -1263,7 +1335,9 @@ static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device, PCSMI_SAS_R
                         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SRT Data\n");
                         break;
                     default:
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIu8 "\n", config->Drives[iter].bDriveUsage);
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                               "Unknown - %" CPRIu8 "\n",
+                                                               config->Drives[iter].bDriveUsage);
                         break;
                     }
                     // end of original RAID drive data in spec. Check if empty
@@ -1272,7 +1346,9 @@ static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device, PCSMI_SAS_R
                     // original spec says 22 reserved bytes, however I count 30 more bytes to check...-TJE
                     if (!is_Empty(&config->Drives[iter], previouslyReservedBytes))
                     {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tBlock Size: %" CPRIu16 "\n", config->Drives[iter].usBlockSize);
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                               "\t\tBlock Size: %" CPRIu16 "\n",
+                                                               config->Drives[iter].usBlockSize);
                         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDrive Type: ");
                         switch (config->Drives[iter].bDriveType)
                         {
@@ -1295,13 +1371,18 @@ static void print_CSMI_RAID_Config(const tDevice* M_NULLABLE device, PCSMI_SAS_R
                             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "Other\n");
                             break;
                         default:
-                            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIu8 "\n", config->Drives[iter].bDriveType);
+                            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                                   "Unknown - %" CPRIu8 "\n",
+                                                                   config->Drives[iter].bDriveType);
                             break;
                         }
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tDrive Index: %" CPRIu32 "\n", config->Drives[iter].uDriveIndex);
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tTotal User Blocks: %" PRIu64 "\n",
-                               M_DWordsTo8ByteValue(config->Drives[iter].ulTotalUserBlocks.uHighPart,
-                                                    config->Drives[iter].ulTotalUserBlocks.uLowPart));
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                               "\t\tDrive Index: %" CPRIu32 "\n",
+                                                               config->Drives[iter].uDriveIndex);
+                        print_tDevice_Verbose_Formatted_String(
+                            device, VERBOSITY_COMMAND_VERBOSE, "\t\tTotal User Blocks: %" PRIu64 "\n",
+                            M_DWordsTo8ByteValue(config->Drives[iter].ulTotalUserBlocks.uHighPart,
+                                                 config->Drives[iter].ulTotalUserBlocks.uLowPart));
                     }
                 }
             }
@@ -1432,14 +1513,14 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE            
                                                          uint32_t                     raidConfigBufferTotalSize,
                                                          uint32_t                     raidSetIndex,
                                                          uint8_t                      dataType,
-                                                         const tDevice* M_NULLABLE   device)
+                                                         const tDevice* M_NULLABLE    device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(raidConfigBuffer, raidConfigBufferTotalSize, 0, raidConfigBufferTotalSize);
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(raidConfigBuffer, raidConfigBufferTotalSize);
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -1450,8 +1531,11 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Config(CSMI_HANDLE            
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_RAID_CONFIG;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     raidConfigBuffer->Configuration.uRaidSetIndex = raidSetIndex;
     raidConfigBuffer->Configuration.bDataType =
@@ -1683,13 +1767,15 @@ static void print_CSMI_RAID_Features(const tDevice* M_NULLABLE device, PCSMI_SAS
                 // bRaidType
                 print_CSMI_RaidType(features->RaidType[raidTypeIter].bRaidType);
                 // uSupportedStripeSizeMap
-                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Supported Stripe Size Map: %" CPRIu32 "\n",
-                       features->RaidType[raidTypeIter].uSupportedStripeSizeMap);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                       "Supported Stripe Size Map: %" CPRIu32 "\n",
+                                                       features->RaidType[raidTypeIter].uSupportedStripeSizeMap);
             }
         }
         // Cache ratios supported. 104 possible, some special values
 
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tChange Count: %" CPRIu32 "\n", features->uChangeCount);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tChange Count: %" CPRIu32 "\n",
+                                               features->uChangeCount);
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tFailure Code: ");
         print_CSMI_RAID_Failure_Code(features->uFailureCode);
     }
@@ -1698,14 +1784,14 @@ static void print_CSMI_RAID_Features(const tDevice* M_NULLABLE device, PCSMI_SAS
 OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE                              deviceHandle,
                                                            uint32_t                                 controllerNumber,
                                                            PCSMI_SAS_RAID_FEATURES_BUFFER M_NONNULL raidFeaturesBuffer,
-                                                           const tDevice* M_NULLABLE               device)
+                                                           const tDevice* M_NULLABLE                device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(raidFeaturesBuffer, sizeof(CSMI_SAS_RAID_FEATURES_BUFFER), 0, sizeof(CSMI_SAS_RAID_FEATURES_BUFFER));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(raidFeaturesBuffer, sizeof(CSMI_SAS_RAID_FEATURES_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -1716,8 +1802,11 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_RAID_Features(CSMI_HANDLE          
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_RAID_FEATURES;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_RAID_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_RAID_SIGNATURE, safe_strlen(CSMI_RAID_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get RAID Features\n");
     // issue command
@@ -1805,21 +1894,26 @@ static void print_CSMI_SAS_Identify(const tDevice* M_NULLABLE device, PCSMI_SAS_
             print_str("Unknown\n");
             break;
         }
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tRestricted: %02" CPRIX8 "h\n", identify->bRestricted);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tRestricted: %02" CPRIX8 "h\n",
+                                               identify->bRestricted);
         print_str("\t\t\tInitiator Port Protocol: ");
         print_CSMI_Port_Protocol(device, identify->bInitiatorPortProtocol);
         print_str("\t\t\tTarget Port Protocol: ");
         print_CSMI_Port_Protocol(device, identify->bTargetPortProtocol);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tRestricted 2: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
-               "%02" CPRIX8 "%02" CPRIX8 "h\n",
-               identify->bRestricted2[0], identify->bRestricted2[1], identify->bRestricted2[2],
-               identify->bRestricted2[3], identify->bRestricted2[4], identify->bRestricted2[5],
-               identify->bRestricted2[6], identify->bRestricted2[7]);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
-               "%02" CPRIX8 "%02" CPRIX8 "h\n",
-               identify->bSASAddress[0], identify->bSASAddress[1], identify->bSASAddress[2], identify->bSASAddress[3],
-               identify->bSASAddress[4], identify->bSASAddress[5], identify->bSASAddress[6], identify->bSASAddress[7]);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tPhy Identifier: %" CPRIu8 "\n", identify->bPhyIdentifier);
+        print_tDevice_Verbose_Formatted_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
+            "\t\t\tRestricted 2: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+            "%02" CPRIX8 "%02" CPRIX8 "h\n",
+            identify->bRestricted2[0], identify->bRestricted2[1], identify->bRestricted2[2], identify->bRestricted2[3],
+            identify->bRestricted2[4], identify->bRestricted2[5], identify->bRestricted2[6], identify->bRestricted2[7]);
+        print_tDevice_Verbose_Formatted_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
+            "\t\t\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+            "%02" CPRIX8 "%02" CPRIX8 "h\n",
+            identify->bSASAddress[0], identify->bSASAddress[1], identify->bSASAddress[2], identify->bSASAddress[3],
+            identify->bSASAddress[4], identify->bSASAddress[5], identify->bSASAddress[6], identify->bSASAddress[7]);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tPhy Identifier: %" CPRIu8 "\n",
+                                               identify->bPhyIdentifier);
         print_str("\t\t\tSignal Class: ");
         switch (identify->bSignalClass)
         {
@@ -1836,7 +1930,8 @@ static void print_CSMI_SAS_Identify(const tDevice* M_NULLABLE device, PCSMI_SAS_
             print_str("Enclosure\n");
             break;
         default:
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIX8 "h\n", identify->bSignalClass);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %" CPRIX8 "h\n",
+                                                   identify->bSignalClass);
             break;
         }
     }
@@ -1875,7 +1970,8 @@ static void print_CSMI_Link_Rate(const tDevice* M_NULLABLE device, uint8_t linkR
         print_str("12.0 Gb/s\n");
         break;
     default:
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %02" CPRIX8 "h\n", linkRate);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Unknown - %02" CPRIX8 "h\n",
+                                               linkRate);
         break;
     }
     // now review known flags
@@ -1890,20 +1986,26 @@ static void print_CSMI_Phy_Info(const tDevice* M_NULLABLE device, PCSMI_SAS_PHY_
     if (phyInfo)
     {
         print_str("\n====CSMI Phy Info====\n");
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tNumber Of Phys: %" CPRIu8 "\n", phyInfo->bNumberOfPhys);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tNumber Of Phys: %" CPRIu8 "\n",
+                                               phyInfo->bNumberOfPhys);
         for (uint8_t phyIter = UINT8_C(0); phyIter < phyInfo->bNumberOfPhys && phyIter < 32; ++phyIter)
         {
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t----Phy %" CPRIu8 "----\n", phyIter);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t----Phy %" CPRIu8 "----\n",
+                                                   phyIter);
             print_str("\t\tIdentify:\n");
             print_CSMI_SAS_Identify(device, &phyInfo->Phy[phyIter].Identify);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPort Identifier: %" CPRIu8 "\n", phyInfo->Phy[phyIter].bPortIdentifier);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "\t\tPort Identifier: %" CPRIu8 "\n",
+                                                   phyInfo->Phy[phyIter].bPortIdentifier);
             print_str("\t\tNegotiated Link Rate: ");
             print_CSMI_Link_Rate(device, phyInfo->Phy[phyIter].bNegotiatedLinkRate);
             print_str("\t\tMinimum Link Rate: ");
             print_CSMI_Link_Rate(device, phyInfo->Phy[phyIter].bMinimumLinkRate);
             print_str("\t\tMaximum Link Rate: ");
             print_CSMI_Link_Rate(device, phyInfo->Phy[phyIter].bMaximumLinkRate);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPhy Change Count: %" CPRIu8 "\n", phyInfo->Phy[phyIter].bPhyChangeCount);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "\t\tPhy Change Count: %" CPRIu8 "\n",
+                                                   phyInfo->Phy[phyIter].bPhyChangeCount);
             print_str("\t\tAuto Discover: ");
             switch (phyInfo->Phy[phyIter].bAutoDiscover)
             {
@@ -2476,9 +2578,9 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               
     {
         return MEMORY_FAILURE;
     }
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(temp, phyInfoSize, 0, phyInfoSize);
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(temp, phyInfoSize);
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -2489,8 +2591,11 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_PHY_INFO;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Phy Info");
     // issue command
@@ -2498,7 +2603,9 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Phy_Info(CSMI_HANDLE               
     // validate result
     if (ret == SUCCESS && ioOut.sysIoctlReturn == CSMI_SYSTEM_IOCTL_SUCCESS)
     {
-        safe_memcpy(phyInfoBuffer, sizeof(CSMI_SAS_PHY_INFO_BUFFER), temp, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(phyInfoBuffer, sizeof(CSMI_SAS_PHY_INFO_BUFFER), temp, sizeof(CSMI_SAS_PHY_INFO_BUFFER)),
+            "Copying PHY info buffer which is always sized the same");
         ret = csmi_Return_To_OpenSea_Result(phyInfoBuffer->IoctlHeader.ReturnCode);
         print_CSMI_Phy_Info(device, &phyInfoBuffer->Information);
     }
@@ -2518,15 +2625,16 @@ M_PARAM_RW(3)
 OPENSEA_TRANSPORT_API eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE                   deviceHandle,
                                                       uint32_t                      controllerNumber,
                                                       PCSMI_SAS_SET_PHY_INFO_BUFFER phyInfoBuffer,
-                                                      const tDevice* M_NULLABLE    device)
+                                                      const tDevice* M_NULLABLE     device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(phyInfoBuffer, sizeof(IOCTL_HEADER), 0,
-                sizeof(IOCTL_HEADER)); // only clear out the header...caller should setup the changes they want to make
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    explicit_zeroes(
+        phyInfoBuffer,
+        sizeof(IOCTL_HEADER)); // only clear out the header...caller should setup the changes they want to make
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -2537,8 +2645,11 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Set_Phy_Info(CSMI_HANDLE               
     ioIn.ioctlCode        = CC_CSMI_SAS_SET_PHY_INFO;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_WRITE;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Set Phy Info");
     // issue command
@@ -2564,14 +2675,14 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE            
                                                          PCSMI_SAS_LINK_ERRORS_BUFFER linkErrorsBuffer,
                                                          uint8_t                      phyIdentifier,
                                                          bool                         resetCounts,
-                                                         const tDevice* M_NULLABLE   device)
+                                                         const tDevice* M_NULLABLE    device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(linkErrorsBuffer, sizeof(CSMI_SAS_LINK_ERRORS_BUFFER), 0, sizeof(CSMI_SAS_LINK_ERRORS_BUFFER));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(linkErrorsBuffer, sizeof(CSMI_SAS_LINK_ERRORS_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -2582,8 +2693,11 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_Link_Errors(CSMI_HANDLE            
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_LINK_ERRORS;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     linkErrorsBuffer->Information.bPhyIdentifier = phyIdentifier;
     linkErrorsBuffer->Information.bResetCounts   = CSMI_SAS_LINK_ERROR_DONT_RESET_COUNTS;
@@ -2637,10 +2751,10 @@ typedef struct s_csmiSSPOut
     uint8_t     connectionStatus;
 } csmiSSPOut, *ptrCsmiSSPOut;
 
-static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE          deviceHandle,
-                                          uint32_t             controllerNumber,
-                                          ptrCsmiSSPIn         sspInputs,
-                                          ptrCsmiSSPOut        sspOutputs,
+static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE               deviceHandle,
+                                          uint32_t                  controllerNumber,
+                                          ptrCsmiSSPIn              sspInputs,
+                                          ptrCsmiSSPOut             sspOutputs,
                                           const tDevice* M_NULLABLE device)
 {
     eReturnValues                 ret = SUCCESS;
@@ -2648,8 +2762,8 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE          deviceHandle,
     csmiIOout                     ioOut;
     PCSMI_SAS_SSP_PASSTHRU_BUFFER sspPassthrough             = M_NULLPTR;
     uint32_t                      sspPassthroughBufferLength = UINT32_C(0);
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
 
     if (!sspInputs || !sspOutputs || !sspInputs->cdb) // NOTE: other validation is done below.
     {
@@ -2673,8 +2787,11 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE          deviceHandle,
     // ioIn.ioctlDirection = CSMI_SAS_DATA_READ;//This is set below, however it may only need to be set one way....will
     // only knwo when testing on linux since this is used there.
     ioIn.timeoutInSeconds = sspInputs->timeoutSeconds;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
     ioOut.ioctlTimer   = sspOutputs->sspTimer;
 
     // setup ssp specific parameters
@@ -2686,21 +2803,29 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE          deviceHandle,
             return OS_COMMAND_NOT_AVAILABLE;
         }
         // copy to cdb, then additional CDB
-        safe_memcpy(sspPassthrough->Parameters.bCDB, 16, sspInputs->cdb, 16);
-        safe_memcpy(sspPassthrough->Parameters.bAdditionalCDB, 24, sspInputs->cdb + 16, sspInputs->cdbLength - 16);
+        M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(sspPassthrough->Parameters.bCDB, 16, sspInputs->cdb, 16),
+                                 "Copying CDB which is always 16 bytes so will never go out of bounds");
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(sspPassthrough->Parameters.bAdditionalCDB, 24, sspInputs->cdb + 16, sspInputs->cdbLength - 16),
+            "Copying additional CDB which is already guarded against overflowing since we check above that total CDB "
+            "length is not greater than 40 bytes");
         sspPassthrough->Parameters.bCDBLength = 16;
         sspPassthrough->Parameters.bAdditionalCDBLength =
             C_CAST(uint8_t, (sspInputs->cdbLength - 16) / sizeof(uint32_t)); // this is in dwords according to the spec
     }
     else
     {
-        safe_memcpy(sspPassthrough->Parameters.bCDB, 16, sspInputs->cdb, sspInputs->cdbLength);
+        M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(sspPassthrough->Parameters.bCDB, 16, sspInputs->cdb, sspInputs->cdbLength),
+                                 "Copying CDB which is always 16 bytes so will never go out of bounds");
         sspPassthrough->Parameters.bCDBLength = sspInputs->cdbLength;
     }
 
     sspPassthrough->Parameters.bConnectionRate = sspInputs->connectionRate;
-    safe_memcpy(sspPassthrough->Parameters.bDestinationSASAddress, 8, sspInputs->destinationSASAddress, 8);
-    safe_memcpy(sspPassthrough->Parameters.bLun, 8, sspInputs->lun, 8);
+    M_IGNORE_SAFE_ERRNO_CALL(
+        safe_memcpy(sspPassthrough->Parameters.bDestinationSASAddress, 8, sspInputs->destinationSASAddress, 8),
+        "The SAS Address is always 8 bytes so this never fails");
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(sspPassthrough->Parameters.bLun, 8, sspInputs->lun, 8),
+                             "The SAS Address is always 8 bytes so this never fails");
     sspPassthrough->Parameters.bPhyIdentifier  = sspInputs->phyIdentifier;
     sspPassthrough->Parameters.bPortIdentifier = sspInputs->portIdentifier;
     sspPassthrough->Parameters.uDataLength     = sspInputs->dataLength;
@@ -2711,7 +2836,12 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE          deviceHandle,
         ioIn.ioctlDirection = CSMI_SAS_DATA_WRITE;
         if (sspInputs->ptrData)
         {
-            safe_memcpy(sspPassthrough->bDataBuffer, sspInputs->dataLength, sspInputs->ptrData, sspInputs->dataLength);
+            if (0 != safe_memcpy(sspPassthrough->bDataBuffer, sspInputs->dataLength, sspInputs->ptrData,
+                                 sspInputs->dataLength))
+            {
+                safe_free_aligned_core(C_CAST(void**, &sspPassthrough));
+                return MEMORY_FAILURE;
+            }
         }
         else
         {
@@ -2738,12 +2868,16 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE          deviceHandle,
             sspPassthrough->Status.bDataPresent & CSMI_SAS_SSP_RESPONSE_DATA_PRESENT)
         {
             // clear read data ptr first
-            safe_memset(sspInputs->ptrData, sspInputs->dataLength, 0, sspInputs->dataLength);
+            explicit_zeroes(sspInputs->ptrData, sspInputs->dataLength);
             if (sspPassthrough->Status.uDataBytes)
             {
                 // copy what we got
-                safe_memcpy(sspInputs->ptrData, sspInputs->dataLength, sspPassthrough->bDataBuffer,
-                            M_Min(sspInputs->dataLength, sspPassthrough->Status.uDataBytes));
+                if (0 != safe_memcpy(sspInputs->ptrData, sspInputs->dataLength, sspPassthrough->bDataBuffer,
+                                     M_Min(sspInputs->dataLength, sspPassthrough->Status.uDataBytes)))
+                {
+                    safe_free_aligned_core(C_CAST(void**, &sspPassthrough));
+                    return MEMORY_FAILURE;
+                }
             }
         }
         if (sspPassthrough->Status.bDataPresent & CSMI_SAS_SSP_SENSE_DATA_PRESENT)
@@ -2752,23 +2886,28 @@ static eReturnValues csmi_SSP_Passthrough(CSMI_HANDLE          deviceHandle,
             if (sspOutputs->senseDataPtr)
             {
                 // clear sense first
-                safe_memset(sspOutputs->senseDataPtr, sspOutputs->senseDataLength, 0, sspOutputs->senseDataLength);
+                explicit_zeroes(sspOutputs->senseDataPtr, sspOutputs->senseDataLength);
                 // now copy what we can
-                safe_memcpy(sspOutputs->senseDataPtr, sspOutputs->senseDataLength, sspPassthrough->Status.bResponse,
-                            M_Min(M_BytesTo2ByteValue(sspPassthrough->Status.bResponseLength[0],
-                                                      sspPassthrough->Status.bResponseLength[1]),
-                                  sspOutputs->senseDataLength));
+                if (0 != safe_memcpy(sspOutputs->senseDataPtr, sspOutputs->senseDataLength,
+                                     sspPassthrough->Status.bResponse,
+                                     M_Min(M_BytesTo2ByteValue(sspPassthrough->Status.bResponseLength[0],
+                                                               sspPassthrough->Status.bResponseLength[1]),
+                                           sspOutputs->senseDataLength)))
+                {
+                    safe_free_aligned_core(C_CAST(void**, &sspPassthrough));
+                    return MEMORY_FAILURE;
+                }
             }
         }
         else // no data
         {
             if (sspInputs->ptrData && sspPassthrough->Parameters.uFlags & CSMI_SAS_SSP_READ)
             {
-                safe_memset(sspInputs->ptrData, sspInputs->dataLength, 0, sspInputs->dataLength);
+                explicit_zeroes(sspInputs->ptrData, sspInputs->dataLength);
             }
             if (sspOutputs->senseDataPtr)
             {
-                safe_memset(sspOutputs->senseDataPtr, sspOutputs->senseDataLength, 0, sspOutputs->senseDataLength);
+                explicit_zeroes(sspOutputs->senseDataPtr, sspOutputs->senseDataLength);
             }
         }
     }
@@ -2793,10 +2932,11 @@ typedef struct s_csmiSTPIn
     uint32_t flags; // read, write, unspecified, must also specify pio, dma, etc for the protocol of the command being
                     // issued.
     uint32_t commandFISLen;
-    M_SIZED_BY(commandFISLen) void*    commandFIS; // pointer to a 20 byte array for a H2D fis.
+    M_SIZED_BY(commandFISLen) void* commandFIS; // pointer to a 20 byte array for a H2D fis.
 
     uint32_t dataLength; // length of data to read or write
-    M_SIZED_BY_OR_NULL(dataLength) uint8_t* ptrData;    // pointer to buffer to use as source for writes. This will be used for reads as well.
+    M_SIZED_BY_OR_NULL(dataLength)
+    uint8_t* ptrData; // pointer to buffer to use as source for writes. This will be used for reads as well.
 
     uint32_t timeoutSeconds;
 } csmiSTPIn, *ptrCsmiSTPIn;
@@ -2804,23 +2944,25 @@ typedef struct s_csmiSTPIn
 typedef struct s_csmiSTPOut
 {
     seatimer_t* stpTimer; // may be null, but incredibly useful for knowing how long a command took
-    uint32_t  statusFISLen;
-    M_SIZED_BY(statusFISLen) uint8_t* statusFIS; // Should not be null. In case of a drive error, this gives you what happened. This should point
+    uint32_t    statusFISLen;
+    M_SIZED_BY(statusFISLen)
+    uint8_t* statusFIS; // Should not be null. In case of a drive error, this gives you what happened. This should point
                         // to a 20 byte array to store the result. May be D2H or PIO Setup depend on the command issued.
-    uint32_t scrLen;  // uint32's not bytes.
-    M_COUNTED_BY_OR_NULL(scrLen) uint32_t* scrPtr; // Optional. This is the current status and control registers value. See SATA spec for more
+    uint32_t scrLen;    // uint32's not bytes.
+    M_COUNTED_BY_OR_NULL(scrLen)
+    uint32_t* scrPtr; // Optional. This is the current status and control registers value. See SATA spec for more
                       // details on the registers that these map to. These are not writable through this interface.
-    uint8_t  connectionStatus;
-    bool     retryAsSSPPassthrough; // This may be set, but will only be set, if the driver does not support STP
-                                    // passthrough, but DOES support taking a SCSI translatable CDB. This cannot tell
+    uint8_t connectionStatus;
+    bool    retryAsSSPPassthrough; // This may be set, but will only be set, if the driver does not support STP
+                                   // passthrough, but DOES support taking a SCSI translatable CDB. This cannot tell
     // whether to use SAT or legacy CSMI passthrough though...that's a trial and error thing
     // unless we figure out which drivers and versions require that. -TJE
 } csmiSTPOut, *ptrCsmiSTPOut;
 
-static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE          deviceHandle,
-                                          uint32_t             controllerNumber,
-                                          ptrCsmiSTPIn         stpInputs,
-                                          ptrCsmiSTPOut        stpOutputs,
+static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE               deviceHandle,
+                                          uint32_t                  controllerNumber,
+                                          ptrCsmiSTPIn              stpInputs,
+                                          ptrCsmiSTPOut             stpOutputs,
                                           const tDevice* M_NULLABLE device)
 {
     eReturnValues                 ret = SUCCESS;
@@ -2828,8 +2970,8 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE          deviceHandle,
     csmiIOout                     ioOut;
     PCSMI_SAS_STP_PASSTHRU_BUFFER stpPassthrough             = M_NULLPTR;
     uint32_t                      stpPassthroughBufferLength = UINT32_C(0);
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
 
     if (!stpInputs || !stpOutputs || !stpInputs->commandFIS ||
         !stpOutputs->statusFIS) // NOTE: other validation is done below.
@@ -2854,27 +2996,41 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE          deviceHandle,
     // ioIn.ioctlDirection = CSMI_SAS_DATA_READ;//This is set below, however it may only need to be set one way....will
     // only knwo when testing on linux since this is used there.
     ioIn.timeoutInSeconds = stpInputs->timeoutSeconds;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
     ioOut.ioctlTimer   = stpOutputs->stpTimer;
 
     // setup stp specific parameters
     // command FIS
 
     stpPassthrough->Parameters.bConnectionRate = stpInputs->connectionRate;
-    safe_memcpy(stpPassthrough->Parameters.bDestinationSASAddress, 8, stpInputs->destinationSASAddress, 8);
+    M_IGNORE_SAFE_ERRNO_CALL(
+        safe_memcpy(stpPassthrough->Parameters.bDestinationSASAddress, 8, stpInputs->destinationSASAddress, 8),
+        "SAS addresses are always 8 bytes and both destination and source are the same size");
     stpPassthrough->Parameters.bPhyIdentifier  = stpInputs->phyIdentifier;
     stpPassthrough->Parameters.bPortIdentifier = stpInputs->portIdentifier;
     stpPassthrough->Parameters.uDataLength     = stpInputs->dataLength;
     stpPassthrough->Parameters.uFlags          = stpInputs->flags;
-    safe_memcpy(stpPassthrough->Parameters.bCommandFIS, 20, stpInputs->commandFIS, H2D_FIS_LENGTH);
+    if (0 != safe_memcpy(stpPassthrough->Parameters.bCommandFIS, 20, stpInputs->commandFIS, H2D_FIS_LENGTH))
+    {
+        safe_free_aligned_core(C_CAST(void**, &stpPassthrough));
+        return MEMORY_FAILURE;
+    }
 
     if (stpPassthrough->Parameters.uFlags & CSMI_SAS_STP_WRITE)
     {
         ioIn.ioctlDirection = CSMI_SAS_DATA_WRITE;
         if (stpInputs->ptrData)
         {
-            safe_memcpy(stpPassthrough->bDataBuffer, stpInputs->dataLength, stpInputs->ptrData, stpInputs->dataLength);
+            if (0 != safe_memcpy(stpPassthrough->bDataBuffer, stpInputs->dataLength, stpInputs->ptrData,
+                                 stpInputs->dataLength))
+            {
+                safe_free_aligned_core(C_CAST(void**, &stpPassthrough));
+                return MEMORY_FAILURE;
+            }
         }
         else
         {
@@ -2904,23 +3060,36 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE          deviceHandle,
         if (stpPassthrough->Parameters.uFlags & CSMI_SAS_STP_READ)
         {
             // clear read data ptr first
-            safe_memset(stpInputs->ptrData, stpInputs->dataLength, 0, stpInputs->dataLength);
+            explicit_zeroes(stpInputs->ptrData, stpInputs->dataLength);
             if (stpPassthrough->Status.uDataBytes)
             {
                 // copy what we got
-                safe_memcpy(stpInputs->ptrData, stpInputs->dataLength, stpPassthrough->bDataBuffer,
-                            M_Min(stpInputs->dataLength, stpPassthrough->Status.uDataBytes));
+                if (0 != safe_memcpy(stpInputs->ptrData, stpInputs->dataLength, stpPassthrough->bDataBuffer,
+                                     M_Min(stpInputs->dataLength, stpPassthrough->Status.uDataBytes)))
+                {
+                    safe_free_aligned_core(C_CAST(void**, &stpPassthrough));
+                    return MEMORY_FAILURE;
+                }
             }
         }
 
         // copy back result
-        safe_memcpy(stpOutputs->statusFIS, stpOutputs->statusFISLen, stpPassthrough->Status.bStatusFIS, D2H_FIS_LENGTH);
+        if (0 != safe_memcpy(stpOutputs->statusFIS, stpOutputs->statusFISLen, stpPassthrough->Status.bStatusFIS,
+                             D2H_FIS_LENGTH))
+        {
+            safe_free_aligned_core(C_CAST(void**, &stpPassthrough));
+            return MEMORY_FAILURE;
+        }
 
         if (stpOutputs->scrPtr)
         {
             // if the caller allocated memory for the SCR data, then copy it back for them
-            safe_memcpy(stpOutputs->scrPtr, stpOutputs->scrLen * sizeof(uint32_t), stpPassthrough->Status.uSCR,
-                        16 * sizeof(uint32_t));
+            if (0 != safe_memcpy(stpOutputs->scrPtr, stpOutputs->scrLen * sizeof(uint32_t), stpPassthrough->Status.uSCR,
+                                 16 * sizeof(uint32_t)))
+            {
+                safe_free_aligned_core(C_CAST(void**, &stpPassthrough));
+                return MEMORY_FAILURE;
+            }
         }
     }
     else
@@ -2935,12 +3104,13 @@ static eReturnValues csmi_STP_Passthrough(CSMI_HANDLE          deviceHandle,
     return ret;
 }
 
-static void print_CSMI_SATA_Signature(const tDevice* M_NULLABLE                device,PCSMI_SAS_SATA_SIGNATURE signature)
+static void print_CSMI_SATA_Signature(const tDevice* M_NULLABLE device, PCSMI_SAS_SATA_SIGNATURE signature)
 {
     if (signature)
     {
         print_str("\n====CSMI SATA Signature====\n");
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPhy Identifier: %" CPRIu8 "\n", signature->bPhyIdentifier);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPhy Identifier: %" CPRIu8 "\n",
+                                               signature->bPhyIdentifier);
         print_str("\tSignature FIS:\n");
         print_tDevice_Verbose_FIS(device, VERBOSITY_COMMAND_VERBOSE, signature->bSignatureFIS, 20);
         print_str("\n");
@@ -2953,14 +3123,14 @@ csmi_Get_SATA_Signature(CSMI_HANDLE                               deviceHandle,
                         uint32_t                                  controllerNumber,
                         PCSMI_SAS_SATA_SIGNATURE_BUFFER M_NONNULL sataSignatureBuffer,
                         uint8_t                                   phyIdentifier,
-                        const tDevice* M_NULLABLE                device)
+                        const tDevice* M_NULLABLE                 device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(sataSignatureBuffer, sizeof(CSMI_SAS_SATA_SIGNATURE_BUFFER), 0, sizeof(CSMI_SAS_SATA_SIGNATURE_BUFFER));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(sataSignatureBuffer, sizeof(CSMI_SAS_SATA_SIGNATURE_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -2971,8 +3141,11 @@ csmi_Get_SATA_Signature(CSMI_HANDLE                               deviceHandle,
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_SATA_SIGNATURE;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     sataSignatureBuffer->Signature.bPhyIdentifier = phyIdentifier;
 
@@ -3000,19 +3173,27 @@ static void print_CSMI_Get_SCSI_Address(const tDevice* M_NULLABLE device, PCSMI_
     if (scsiAddress)
     {
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n====CSMI Get SCSI Address====\n");
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tProvided SAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
-               "%02" CPRIX8 "%02" CPRIX8 "h\n",
-               scsiAddress->bSASAddress[0], scsiAddress->bSASAddress[1], scsiAddress->bSASAddress[2],
-               scsiAddress->bSASAddress[3], scsiAddress->bSASAddress[4], scsiAddress->bSASAddress[5],
-               scsiAddress->bSASAddress[6], scsiAddress->bSASAddress[7]);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tProvided SAS Lun: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
-               "%02" CPRIX8 "%02" CPRIX8 "h\n",
-               scsiAddress->bSASLun[0], scsiAddress->bSASLun[1], scsiAddress->bSASLun[2], scsiAddress->bSASLun[3],
-               scsiAddress->bSASLun[4], scsiAddress->bSASLun[5], scsiAddress->bSASLun[6], scsiAddress->bSASLun[7]);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tHost Index: %" CPRIu8 "\n", scsiAddress->bHostIndex);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPath ID: %" CPRIu8 "\n", scsiAddress->bPathId);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tTarget ID: %" CPRIu8 "\n", scsiAddress->bTargetId);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tLUN: %" CPRIu8 "\n", scsiAddress->bLun);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "\tProvided SAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+                                               "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "h\n",
+                                               scsiAddress->bSASAddress[0], scsiAddress->bSASAddress[1],
+                                               scsiAddress->bSASAddress[2], scsiAddress->bSASAddress[3],
+                                               scsiAddress->bSASAddress[4], scsiAddress->bSASAddress[5],
+                                               scsiAddress->bSASAddress[6], scsiAddress->bSASAddress[7]);
+        print_tDevice_Verbose_Formatted_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
+            "\tProvided SAS Lun: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+            "%02" CPRIX8 "%02" CPRIX8 "h\n",
+            scsiAddress->bSASLun[0], scsiAddress->bSASLun[1], scsiAddress->bSASLun[2], scsiAddress->bSASLun[3],
+            scsiAddress->bSASLun[4], scsiAddress->bSASLun[5], scsiAddress->bSASLun[6], scsiAddress->bSASLun[7]);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tHost Index: %" CPRIu8 "\n",
+                                               scsiAddress->bHostIndex);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPath ID: %" CPRIu8 "\n",
+                                               scsiAddress->bPathId);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tTarget ID: %" CPRIu8 "\n",
+                                               scsiAddress->bTargetId);
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tLUN: %" CPRIu8 "\n",
+                                               scsiAddress->bLun);
     }
 }
 
@@ -3021,15 +3202,14 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE           
                                                           PCSMI_SAS_GET_SCSI_ADDRESS_BUFFER M_NONNULL scsiAddressBuffer,
                                                           uint8_t                                     sasAddress[8],
                                                           uint8_t                                     lun[8],
-                                                          const tDevice* M_NULLABLE                 device)
+                                                          const tDevice* M_NULLABLE                   device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(scsiAddressBuffer, sizeof(CSMI_SAS_GET_SCSI_ADDRESS_BUFFER), 0,
-                sizeof(CSMI_SAS_GET_SCSI_ADDRESS_BUFFER));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(scsiAddressBuffer, sizeof(CSMI_SAS_GET_SCSI_ADDRESS_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -3040,11 +3220,16 @@ OPENSEA_TRANSPORT_API eReturnValues csmi_Get_SCSI_Address(CSMI_HANDLE           
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_SCSI_ADDRESS;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
-    safe_memcpy(scsiAddressBuffer->bSASAddress, 8, sasAddress, 8);
-    safe_memcpy(scsiAddressBuffer->bSASLun, 8, lun, 8);
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(scsiAddressBuffer->bSASAddress, 8, sasAddress, 8),
+                             "The SAS Address is always 8 bytes so this never fails");
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(scsiAddressBuffer->bSASLun, 8, lun, 8),
+                             "The SAS Address is always 8 bytes so this never fails");
 
     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get SCSI Address");
     // issue command
@@ -3098,10 +3283,9 @@ csmi_Get_Device_Address(CSMI_HANDLE                                   deviceHand
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(deviceAddressBuffer, sizeof(CSMI_SAS_GET_DEVICE_ADDRESS_BUFFER), 0,
-                sizeof(CSMI_SAS_GET_DEVICE_ADDRESS_BUFFER));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(deviceAddressBuffer, sizeof(CSMI_SAS_GET_DEVICE_ADDRESS_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -3112,8 +3296,11 @@ csmi_Get_Device_Address(CSMI_HANDLE                                   deviceHand
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_DEVICE_ADDRESS;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     deviceAddressBuffer->bHostIndex = hostIndex;
     deviceAddressBuffer->bPathId    = path;
@@ -3156,8 +3343,10 @@ static void print_CSMI_Connector_Info(const tDevice* M_NULLABLE device, PCSMI_SA
             {
                 break;
             }
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t----Connector %" CPRIu8 "----\n", iter);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tConnector: %s\n", connectorInfo->Reference[iter].bConnector);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                   "\t----Connector %" CPRIu8 "----\n", iter);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tConnector: %s\n",
+                                                   connectorInfo->Reference[iter].bConnector);
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPinout: \n");
             if (connectorInfo->Reference[iter].uPinout == 0)
             {
@@ -3218,7 +3407,9 @@ static void print_CSMI_Connector_Info(const tDevice* M_NULLABLE device, PCSMI_SA
                     (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_B) ||
                     (connectorInfo->Reference[iter].uPinout & CSMI_SAS_CON_RESERVED_C))
                 {
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\t\tReserved - %08" CPRIX32 "\n", connectorInfo->Reference[iter].uPinout);
+                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                           "\t\t\tReserved - %08" CPRIX32 "\n",
+                                                           connectorInfo->Reference[iter].uPinout);
                 }
             }
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tLocation: \n");
@@ -3269,14 +3460,14 @@ OPENSEA_TRANSPORT_API eReturnValues
 csmi_Get_Connector_Info(CSMI_HANDLE                               deviceHandle,
                         uint32_t                                  controllerNumber,
                         PCSMI_SAS_CONNECTOR_INFO_BUFFER M_NONNULL connectorInfoBuffer,
-                        const tDevice* M_NULLABLE                device)
+                        const tDevice* M_NULLABLE                 device)
 {
     eReturnValues ret = SUCCESS;
     csmiIOin      ioIn;
     csmiIOout     ioOut;
-    safe_memset(&ioIn, sizeof(csmiIOin), 0, sizeof(csmiIOin));
-    safe_memset(&ioOut, sizeof(csmiIOout), 0, sizeof(csmiIOout));
-    safe_memset(connectorInfoBuffer, sizeof(CSMI_SAS_CONNECTOR_INFO_BUFFER), 0, sizeof(CSMI_SAS_CONNECTOR_INFO_BUFFER));
+    M_INITIALIZE_STRUCTURE(&ioIn, sizeof(csmiIOin));
+    M_INITIALIZE_STRUCTURE(&ioOut, sizeof(csmiIOout));
+    M_INITIALIZE_STRUCTURE(connectorInfoBuffer, sizeof(CSMI_SAS_CONNECTOR_INFO_BUFFER));
 
     // setup inputs
     ioIn.controllerNumber = controllerNumber;
@@ -3287,8 +3478,11 @@ csmi_Get_Connector_Info(CSMI_HANDLE                               deviceHandle,
     ioIn.ioctlCode        = CC_CSMI_SAS_GET_CONNECTOR_INFO;
     ioIn.ioctlDirection   = CSMI_SAS_DATA_READ;
     ioIn.timeoutInSeconds = CSMI_SAS_TIMEOUT;
-    safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE));
-    ioIn.device = device;
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(ioIn.ioctlSignature, 8, CSMI_SAS_SIGNATURE, safe_strlen(CSMI_SAS_SIGNATURE)),
+                             "All signatures are defined by CSMI to fit within Windows's 8 byte signature "
+                             "requirements. This should always pass!");
+    ioIn.csmiVerbosity = get_Device_Verbosity(device);
+    ioIn.device        = device;
 
     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_NAMES, "Sending CSMI Get Connector Info");
     // issue command
@@ -3355,11 +3549,10 @@ bool handle_Supports_CSMI_IO(CSMI_HANDLE deviceHandle, const tDevice* M_NULLABLE
         CSMI_SAS_DRIVER_INFO_BUFFER  driverInfo;
         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
         CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
-        safe_memset(&driverInfo, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER), 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
-        safe_memset(&controllerConfig, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER), 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
-        safe_memset(&controllerStatus, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER), 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
-        if (SUCCESS ==
-            csmi_Get_Basic_Info(deviceHandle, 0, &driverInfo, &controllerConfig, &controllerStatus, device))
+        M_INITIALIZE_STRUCTURE(&driverInfo, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
+        M_INITIALIZE_STRUCTURE(&controllerConfig, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+        M_INITIALIZE_STRUCTURE(&controllerStatus, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
+        if (SUCCESS == csmi_Get_Basic_Info(deviceHandle, 0, &driverInfo, &controllerConfig, &controllerStatus, device))
         {
             csmiSupported = true;
         }
@@ -3415,9 +3608,9 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
         CSMI_SAS_DRIVER_INFO_BUFFER  driverInfo;
         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
         CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
-        safe_memset(&driverInfo, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER), 0, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
-        safe_memset(&controllerConfig, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER), 0, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
-        safe_memset(&controllerStatus, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER), 0, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
+        M_INITIALIZE_STRUCTURE(&driverInfo, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
+        M_INITIALIZE_STRUCTURE(&controllerConfig, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+        M_INITIALIZE_STRUCTURE(&controllerStatus, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
 #    if defined(CSMI_DEBUG)
         print_str("JSCI: Getting driver Info, controller config, and controller status\n");
 #    endif // CSMI_DEBUG
@@ -3450,8 +3643,12 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
                                                    device->os_info.csmiDeviceData->controllerNumber, &addressBuffer,
                                                    hostController, pathidBus, targetID, lun, device))
             {
-                safe_memcpy(device->os_info.csmiDeviceData->sasAddress, 8, addressBuffer.bSASAddress, 8);
-                safe_memcpy(device->os_info.csmiDeviceData->sasLUN, 8, addressBuffer.bSASLun, 8);
+                M_IGNORE_SAFE_ERRNO_CALL(
+                    safe_memcpy(device->os_info.csmiDeviceData->sasAddress, 8, addressBuffer.bSASAddress, 8),
+                    "The SAS Address is always 8 bytes so this never fails");
+                M_IGNORE_SAFE_ERRNO_CALL(
+                    safe_memcpy(device->os_info.csmiDeviceData->sasLUN, 8, addressBuffer.bSASLun, 8),
+                    "The SAS Address is always 8 bytes so this never fails");
                 gotSASAddress = true;
 #    if defined(CSMI_DEBUG)
                 print_str("JSCI: Successfully got SAS address\n");
@@ -3477,8 +3674,8 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
 #    if defined(CSMI_DEBUG)
                     print_str("JSCI: Getting RAID info\n");
 #    endif // CSMI_DEBUG
-                    if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle, 0, &raidInfo,
-                                                      device))
+                    if (SUCCESS ==
+                        csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle, 0, &raidInfo, device))
                     {
 #    if defined(CSMI_DEBUG)
                         printf("JSCI: Checking RAID sets. Number of RAID sets: %" CPRIu32 "\n",
@@ -3552,11 +3749,16 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
                                                         device->drive_info.serialNumber))
                                                 {
                                                     // Found the match!!!
-                                                    safe_memcpy(device->os_info.csmiDeviceData->sasAddress, 8,
-                                                                raidConfig->Configuration.Drives[driveIter].bSASAddress,
-                                                                8);
-                                                    safe_memcpy(device->os_info.csmiDeviceData->sasLUN, 8,
-                                                                raidConfig->Configuration.Drives[driveIter].bSASLun, 8);
+                                                    M_IGNORE_SAFE_ERRNO_CALL(
+                                                        safe_memcpy(
+                                                            device->os_info.csmiDeviceData->sasAddress, 8,
+                                                            raidConfig->Configuration.Drives[driveIter].bSASAddress, 8),
+                                                        "The SAS Address is always 8 bytes so this never fails");
+                                                    M_IGNORE_SAFE_ERRNO_CALL(
+                                                        safe_memcpy(device->os_info.csmiDeviceData->sasLUN, 8,
+                                                                    raidConfig->Configuration.Drives[driveIter].bSASLun,
+                                                                    8),
+                                                        "The SAS Address is always 8 bytes so this never fails");
                                                     // Intel drivers are known to support a SASAddress that is all
                                                     // zeroes as a valid address, so trust this result for these drivers
                                                     // -TJE
@@ -3603,8 +3805,7 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
             print_str("JSCI: Getting Phy info\n");
 #    endif // CSMI_DEBUG
             if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle,
-                                             device->os_info.csmiDeviceData->controllerNumber, &phyInfo,
-                                             device))
+                                             device->os_info.csmiDeviceData->controllerNumber, &phyInfo, device))
             {
                 // TODO: Is there a better way to match against the port identifier with the address information
                 // provided? match to attached port or phy identifier???
@@ -3642,7 +3843,7 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
                             print_str("JSCI: No SAS address to match. Attempting passthrough commands to match\n");
 #    endif // CSMI_DEBUG
                             ScsiIoCtx csmiPTCmd;
-                            safe_memset(&csmiPTCmd, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
+                            M_INITIALIZE_STRUCTURE(&csmiPTCmd, sizeof(ScsiIoCtx));
                             csmiPTCmd.device        = device;
                             csmiPTCmd.timeout       = DEFAULT_COMMAND_TIMEOUT;
                             csmiPTCmd.direction     = XFER_DATA_IN;
@@ -3657,8 +3858,10 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
                                 phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier;
                             device->os_info.csmiDeviceData->portProtocol =
                                 phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol;
-                            safe_memcpy(&device->os_info.csmiDeviceData->sasAddress[0], 8,
-                                        phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8);
+                            M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(&device->os_info.csmiDeviceData->sasAddress[0], 8,
+                                                                 phyInfo.Information.Phy[phyIter].Attached.bSASAddress,
+                                                                 8),
+                                                     "The SAS Address is always 8 bytes so this never fails");
                             // Attempt passthrough command and compare identifying data.
                             // for this to work, SCSIIoCTX structure must be manually defined for what we want to do
                             // right now and call the CSMI IO directly...not great, but don't want to have other force
@@ -3717,7 +3920,9 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
                                 cdb[CDB_5] = 0; // control
 
                                 csmiPTCmd.cdbLength = CDB_LEN_6;
-                                safe_memcpy(csmiPTCmd.cdb, SCSI_IO_CTX_MAX_CDB_LEN, cdb, 6);
+                                M_IGNORE_SAFE_ERRNO_CALL(
+                                    safe_memcpy(csmiPTCmd.cdb, SCSI_IO_CTX_MAX_CDB_LEN, cdb, 6),
+                                    "This copy will always succeed due to CDB being much larger than 6 bytes");
                                 csmiPTCmd.dataLength = 96;
                                 csmiPTCmd.pdata      = inqData;
 #    if defined(CSMI_DEBUG)
@@ -3731,15 +3936,16 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
                                     // matches, send inquiry to unit SN vpd page to confirm we have a matching SN
                                     DECLARE_ZERO_INIT_ARRAY(char, inqVendor, 9);
                                     DECLARE_ZERO_INIT_ARRAY(char, inqProductID, 17);
-                                    // DECLARE_ZERO_INIT_ARRAY(char, inqProductRev, 5);
                                     // copy the strings
-                                    safe_memcpy(inqVendor, 9, &inqData[8], 8);
-                                    safe_memcpy(inqProductID, 17, &inqData[16], 16);
-                                    // safe_memcpy(inqProductRev, 5, &inqData[32], 4);
+                                    M_IGNORE_SAFE_ERRNO_CALL(
+                                        safe_memcpy(inqVendor, 9, &inqData[8], 8),
+                                        "This copy will always succeed due to inqVendor being larger than 8 bytes");
+                                    M_IGNORE_SAFE_ERRNO_CALL(
+                                        safe_memcpy(inqProductID, 17, &inqData[16], 16),
+                                        "This copy will always succeed due to inqProductID being larger than 16 bytes");
                                     // remove whitespace
                                     remove_Leading_And_Trailing_Whitespace_Len(inqVendor, 9);
                                     remove_Leading_And_Trailing_Whitespace_Len(inqProductID, 17);
-                                    // remove_Leading_And_Trailing_Whitespace_Len(inqProductRev, 5);
                                     // compare to tDevice
 #    if defined(CSMI_DEBUG)
                                     print_str("JSCI: Inquiry Successful\n");
@@ -3752,7 +3958,7 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
 #    endif // CSMI_DEBUG
            // now read the unit SN VPD page since this matches so far that way we can compare the serial number. Not
            // checking SCSI 2 since every SAS drive *SHOULD* support this.
-                                        safe_memset(inqData, 96, 0, 96);
+                                        explicit_zeroes(inqData, 96);
                                         // change CDB to read unit SN page
                                         cdb[CDB_1] |= BIT0;
                                         cdb[CDB_2] = UNIT_SERIAL_NUMBER;
@@ -3768,10 +3974,11 @@ OPENSEA_TRANSPORT_API eReturnValues jbod_Setup_CSMI_Info(M_ATTR_UNUSED CSMI_HAND
                                                 char*, safe_calloc(serialNumberLength, sizeof(char)));
                                             if (serialNumber)
                                             {
-                                                safe_memcpy(
-                                                    serialNumber, serialNumberLength, &inqData[4],
-                                                    serialNumberLength -
-                                                        1); // minus 1 to leave null terminator in tact at the end
+                                                M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(serialNumber, serialNumberLength,
+                                                                                     &inqData[4],
+                                                                                     serialNumberLength - 1),
+                                                                         "Always copies 1 less than size, so always "
+                                                                         "succeeds and leaves null terminated");
                                                 if (strcmp(serialNumber, device->drive_info.serialNumber) == 0)
                                                 {
 #    if defined(CSMI_DEBUG)
@@ -4137,8 +4344,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
         print_str("GRD: Getting driver info\n");
 #    endif // CSMI_DEBUG
         if (SUCCESS == csmi_Get_Driver_Info(device->os_info.csmiDeviceData->csmiDevHandle,
-                                            device->os_info.csmiDeviceData->controllerNumber, &driverInfo,
-                                            device))
+                                            device->os_info.csmiDeviceData->controllerNumber, &driverInfo, device))
         {
             device->os_info.csmiDeviceData->csmiMajorVersion = driverInfo.Information.usCSMIMajorRevision;
             device->os_info.csmiDeviceData->csmiMinorVersion = driverInfo.Information.usCSMIMinorRevision;
@@ -4215,8 +4421,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
            //       something we want to detect in the future to reduce the number of IOCTLs sent, but for now, it works
            //       ok. We can optimize this more later. -TJE
             if (SUCCESS == csmi_Get_Phy_Info(device->os_info.csmiDeviceData->csmiDevHandle,
-                                             device->os_info.csmiDeviceData->controllerNumber, &phyInfo,
-                                             device))
+                                             device->os_info.csmiDeviceData->controllerNumber, &phyInfo, device))
             {
                 // Using the data we've already gotten, we need to save phy identifier, port identifier, port protocol,
                 // and SAS address.
@@ -4248,8 +4453,9 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
 #    endif // CSMI_DEBUG
                         device->os_info.csmiDeviceData->portProtocol =
                             phyInfo.Information.Phy[portNum].Attached.bTargetPortProtocol;
-                        safe_memcpy(device->os_info.csmiDeviceData->sasAddress, 8,
-                                    phyInfo.Information.Phy[portNum].Attached.bSASAddress, 8);
+                        M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(device->os_info.csmiDeviceData->sasAddress, 8,
+                                                             phyInfo.Information.Phy[portNum].Attached.bSASAddress, 8),
+                                                 "The SAS Address is always 8 bytes so this never fails");
                         // foundPhyInfoForDevice = true;
                         break;
                     }
@@ -4274,8 +4480,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
                 print_str("GRD: Getting RAID info\n");
 #    endif // CSMI_DEBUG
                 if (SUCCESS == csmi_Get_RAID_Info(device->os_info.csmiDeviceData->csmiDevHandle,
-                                                  device->os_info.csmiDeviceData->controllerNumber, &raidInfo,
-                                                  device))
+                                                  device->os_info.csmiDeviceData->controllerNumber, &raidInfo, device))
                 {
                     bool foundDrive = false;
 #    if defined(CSMI_DEBUG)
@@ -4334,8 +4539,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
                                                        device->os_info.csmiDeviceData->csmiDevHandle,
                                                        device->os_info.csmiDeviceData->controllerNumber, &scsiAddress,
                                                        raidConfig->Configuration.Drives[driveIter].bSASAddress,
-                                                       raidConfig->Configuration.Drives[driveIter].bSASLun,
-                                                       device))
+                                                       raidConfig->Configuration.Drives[driveIter].bSASLun, device))
                                     {
 #    if defined(CSMI_DEBUG)
                                         print_str("GRD: Got SCSI address\n");
@@ -4351,8 +4555,10 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
                                             device->os_info.csmiDeviceData->scsiAddress.targetId =
                                                 scsiAddress.bTargetId;
                                             device->os_info.csmiDeviceData->scsiAddress.lun = scsiAddress.bLun;
-                                            safe_memcpy(device->os_info.csmiDeviceData->sasLUN, 8,
-                                                        raidConfig->Configuration.Drives[driveIter].bSASLun, 8);
+                                            M_IGNORE_SAFE_ERRNO_CALL(
+                                                safe_memcpy(device->os_info.csmiDeviceData->sasLUN, 8,
+                                                            raidConfig->Configuration.Drives[driveIter].bSASLun, 8),
+                                                "The SAS Address is always 8 bytes so this never fails");
                                             device->os_info.csmiDeviceData->scsiAddressValid = true;
                                             foundDrive                                       = true;
                                         }
@@ -4400,14 +4606,16 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device(const char* M_NONNULL f
                 // get sata signature fis and set pmport
                 if (SUCCESS == csmi_Get_SATA_Signature(device->os_info.csmiDeviceData->csmiDevHandle,
                                                        device->os_info.csmiDeviceData->controllerNumber, &signature,
-                                                       device->os_info.csmiDeviceData->phyIdentifier,
-                                                       device))
+                                                       device->os_info.csmiDeviceData->phyIdentifier, device))
                 {
 #    if defined(CSMI_DEBUG)
                     print_str("GRD: Got SATA signature\n");
 #    endif // CSMI_DEBUG
-                    safe_memcpy(&device->os_info.csmiDeviceData->signatureFIS, sizeof(sataD2HFis),
-                                &signature.Signature.bSignatureFIS, sizeof(sataD2HFis));
+                    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(&device->os_info.csmiDeviceData->signatureFIS,
+                                                         sizeof(sataD2HFis), &signature.Signature.bSignatureFIS,
+                                                         sizeof(sataD2HFis)),
+                                             "This copy will always succeed due to signatureFIS being the same "
+                                             "structure on both sides and therefore equivalent in size");
                     device->os_info.csmiDeviceData->signatureFISValid = true;
                     device->os_info.csmiDeviceData->sataPMPort =
                         M_Nibble0(device->os_info.csmiDeviceData->signatureFIS
@@ -4669,10 +4877,10 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
     CSMI_HANDLE fd = CSMI_INVALID_HANDLE;
 #    if defined(_WIN32)
     DECLARE_ZERO_INIT_ARRAY(TCHAR, deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH);
-#    else                                                          //_WIN32
+#    else                                            //_WIN32
     DECLARE_ZERO_INIT_ARRAY(char, deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH);
-#    endif                                                         //_WIN32
-    tDevice             dummyDevice           = {0};               // dummy device for function calls
+#    endif                                           //_WIN32
+    tDevice             dummyDevice           = {0}; // dummy device for function calls
     ptrRaidHandleToScan raidList              = M_NULLPTR;
     ptrRaidHandleToScan previousRaidListEntry = M_NULLPTR;
     uint32_t            controllerNumber      = UINT32_C(0);
@@ -4680,7 +4888,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
     uint32_t            raidConfigDrivesFound = UINT32_C(0);
     uint32_t            phyInfoDrivesFound    = UINT32_C(0);
 
-    dummyDevice.deviceVerbosity = VERBOSITY_DEFAULT;  // set default
+    dummyDevice.deviceVerbosity = VERBOSITY_DEFAULT; // set default
     if (flags & GET_DEVICE_FUNCS_VERBOSE_COMMAND_NAMES)
     {
         dummyDevice.deviceVerbosity = VERBOSITY_COMMAND_NAMES;
@@ -4693,7 +4901,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
     {
         dummyDevice.deviceVerbosity = VERBOSITY_BUFFERS;
     }
-    dummyDevice.verboseOutputStream = stdout;  // set output stream for verbose output
+    dummyDevice.verboseOutputStream = stdout; // set output stream for verbose output
 
 #    if defined(CSMI_DEBUG)
     print_str("GDC: Begin\n");
@@ -4721,7 +4929,11 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
         if (raidList->raidHint.csmiRAID || raidList->raidHint.unknownRAID)
         {
 #    if defined(_WIN32)
-            _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
+            if (0 > _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle))
+            {
+                perror("Error formatting Windows device name during CSMI get_Device_List");
+                continue;
+            }
             // lets try to open the controller.
             fd = CreateFile(deviceName,
                             GENERIC_WRITE | GENERIC_READ, // FILE_ALL_ACCESS,
@@ -4734,7 +4946,11 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
                             M_NULLPTR);
             if (fd != INVALID_HANDLE_VALUE)
 #    else
-            snprintf_err_handle(deviceName, SIZE_OF_STACK_ARRAY(deviceName), "%s", raidList->handle);
+            if (0 != safe_strcpy(deviceName, SIZE_OF_STACK_ARRAY(deviceName), raidList->handle))
+            {
+                perror("Error copying handle value during CSMI get_Device_List (likely truncation)");
+                continue;
+            }
             if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)
 #    endif
             {
@@ -4749,12 +4965,10 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
                     CSMI_SAS_DRIVER_INFO_BUFFER  driverInfo;
                     CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
                     CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
-                    safe_memset(&driverInfo, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER), 0,
-                                sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
-                    safe_memset(&controllerConfig, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER), 0,
-                                sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
-                    safe_memset(&controllerStatus, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER), 0,
-                                sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
+
+                    M_INITIALIZE_STRUCTURE(&driverInfo, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
+                    M_INITIALIZE_STRUCTURE(&controllerConfig, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+                    M_INITIALIZE_STRUCTURE(&controllerStatus, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
 #    if defined(CSMI_DEBUG)
                     print_str("GDC: Getting controller config, controller status, and driver info\n");
 #    endif // CSMI_DEBUG
@@ -4925,8 +5139,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
                                 // Need to check the phy info as a fall back since there is not enough information to
                                 // uniquely identify all drives attached to this CSMI driver.
                                 CSMI_SAS_PHY_INFO_BUFFER phyInfo;
-                                safe_memset(&phyInfo, sizeof(CSMI_SAS_PHY_INFO_BUFFER), 0,
-                                            sizeof(CSMI_SAS_PHY_INFO_BUFFER));
+                                M_INITIALIZE_STRUCTURE(&phyInfo, sizeof(CSMI_SAS_PHY_INFO_BUFFER));
 #    if defined(CSMI_DEBUG)
                                 print_str("GDC: Getting phy info due to incomplete RAID configuration info.\n");
 #    endif // CSMI_DEBUG
@@ -4957,7 +5170,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
 #    endif // CSMI_DEBUG
            // Creating a temporary tDevice structure to use for the passthrough commands.-TJE
                                         tDevice tempDevice;
-                                        safe_memset(&tempDevice, sizeof(tDevice), 0, sizeof(tDevice));
+                                        M_INITIALIZE_STRUCTURE(&tempDevice, sizeof(tDevice));
                                         tempDevice.os_info.minimumAlignment =
                                             sizeof(void*); // setting alignment this way to be compatible across OSs
                                                            // since CSMI doesn't really dictate an alignment, but we
@@ -4979,7 +5192,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
                                         tempDevice.os_info.csmiDeviceData->controllerNumber    = controllerNumber;
                                         tempDevice.os_info.csmiDeviceData->csmiDeviceInfoValid = true;
                                         ScsiIoCtx csmiPTCmd;
-                                        safe_memset(&csmiPTCmd, sizeof(ScsiIoCtx), 0, sizeof(ScsiIoCtx));
+                                        M_INITIALIZE_STRUCTURE(&csmiPTCmd, sizeof(ScsiIoCtx));
                                         csmiPTCmd.device        = &tempDevice;
                                         csmiPTCmd.timeout       = DEFAULT_COMMAND_TIMEOUT;
                                         csmiPTCmd.direction     = XFER_DATA_IN;
@@ -4995,8 +5208,10 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
                                             phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier;
                                         tempDevice.os_info.csmiDeviceData->portProtocol =
                                             phyInfo.Information.Phy[phyIter].Attached.bTargetPortProtocol;
-                                        safe_memcpy(&tempDevice.os_info.csmiDeviceData->sasAddress[0], 8,
-                                                    phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8);
+                                        M_IGNORE_SAFE_ERRNO_CALL(
+                                            safe_memcpy(&tempDevice.os_info.csmiDeviceData->sasAddress[0], 8,
+                                                        phyInfo.Information.Phy[phyIter].Attached.bSASAddress, 8),
+                                            "The SAS Address is always 8 bytes so this never fails");
                                         // Attempt passthrough command and compare identifying data.
                                         // for this to work, SCSIIoCTX structure must be manually defined for what we
                                         // want to do right now and call the CSMI IO directly...not great, but don't
@@ -5055,7 +5270,10 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_Count(uint32_t* M_NONNU
                                             cdb[CDB_5] = 0; // control
 
                                             csmiPTCmd.cdbLength = CDB_LEN_6;
-                                            safe_memcpy(csmiPTCmd.cdb, SCSI_IO_CTX_MAX_CDB_LEN, cdb, 6);
+                                            M_IGNORE_SAFE_ERRNO_CALL(
+                                                safe_memcpy(csmiPTCmd.cdb, SCSI_IO_CTX_MAX_CDB_LEN, cdb, 6),
+                                                "This copy will always succeed due to csmiPTCmd.cdb being larger than "
+                                                "6 bytes");
                                             csmiPTCmd.dataLength = 96;
                                             csmiPTCmd.pdata      = inqData;
 #    if defined(CSMI_DEBUG)
@@ -5251,7 +5469,11 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                     printf("WARNING: Unable to scan controller number! raid handle = %s\n", raidList->handle);
                 }
 
-                _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle);
+                if (0 > _stprintf_s(deviceName, CSMI_WIN_MAX_DEVICE_NAME_LENGTH, TEXT("%hs"), raidList->handle))
+                {
+                    perror("Error formatting Windows device name during CSMI get_Device_List");
+                    continue;
+                }
                 // lets try to open the controller.
                 fd = CreateFile(deviceName,
                                 GENERIC_WRITE | GENERIC_READ, // FILE_ALL_ACCESS,
@@ -5264,7 +5486,11 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                 M_NULLPTR);
                 if (fd != INVALID_HANDLE_VALUE)
 #    else  //_WIN32
-                snprintf_err_handle(deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH, "%s", raidList->handle);
+                if (0 != safe_strcpy(deviceName, CSMI_NIX_MAX_DEVICE_NAME_LENGTH, raidList->handle))
+                {
+                    perror("Error copying handle value during CSMI get_Device_List (likely truncation)");
+                    continue;
+                }
                 if ((fd = open(deviceName, O_RDWR | O_NONBLOCK)) >= 0)
 #    endif //_WIN32
                 {
@@ -5280,12 +5506,11 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                         CSMI_SAS_DRIVER_INFO_BUFFER  driverInfo;
                         CSMI_SAS_CNTLR_CONFIG_BUFFER controllerConfig;
                         CSMI_SAS_CNTLR_STATUS_BUFFER controllerStatus;
-                        safe_memset(&driverInfo, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER), 0,
-                                    sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
-                        safe_memset(&controllerConfig, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER), 0,
-                                    sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
-                        safe_memset(&controllerStatus, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER), 0,
-                                    sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
+
+                        M_INITIALIZE_STRUCTURE(&driverInfo, sizeof(CSMI_SAS_DRIVER_INFO_BUFFER));
+                        M_INITIALIZE_STRUCTURE(&controllerConfig, sizeof(CSMI_SAS_CNTLR_CONFIG_BUFFER));
+                        M_INITIALIZE_STRUCTURE(&controllerStatus, sizeof(CSMI_SAS_CNTLR_STATUS_BUFFER));
+
 #    if defined(CSMI_DEBUG)
                         print_str("GDL: Getting controller config, controller status, and driver info\n");
 #    endif // CSMI_DEBUG
@@ -5392,9 +5617,9 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
 #    if defined(CSMI_DEBUG)
                                         print_str("GDL: getting RAID config\n");
 #    endif // CSMI_DEBUG
-                                        if (SUCCESS ==
-                                            csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig, raidConfigLength,
-                                                                 raidSet, CSMI_SAS_RAID_DATA_DRIVES, d))
+                                        if (SUCCESS == csmi_Get_RAID_Config(fd, controllerNumber, csmiRAIDConfig,
+                                                                            raidConfigLength, raidSet,
+                                                                            CSMI_SAS_RAID_DATA_DRIVES, d))
                                         {
 #    if defined(CSMI_DEBUG)
                                             printf("GDL: Checking drive usage in each RAID config. Max Drives per set: "
@@ -5486,11 +5711,18 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                             // documentation
                                                             //\\.\SCSI?: number is needed in windows, this is the
                                                             // controllerNumber in Windows.
-                                                            snprintf_err_handle(handle, RAID_HANDLE_STRING_MAX_LEN,
-                                                                                "csmi:%" CPRIu8 ":N:%" CPRIu8
-                                                                                ":%" CPRIu8 ":%" CPRIu8,
-                                                                                controllerNumber, path, target, lun);
-                                                            foundDevice = true;
+                                                            if (0 > snprintf_err_handle(
+                                                                        handle, RAID_HANDLE_STRING_MAX_LEN,
+                                                                        "csmi:%" CPRIu8 ":N:%" CPRIu8 ":%" CPRIu8
+                                                                        ":%" CPRIu8,
+                                                                        controllerNumber, path, target, lun))
+                                                            {
+                                                                perror("Error formatting CSMI Raid handle string\n");
+                                                            }
+                                                            else
+                                                            {
+                                                                foundDevice = true;
+                                                            }
 #        if defined(CSMI_DEBUG)
                                                             printf(
                                                                 "GDL: Intel NVMe detected, setting up handle as %s\n",
@@ -5614,16 +5846,21 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                                         {
                                                                         case CSMI_SAS_END_DEVICE:
                                                                             foundDevice = true;
-                                                                            snprintf_err_handle(
-                                                                                handle, RAID_HANDLE_STRING_MAX_LEN,
-                                                                                "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8
-                                                                                ":%" CPRIu8,
-                                                                                controllerNumber,
-                                                                                phyInfo.Information.Phy[phyIter]
-                                                                                    .bPortIdentifier,
-                                                                                phyInfo.Information.Phy[phyIter]
-                                                                                    .Attached.bPhyIdentifier,
-                                                                                lun);
+                                                                            if (0 > snprintf_err_handle(
+                                                                                        handle,
+                                                                                        RAID_HANDLE_STRING_MAX_LEN,
+                                                                                        "csmi:%" CPRIu8 ":%" CPRIu8
+                                                                                        ":%" CPRIu8 ":%" CPRIu8,
+                                                                                        controllerNumber,
+                                                                                        phyInfo.Information.Phy[phyIter]
+                                                                                            .bPortIdentifier,
+                                                                                        phyInfo.Information.Phy[phyIter]
+                                                                                            .Attached.bPhyIdentifier,
+                                                                                        lun))
+                                                                            {
+                                                                                perror("Error formatting CSMI device "
+                                                                                       "handle in GDL");
+                                                                            }
 #    if defined(CSMI_DEBUG)
                                                                             printf("GDL: End device handle found and "
                                                                                    "set as %s\n",
@@ -5690,14 +5927,36 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                                                                 41);
                                                                         DECLARE_ZERO_INIT_ARRAY(char, csmiRaidDevSerial,
                                                                                                 41);
-                                                                        snprintf_err_handle(
-                                                                            csmiRaidDevModel, 41, "%s",
-                                                                            csmiRAIDConfig->Configuration.Drives[iter]
-                                                                                .bModel);
-                                                                        snprintf_err_handle(
-                                                                            csmiRaidDevSerial, 41, "%s",
-                                                                            csmiRAIDConfig->Configuration.Drives[iter]
-                                                                                .bSerialNumber);
+                                                                        if (0 !=
+                                                                            safe_strncpy(
+                                                                                csmiRaidDevModel, 41,
+                                                                                C_CAST(char*,
+                                                                                       csmiRAIDConfig->Configuration
+                                                                                           .Drives[iter]
+                                                                                           .bModel),
+                                                                                sizeof(csmiRAIDConfig->Configuration
+                                                                                           .Drives[iter]
+                                                                                           .bModel)))
+                                                                            M_UNLIKELY
+                                                                            {
+                                                                                perror("Error coping CSMI device data "
+                                                                                       "to local memory in GDL");
+                                                                            }
+                                                                        if (0 !=
+                                                                            safe_strncpy(
+                                                                                csmiRaidDevSerial, 41,
+                                                                                C_CAST(char*,
+                                                                                       csmiRAIDConfig->Configuration
+                                                                                           .Drives[iter]
+                                                                                           .bSerialNumber),
+                                                                                sizeof(csmiRAIDConfig->Configuration
+                                                                                           .Drives[iter]
+                                                                                           .bSerialNumber)))
+                                                                            M_UNLIKELY
+                                                                            {
+                                                                                perror("Error coping CSMI device data "
+                                                                                       "to local memory in GDL");
+                                                                            }
                                                                         remove_Leading_And_Trailing_Whitespace(
                                                                             csmiRaidDevModel);
                                                                         remove_Leading_And_Trailing_Whitespace(
@@ -5736,8 +5995,8 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                                         tempDevice.os_info.csmiDeviceData
                                                                             ->csmiDeviceInfoValid = true;
                                                                         ScsiIoCtx csmiPTCmd;
-                                                                        safe_memset(&csmiPTCmd, sizeof(ScsiIoCtx), 0,
-                                                                                    sizeof(ScsiIoCtx));
+                                                                        M_INITIALIZE_STRUCTURE(&csmiPTCmd,
+                                                                                               sizeof(ScsiIoCtx));
                                                                         csmiPTCmd.device    = &tempDevice;
                                                                         csmiPTCmd.timeout   = DEFAULT_COMMAND_TIMEOUT;
                                                                         csmiPTCmd.direction = XFER_DATA_IN;
@@ -5762,12 +6021,17 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                                             ->portProtocol =
                                                                             phyInfo.Information.Phy[phyIter]
                                                                                 .Attached.bTargetPortProtocol;
-                                                                        safe_memcpy(&tempDevice.os_info.csmiDeviceData
-                                                                                         ->sasAddress[0],
-                                                                                    8,
-                                                                                    phyInfo.Information.Phy[phyIter]
-                                                                                        .Attached.bSASAddress,
-                                                                                    8);
+                                                                        M_IGNORE_SAFE_ERRNO_CALL(
+                                                                            safe_memcpy(
+                                                                                &tempDevice.os_info.csmiDeviceData
+                                                                                     ->sasAddress[0],
+                                                                                8,
+                                                                                phyInfo.Information.Phy[phyIter]
+                                                                                    .Attached.bSASAddress,
+                                                                                8),
+                                                                            "This copy will always succeed due to "
+                                                                            "sasAddress being the same size as the "
+                                                                            "source (always 8 bytes)");
                                                                         // Attempt passthrough command and compare
                                                                         // identifying data. for this to work, SCSIIoCTX
                                                                         // structure must be manually defined for what
@@ -5824,17 +6088,25 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                                                     print_str("GDL: Found a matching "
                                                                                               "MN/SN!\n");
 #    endif // CSMI_DEBUG
-                                                                                    snprintf_err_handle(
-                                                                                        handle,
-                                                                                        RAID_HANDLE_STRING_MAX_LEN,
-                                                                                        "csmi:%" CPRIu8 ":%" CPRIu8
-                                                                                        ":%" CPRIu8 ":%" CPRIu8,
-                                                                                        controllerNumber,
-                                                                                        phyInfo.Information.Phy[phyIter]
-                                                                                            .bPortIdentifier,
-                                                                                        phyInfo.Information.Phy[phyIter]
-                                                                                            .Attached.bPhyIdentifier,
-                                                                                        0);
+                                                                                    if (0 >
+                                                                                        snprintf_err_handle(
+                                                                                            handle,
+                                                                                            RAID_HANDLE_STRING_MAX_LEN,
+                                                                                            "csmi:%" CPRIu8 ":%" CPRIu8
+                                                                                            ":%" CPRIu8 ":%" CPRIu8,
+                                                                                            controllerNumber,
+                                                                                            phyInfo.Information
+                                                                                                .Phy[phyIter]
+                                                                                                .bPortIdentifier,
+                                                                                            phyInfo.Information
+                                                                                                .Phy[phyIter]
+                                                                                                .Attached
+                                                                                                .bPhyIdentifier,
+                                                                                            0))
+                                                                                    {
+                                                                                        perror("Error formatting CSMI "
+                                                                                               "device handle");
+                                                                                    }
                                                                                     matchedPhys[phyIter] = true;
 #    if defined(CSMI_DEBUG)
                                                                                     printf("GDL: End device handle "
@@ -5885,20 +6157,27 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                                                             "GDL: Found a matching "
                                                                                             "MN/SN!\n");
 #    endif // CSMI_DEBUG
-                                                                                        snprintf_err_handle(
-                                                                                            handle,
-                                                                                            RAID_HANDLE_STRING_MAX_LEN,
-                                                                                            "csmi:%" CPRIu8 ":%" CPRIu8
-                                                                                            ":%" CPRIu8 ":%" CPRIu8,
-                                                                                            controllerNumber,
-                                                                                            phyInfo.Information
-                                                                                                .Phy[phyIter]
-                                                                                                .bPortIdentifier,
-                                                                                            phyInfo.Information
-                                                                                                .Phy[phyIter]
-                                                                                                .Attached
-                                                                                                .bPhyIdentifier,
-                                                                                            0);
+                                                                                        if (0 >
+                                                                                            snprintf_err_handle(
+                                                                                                handle,
+                                                                                                RAID_HANDLE_STRING_MAX_LEN,
+                                                                                                "csmi:%" CPRIu8
+                                                                                                ":%" CPRIu8 ":%" CPRIu8
+                                                                                                ":%" CPRIu8,
+                                                                                                controllerNumber,
+                                                                                                phyInfo.Information
+                                                                                                    .Phy[phyIter]
+                                                                                                    .bPortIdentifier,
+                                                                                                phyInfo.Information
+                                                                                                    .Phy[phyIter]
+                                                                                                    .Attached
+                                                                                                    .bPhyIdentifier,
+                                                                                                0))
+                                                                                        {
+                                                                                            perror(
+                                                                                                "Error formatting CSMI "
+                                                                                                "device handle");
+                                                                                        }
                                                                                         matchedPhys[phyIter] = true;
 #    if defined(CSMI_DEBUG)
                                                                                         printf("GDL: End device handle "
@@ -5930,9 +6209,13 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                                             cdb[CDB_5] = 0; // control
 
                                                                             csmiPTCmd.cdbLength = CDB_LEN_6;
-                                                                            safe_memcpy(csmiPTCmd.cdb,
-                                                                                        SCSI_IO_CTX_MAX_CDB_LEN, cdb,
-                                                                                        6);
+                                                                            M_IGNORE_SAFE_ERRNO_CALL(
+                                                                                safe_memcpy(csmiPTCmd.cdb,
+                                                                                            SCSI_IO_CTX_MAX_CDB_LEN,
+                                                                                            cdb, 6),
+                                                                                "This copy will always succeed due to "
+                                                                                "csmiPTCmd.cdb being larger than 6 "
+                                                                                "bytes");
                                                                             csmiPTCmd.dataLength = 96;
                                                                             csmiPTCmd.pdata      = inqData;
 #    if defined(CSMI_DEBUG)
@@ -5956,19 +6239,37 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                                                     char, inqProductID, 17);
                                                                                 DECLARE_ZERO_INIT_ARRAY(char, vidCatPid,
                                                                                                         41);
-                                                                                // DECLARE_ZERO_INIT_ARRAY(char,
-                                                                                // inqProductRev, 5); copy the strings
-                                                                                safe_memcpy(inqVendor, 9, &inqData[8],
-                                                                                            8);
-                                                                                safe_memcpy(inqProductID, 17,
-                                                                                            &inqData[16], 16);
-                                                                                // safe_memcpy(inqProductRev, 5,
-                                                                                // &inqData[32], 4);
-                                                                                snprintf_err_handle(
-                                                                                    vidCatPid, 41, "%s%s", inqVendor,
-                                                                                    inqProductID); // concatenate now
-                                                                                                   // before removing
-                                                                                                   // spaces-TJE
+                                                                                M_IGNORE_SAFE_ERRNO_CALL(
+                                                                                    safe_memcpy(inqVendor, 9,
+                                                                                                &inqData[8], 8),
+                                                                                    "This copy will always succeed due "
+                                                                                    "to inqVendor being a larger size "
+                                                                                    "than the source");
+                                                                                M_IGNORE_SAFE_ERRNO_CALL(
+                                                                                    safe_memcpy(inqProductID, 17,
+                                                                                                &inqData[16], 16),
+                                                                                    "This copy will always succeed due "
+                                                                                    "to inqProductID being a larger "
+                                                                                    "size than the source");
+                                                                                if (0 != safe_strcpy(vidCatPid, 41,
+                                                                                                     inqVendor))
+                                                                                    M_UNLIKELY
+                                                                                    {
+                                                                                        perror("Error coping VID");
+                                                                                    }
+                                                                                if (0 != safe_strcat(vidCatPid, 41,
+                                                                                                     inqProductID))
+                                                                                    M_UNLIKELY // concatenate now
+                                                                                    // before removing
+                                                                                    // spaces-TJE
+                                                                                    {
+                                                                                        perror("Error concatenating "
+                                                                                               "PID to VID");
+                                                                                    }
+                                                                                {
+                                                                                    perror("Error formatting CSMI "
+                                                                                           "device handle");
+                                                                                }
                                                                                 // remove whitespace
                                                                                 remove_Leading_And_Trailing_Whitespace(
                                                                                     inqVendor);
@@ -6010,7 +6311,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
 #    endif // CSMI_DEBUG
            // now read the unit SN VPD page since this matches so far that way we can compare the serial number. Not
            // checking SCSI 2 since every SAS drive *SHOULD* support this.
-                                                                                    safe_memset(inqData, 96, 0, 96);
+                                                                                    explicit_zeroes(inqData, 96);
                                                                                     // change CDB to read unit SN page
                                                                                     cdb[CDB_1] |= BIT0;
                                                                                     cdb[CDB_2] = UNIT_SERIAL_NUMBER;
@@ -6035,16 +6336,18 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                                                                 sizeof(char)));
                                                                                         if (serialNumber)
                                                                                         {
-                                                                                            safe_memcpy(
-                                                                                                serialNumber,
-                                                                                                serialNumberLength,
-                                                                                                &inqData[4],
-                                                                                                serialNumberLength -
-                                                                                                    1); // minus 1 to
-                                                                                                        // leave null
-                                                                                                        // terminator in
-                                                                                                        // tact at the
-                                                                                                        // end
+                                                                                            M_IGNORE_SAFE_ERRNO_CALL(
+                                                                                                safe_memcpy(
+                                                                                                    serialNumber,
+                                                                                                    serialNumberLength,
+                                                                                                    &inqData[4],
+                                                                                                    serialNumberLength -
+                                                                                                        1),
+                                                                                                "This copy will always "
+                                                                                                "succeed due to "
+                                                                                                "serialNumber being a "
+                                                                                                "larger size than the "
+                                                                                                "source");
                                                                                             if (strcmp(
                                                                                                     serialNumber,
                                                                                                     csmiRaidDevSerial) ==
@@ -6057,22 +6360,33 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
 #    endif // CSMI_DEBUG
            // found a match!
                                                                                                 foundDevice = true;
-                                                                                                snprintf_err_handle(
-                                                                                                    handle,
-                                                                                                    RAID_HANDLE_STRING_MAX_LEN,
-                                                                                                    "csmi:%" CPRIu8
-                                                                                                    ":%" CPRIu8
-                                                                                                    ":%" CPRIu8
-                                                                                                    ":%" CPRIu8,
-                                                                                                    controllerNumber,
-                                                                                                    phyInfo.Information
-                                                                                                        .Phy[phyIter]
-                                                                                                        .bPortIdentifier,
-                                                                                                    phyInfo.Information
-                                                                                                        .Phy[phyIter]
-                                                                                                        .Attached
-                                                                                                        .bPhyIdentifier,
-                                                                                                    0);
+                                                                                                if (0 >
+                                                                                                    snprintf_err_handle(
+                                                                                                        handle,
+                                                                                                        RAID_HANDLE_STRING_MAX_LEN,
+                                                                                                        "csmi:%" CPRIu8
+                                                                                                        ":%" CPRIu8
+                                                                                                        ":%" CPRIu8
+                                                                                                        ":%" CPRIu8,
+                                                                                                        controllerNumber,
+                                                                                                        phyInfo
+                                                                                                            .Information
+                                                                                                            .Phy[phyIter]
+                                                                                                            .bPortIdentifier,
+                                                                                                        phyInfo
+                                                                                                            .Information
+                                                                                                            .Phy[phyIter]
+                                                                                                            .Attached
+                                                                                                            .bPhyIdentifier,
+                                                                                                        0))
+                                                                                                {
+                                                                                                    perror(
+                                                                                                        "Error "
+                                                                                                        "formatting "
+                                                                                                        "CSMI device "
+                                                                                                        "handle");
+                                                                                                    continue;
+                                                                                                }
                                                                                                 matchedPhys[phyIter] =
                                                                                                     true;
 #    if defined(CSMI_DEBUG)
@@ -6143,7 +6457,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
                                                         }
                                                         if (foundDevice)
                                                         {
-                                                            safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
+                                                            M_INITIALIZE_STRUCTURE(d, sizeof(tDevice));
                                                             d->sanity.size    = ver.size;
                                                             d->sanity.version = ver.version;
                                                             d->dFlags         = flags;
@@ -6207,16 +6521,21 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
 #    endif // CSMI_DEBUG
            // Each attached device will be considered a "found device" in this case.
                                             DECLARE_ZERO_INIT_ARRAY(char, handle, RAID_HANDLE_STRING_MAX_LEN);
-                                            snprintf_err_handle(
-                                                handle, RAID_HANDLE_STRING_MAX_LEN,
-                                                "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8, controllerNumber,
-                                                phyInfo.Information.Phy[phyIter].bPortIdentifier,
-                                                phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, 0);
+                                            if (0 > snprintf_err_handle(
+                                                        handle, RAID_HANDLE_STRING_MAX_LEN,
+                                                        "csmi:%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8 ":%" CPRIu8,
+                                                        controllerNumber,
+                                                        phyInfo.Information.Phy[phyIter].bPortIdentifier,
+                                                        phyInfo.Information.Phy[phyIter].Attached.bPhyIdentifier, 0))
+                                            {
+                                                perror("Error formatting CSMI device handle");
+                                                continue;
+                                            }
 #    if defined(CSMI_DEBUG)
                                             printf("GDL: Phy Info last resort device handle found and set as %s\n",
                                                    handle);
 #    endif // CSMI_DEBUG
-                                            safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
+                                            M_INITIALIZE_STRUCTURE(d, sizeof(tDevice));
                                             d->sanity.size     = ver.size;
                                             d->sanity.version  = ver.version;
                                             d->dFlags          = flags;
@@ -6244,7 +6563,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_CSMI_RAID_Device_List(tDevice* M_NONNULL
 #    endif // CSMI_DEBUG
            // memset the device because it can still show up and we do not want it to leave anything behind if we are
            // reusing the device structure for a different device.
-                                                safe_memset(d, sizeof(tDevice), 0, sizeof(tDevice));
+                                                M_INITIALIZE_STRUCTURE(d, sizeof(tDevice));
                                                 continue;
                                             }
                                             ++d;
@@ -6322,15 +6641,18 @@ static eReturnValues send_SSP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
     csmiSSPIn  sspInputs;
     csmiSSPOut sspOutputs;
     DECLARE_SEATIMER(sspTimer);
-    safe_memset(&sspInputs, sizeof(csmiSSPIn), 0, sizeof(csmiSSPIn));
-    safe_memset(&sspOutputs, sizeof(csmiSSPOut), 0, sizeof(csmiSSPOut));
+    M_INITIALIZE_STRUCTURE(&sspInputs, sizeof(csmiSSPIn));
+    M_INITIALIZE_STRUCTURE(&sspOutputs, sizeof(csmiSSPOut));
 
     sspInputs.cdb            = scsiIoCtx->cdb;
     sspInputs.cdbLength      = scsiIoCtx->cdbLength;
     sspInputs.connectionRate = CSMI_SAS_LINK_RATE_NEGOTIATED;
     sspInputs.dataLength     = scsiIoCtx->dataLength;
-    safe_memcpy(sspInputs.destinationSASAddress, 8, scsiIoCtx->device->os_info.csmiDeviceData->sasAddress, 8);
-    safe_memcpy(sspInputs.lun, 8, scsiIoCtx->device->os_info.csmiDeviceData->sasLUN, 8);
+    M_IGNORE_SAFE_ERRNO_CALL(
+        safe_memcpy(sspInputs.destinationSASAddress, 8, scsiIoCtx->device->os_info.csmiDeviceData->sasAddress, 8),
+        "The SAS Address is always 8 bytes so this never fails");
+    M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(sspInputs.lun, 8, scsiIoCtx->device->os_info.csmiDeviceData->sasLUN, 8),
+                             "The SAS Address is always 8 bytes so this never fails");
     sspInputs.phyIdentifier  = scsiIoCtx->device->os_info.csmiDeviceData->phyIdentifier;
     sspInputs.portIdentifier = scsiIoCtx->device->os_info.csmiDeviceData->portIdentifier;
     sspInputs.ptrData        = scsiIoCtx->pdata;
@@ -6381,8 +6703,8 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
     sataH2DFis h2dFis;
     DECLARE_ZERO_INIT_ARRAY(uint8_t, statusFIS, 20);
     DECLARE_SEATIMER(stpTimer);
-    safe_memset(&stpInputs, sizeof(csmiSTPIn), 0, sizeof(csmiSTPIn));
-    safe_memset(&stpOutputs, sizeof(csmiSTPOut), 0, sizeof(csmiSTPOut));
+    M_INITIALIZE_STRUCTURE(&stpInputs, sizeof(csmiSTPIn));
+    M_INITIALIZE_STRUCTURE(&stpOutputs, sizeof(csmiSTPOut));
 
     // setup the FIS
     build_H2D_FIS_From_ATA_PT_Command(&h2dFis, &scsiIoCtx->pAtaCmdOpts->tfr,
@@ -6394,7 +6716,9 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
     stpInputs.timeoutSeconds = scsiIoCtx->pAtaCmdOpts->timeout;
 
     // Setup CSMI info to route command to the device.
-    safe_memcpy(stpInputs.destinationSASAddress, 8, scsiIoCtx->device->os_info.csmiDeviceData->sasAddress, 8);
+    M_IGNORE_SAFE_ERRNO_CALL(
+        safe_memcpy(stpInputs.destinationSASAddress, 8, scsiIoCtx->device->os_info.csmiDeviceData->sasAddress, 8),
+        "The SAS Address is always 8 bytes so this never fails");
     stpInputs.phyIdentifier  = scsiIoCtx->device->os_info.csmiDeviceData->phyIdentifier;
     stpInputs.portIdentifier = scsiIoCtx->device->os_info.csmiDeviceData->portIdentifier;
 
@@ -6486,7 +6810,7 @@ static eReturnValues send_STP_Passthrough_Command(ScsiIoCtx* scsiIoCtx)
         ptrSataD2HFis      d2h    = C_CAST(ptrSataD2HFis, &statusFIS[0]);
         ptrSataPIOSetupFis pioSet = C_CAST(ptrSataPIOSetupFis, &statusFIS[0]);
         ataReturnTFRs rtfrs; // create this temporarily to save fis output results, then we'll pack it into sense data
-        safe_memset(&rtfrs, sizeof(ataReturnTFRs), 0, sizeof(ataReturnTFRs));
+        M_INITIALIZE_STRUCTURE(&rtfrs, sizeof(ataReturnTFRs));
         switch (statusFIS[0])
         {
         case FIS_TYPE_REG_D2H:
@@ -6600,8 +6924,9 @@ OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(const tDevice* M_NONNULL devic
         // print the things we stored since those are what we currently care about. Can add printing other things out
         // later if they are determined to be of use. - TJE
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n=====CSMI Info=====\n");
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tCSMI Version: %" CPRIu16 ".%" CPRIu16 "\n", device->os_info.csmiDeviceData->csmiMajorVersion,
-               device->os_info.csmiDeviceData->csmiMinorVersion);
+        print_tDevice_Verbose_Formatted_String(
+            device, VERBOSITY_COMMAND_VERBOSE, "\tCSMI Version: %" CPRIu16 ".%" CPRIu16 "\n",
+            device->os_info.csmiDeviceData->csmiMajorVersion, device->os_info.csmiDeviceData->csmiMinorVersion);
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSecurity Access: ");
         switch (device->os_info.csmiDeviceData->securityAccess)
         {
@@ -6653,14 +6978,19 @@ OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(const tDevice* M_NONNULL devic
             device->os_info.csmiDeviceData->intelRSTSupport.nvmePassthrough)
         {
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tIntel RST NVMe device.\n");
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPath ID  : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.pathId);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tTarget ID: %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.targetId);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tLUN      : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.lun);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPath ID  : %" CPRIu8 "\n",
+                                                   device->os_info.csmiDeviceData->scsiAddress.pathId);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tTarget ID: %" CPRIu8 "\n",
+                                                   device->os_info.csmiDeviceData->scsiAddress.targetId);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tLUN      : %" CPRIu8 "\n",
+                                                   device->os_info.csmiDeviceData->scsiAddress.lun);
         }
         else
         {
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPHY ID: %" CPRIX8 "h\n", device->os_info.csmiDeviceData->phyIdentifier);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPort ID: %" CPRIX8 "h\n", device->os_info.csmiDeviceData->portIdentifier);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPHY ID: %" CPRIX8 "h\n",
+                                                   device->os_info.csmiDeviceData->phyIdentifier);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tPort ID: %" CPRIX8 "h\n",
+                                                   device->os_info.csmiDeviceData->portIdentifier);
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSupported Port Protocols:\n");
             if (device->os_info.csmiDeviceData->portProtocol & CSMI_SAS_PROTOCOL_SATA)
             {
@@ -6679,23 +7009,37 @@ OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(const tDevice* M_NONNULL devic
                 print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tSSP\n");
             }
 
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "h\n",
-                   device->os_info.csmiDeviceData->sasAddress[0], device->os_info.csmiDeviceData->sasAddress[1],
-                   device->os_info.csmiDeviceData->sasAddress[2], device->os_info.csmiDeviceData->sasAddress[3],
-                   device->os_info.csmiDeviceData->sasAddress[4], device->os_info.csmiDeviceData->sasAddress[5],
-                   device->os_info.csmiDeviceData->sasAddress[6], device->os_info.csmiDeviceData->sasAddress[7]);
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSAS Lun: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "h\n",
-                   device->os_info.csmiDeviceData->sasLUN[0], device->os_info.csmiDeviceData->sasLUN[1],
-                   device->os_info.csmiDeviceData->sasLUN[2], device->os_info.csmiDeviceData->sasLUN[3],
-                   device->os_info.csmiDeviceData->sasLUN[4], device->os_info.csmiDeviceData->sasLUN[5],
-                   device->os_info.csmiDeviceData->sasLUN[6], device->os_info.csmiDeviceData->sasLUN[7]);
+            print_tDevice_Verbose_Formatted_String(
+                device, VERBOSITY_COMMAND_VERBOSE,
+                "\tSAS Address: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+                "%02" CPRIX8 "%02" CPRIX8 "h\n",
+                device->os_info.csmiDeviceData->sasAddress[0], device->os_info.csmiDeviceData->sasAddress[1],
+                device->os_info.csmiDeviceData->sasAddress[2], device->os_info.csmiDeviceData->sasAddress[3],
+                device->os_info.csmiDeviceData->sasAddress[4], device->os_info.csmiDeviceData->sasAddress[5],
+                device->os_info.csmiDeviceData->sasAddress[6], device->os_info.csmiDeviceData->sasAddress[7]);
+            print_tDevice_Verbose_Formatted_String(
+                device, VERBOSITY_COMMAND_VERBOSE,
+                "\tSAS Lun: %02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8 "%02" CPRIX8
+                "%02" CPRIX8 "h\n",
+                device->os_info.csmiDeviceData->sasLUN[0], device->os_info.csmiDeviceData->sasLUN[1],
+                device->os_info.csmiDeviceData->sasLUN[2], device->os_info.csmiDeviceData->sasLUN[3],
+                device->os_info.csmiDeviceData->sasLUN[4], device->os_info.csmiDeviceData->sasLUN[5],
+                device->os_info.csmiDeviceData->sasLUN[6], device->os_info.csmiDeviceData->sasLUN[7]);
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\tSCSI Address: ");
             if (device->os_info.csmiDeviceData->scsiAddressValid)
             {
-                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tHost Index: %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.hostIndex);
-                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tPath ID  : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.pathId);
-                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tTarget ID: %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.targetId);
-                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "\t\tLUN      : %" CPRIu8 "\n", device->os_info.csmiDeviceData->scsiAddress.lun);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                       "\t\tHost Index: %" CPRIu8 "\n",
+                                                       device->os_info.csmiDeviceData->scsiAddress.hostIndex);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                       "\t\tPath ID  : %" CPRIu8 "\n",
+                                                       device->os_info.csmiDeviceData->scsiAddress.pathId);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                       "\t\tTarget ID: %" CPRIu8 "\n",
+                                                       device->os_info.csmiDeviceData->scsiAddress.targetId);
+                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                       "\t\tLUN      : %" CPRIu8 "\n",
+                                                       device->os_info.csmiDeviceData->scsiAddress.lun);
             }
             else
             {
@@ -6711,7 +7055,8 @@ OPENSEA_TRANSPORT_API void print_CSMI_Device_Info(const tDevice* M_NONNULL devic
     }
     else
     {
-        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "No CSMI info, not a CSMI supporting device.\n");
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                     "No CSMI info, not a CSMI supporting device.\n");
     }
 }
 

@@ -47,7 +47,7 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
         int iocret = 0;
         DECLARE_SEATIMER(commandTimer);
         atareq_t atacmd;
-        safe_memset(&atacmd, sizeof(atareq_t), 0, sizeof(atareq_t));
+        M_INITIALIZE_STRUCTURE(&atacmd, sizeof(atareq_t));
         atacmd.flags |= ATACMD_READREG;
         switch (scsiIoCtx->pAtaCmdOpts->commandDirection)
         {
@@ -132,14 +132,15 @@ static eReturnValues bsd_ata_io(ScsiIoCtx* scsiIoCtx)
         {
             // something went wrong with the ioctl.
             set_Device_Last_Error(scsiIoCtx->device, errno);
-            ret = OS_PASSTHROUGH_FAILURE;
+            ret           = OS_PASSTHROUGH_FAILURE;
             errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
             if (error != 0)
             {
                 char* errormsg = get_strerror(error);
                 if (errormsg != M_NULLPTR)
                 {
-                    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Error: %d - %s\n", error, errormsg);
+                    print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                                           "Error: %d - %s\n", error, errormsg);
                     safe_free(&errormsg);
                 }
             }

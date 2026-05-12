@@ -246,7 +246,8 @@ extern "C"
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)
     M_PARAM_WO(2)
-    eReturnValues request_Return_TFRs_From_Device(const tDevice* M_NONNULL device, ataReturnTFRs* M_NONNULL rtfr);
+    OPENSEA_TRANSPORT_API eReturnValues request_Return_TFRs_From_Device(const tDevice* M_NONNULL device,
+                                                                        ataReturnTFRs* M_NONNULL rtfr);
 
     //-----------------------------------------------------------------------------
     //

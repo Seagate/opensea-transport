@@ -883,12 +883,14 @@ extern "C"
 
     typedef struct s_ataTFRBlock
     {
-        union {
+        union
+        {
             uint8_t CommandStatus;
             uint8_t command;
             uint8_t Command;
         };
-        union {
+        union
+        {
             uint8_t ErrorFeature;
             uint8_t Feature;
             uint8_t feature;
@@ -950,24 +952,28 @@ extern "C"
             uint8_t LbaHighExt;
             uint8_t CylinderHighExt;
         };
-        union {
+        union
+        {
             uint8_t Feature48;
             uint8_t featureExt;
             uint8_t FeatureExt;
             uint8_t feature48;
         };
-        union {
+        union
+        {
             uint8_t SectorCount;
             uint8_t sectorCount;
             uint8_t secCnt;
         };
-        union {
+        union
+        {
             uint8_t SectorCount48;
             uint8_t sectorCountExt;
             uint8_t SectorCountExt;
         };
         uint8_t icc;
-        uint8_t DeviceControl; // Not typically part of passthrough options. Can sometimes be set in FIS/drivers for things like soft reset, but generally this is unused.
+        uint8_t DeviceControl; // Not typically part of passthrough options. Can sometimes be set in FIS/drivers for
+                               // things like soft reset, but generally this is unused.
         // Pad it out to 16 bytes
         uint8_t aux1; // bits 7:0
         uint8_t aux2; // bits 15:8

@@ -664,8 +664,8 @@ OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Data_Table(const tDevice* M_NON
         if (functionCode == 0x0001)
         {
             // now read the log that tells us the table we requested
-            safe_memset(dataBuf, dataSize, 0, dataSize); // clear the buffer before we read in data since we are done
-                                                         // with what we had to send to the drive
+            explicit_zeroes(dataBuf, dataSize); // clear the buffer before we read in data since we are done
+                                                // with what we had to send to the drive
             ret = send_ATA_SCT_Data_Transfer(device, XFER_DATA_IN, dataBuf, dataSize);
         }
         // else we need to add functionality since something new was added to the spec
@@ -1816,19 +1816,14 @@ OPENSEA_TRANSPORT_API void fill_ATA_Strings_From_Identify_Data(uint8_t* M_NONNUL
 #else
             uint16_t snLimit = M_Min(SERIAL_NUM_LEN, ATA_IDENTIFY_SN_LENGTH);
 #endif
-            safe_memset(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, 0, snLimit + UINT16_C(1));
-            uint8_t* snBuffer = M_REINTERPRET_CAST(uint8_t*, &idData->SerNum[0]);
-            DISABLE_WARNING_STRINGOP_OVERREAD
-            // Disable to stop false-positive compiler warnings. Since the buffer passed to read_ATA_String is a union
-            // of uint16's and an array of uint8's, the compiler thinks we are doing an over-read since it thinks
-            // the provide length is beyond the length of the first word in the union. While that is true, the memory
-            // we are actually trying to access is the array in the union and more than large enough and should
-            // not actually overread at all.
-            if (read_ATA_String(snBuffer, ATA_IDENTIFY_SN_LENGTH, ataSN, ATA_IDENTIFY_SN_LENGTH + 1))
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memset(ataSN, ATA_IDENTIFY_SN_LENGTH + 1, 0, snLimit + UINT16_C(1)),
+                "Fixed bounds always match due to how SERIAL_NUM_LEN and ATA_IDENTIFY_SN_LENGTH are defined");
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->SerNum[0]), ATA_IDENTIFY_SN_LENGTH, ataSN,
+                                ATA_IDENTIFY_SN_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataSN, snLimit);
             }
-            RESTORE_WARNING_STRINGOP_OVERREAD
         }
         if (validFW && ataFW != M_NULLPTR)
         {
@@ -1837,19 +1832,14 @@ OPENSEA_TRANSPORT_API void fill_ATA_Strings_From_Identify_Data(uint8_t* M_NONNUL
 #else
             uint16_t fwLimit = M_Min(FW_REV_LEN, ATA_IDENTIFY_FW_LENGTH);
 #endif
-            safe_memset(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, 0, fwLimit + UINT16_C(1));
-            uint8_t* fwBuffer = M_REINTERPRET_CAST(uint8_t*, &idData->FirmVer[0]);
-            DISABLE_WARNING_STRINGOP_OVERREAD
-            // Disable to stop false-positive compiler warnings. Since the buffer passed to read_ATA_String is a union
-            // of uint16's and an array of uint8's, the compiler thinks we are doing an over-read since it thinks
-            // the provide length is beyond the length of the first word in the union. While that is true, the memory
-            // we are actually trying to access is the array in the union and more than large enough and should
-            // not actually overread at all.
-            if (read_ATA_String(fwBuffer, ATA_IDENTIFY_FW_LENGTH, ataFW, ATA_IDENTIFY_FW_LENGTH + 1))
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memset(ataFW, ATA_IDENTIFY_FW_LENGTH + 1, 0, fwLimit + UINT16_C(1)),
+                "Fixed bounds always match due to how FW_REV_LEN and ATA_IDENTIFY_FW_LENGTH are defined");
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->FirmVer[0]), ATA_IDENTIFY_FW_LENGTH, ataFW,
+                                ATA_IDENTIFY_FW_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataFW, fwLimit);
             }
-            RESTORE_WARNING_STRINGOP_OVERREAD
         }
         if (validMN && ataMN != M_NULLPTR)
         {
@@ -1858,19 +1848,14 @@ OPENSEA_TRANSPORT_API void fill_ATA_Strings_From_Identify_Data(uint8_t* M_NONNUL
 #else
             uint16_t mnLimit = M_Min(MODEL_NUM_LEN, ATA_IDENTIFY_MN_LENGTH);
 #endif
-            safe_memset(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, 0, mnLimit + UINT16_C(1));
-            uint8_t* mnBuffer = M_REINTERPRET_CAST(uint8_t*, &idData->ModelNum[0]);
-            DISABLE_WARNING_STRINGOP_OVERREAD
-            // Disable to stop false-positive compiler warnings. Since the buffer passed to read_ATA_String is a union
-            // of uint16's and an array of uint8's, the compiler thinks we are doing an over-read since it thinks
-            // the provide length is beyond the length of the first word in the union. While that is true, the memory
-            // we are actually trying to access is the array in the union and more than large enough and should
-            // not actually overread at all.
-            if (read_ATA_String(mnBuffer, ATA_IDENTIFY_MN_LENGTH, ataMN, ATA_IDENTIFY_MN_LENGTH + 1))
+            M_IGNORE_SAFE_ERRNO_CALL(
+                safe_memset(ataMN, ATA_IDENTIFY_MN_LENGTH + 1, 0, mnLimit + UINT16_C(1)),
+                "Fixed bounds always match due to how MODEL_NUM_LEN and ATA_IDENTIFY_MN_LENGTH are defined");
+            if (read_ATA_String(M_REINTERPRET_CAST(uint8_t*, &idData->ModelNum[0]), ATA_IDENTIFY_MN_LENGTH, ataMN,
+                                ATA_IDENTIFY_MN_LENGTH + 1))
             {
                 remove_Leading_And_Trailing_Whitespace_Len(ataMN, mnLimit);
             }
-            RESTORE_WARNING_STRINGOP_OVERREAD
         }
         RESTORE_NONNULL_COMPARE
     }
@@ -2028,7 +2013,7 @@ enum
 
 typedef struct sNOP_Test_Codes
 {
-    uint8_t countTestVal;
+    uint8_t  countTestVal;
     uint32_t lbaTestVal;
 } sNOP_Test_Codes;
 
@@ -2042,19 +2027,19 @@ typedef enum eNOPCntTests
     ATA_NOP_CNT_TEST_6 = 0xF2
 } eNOPCntTests;
 
-
 typedef enum eNOPLBATests
 {
-    ATA_NOP_LBA_TEST_1 = 0x4332211,//no 5 or A
-    ATA_NOP_LBA_TEST_2 = 0x1223344,//no 5 or A
-    ATA_NOP_LBA_TEST_3 = 0xFDEA876,//no C or 4
-    ATA_NOP_LBA_TEST_4 = 0x678AEDF,//no C or 4
-    ATA_NOP_LBA_TEST_5 = 0x5A7D9E3,//no 2 or F
-    ATA_NOP_LBA_TEST_6 = 0x3E9D7A5 //no 2 or F
+    ATA_NOP_LBA_TEST_1 = 0x4332211, // no 5 or A
+    ATA_NOP_LBA_TEST_2 = 0x1223344, // no 5 or A
+    ATA_NOP_LBA_TEST_3 = 0xFDEA876, // no C or 4
+    ATA_NOP_LBA_TEST_4 = 0x678AEDF, // no C or 4
+    ATA_NOP_LBA_TEST_5 = 0x5A7D9E3, // no 2 or F
+    ATA_NOP_LBA_TEST_6 = 0x3E9D7A5  // no 2 or F
 } eNOPLBATests;
 
 // Extract NOP command result from the returned task file registers into a test code structure
-static M_INLINE eReturnValues get_NOP_Result(const ataReturnTFRs* M_NONNULL result, sNOP_Test_Codes* M_NONNULL nopResult)
+static M_INLINE eReturnValues get_NOP_Result(const ataReturnTFRs* M_NONNULL result,
+                                             sNOP_Test_Codes* M_NONNULL     nopResult)
 {
     if (result == M_NULLPTR || nopResult == M_NULLPTR)
     {
@@ -2065,7 +2050,8 @@ static M_INLINE eReturnValues get_NOP_Result(const ataReturnTFRs* M_NONNULL resu
     nopResult->countTestVal = result->secCnt;
 
     // Extract LBA from LBA registers (device nibble + lbaHi/lbaMid/lbaLow bytes)
-    nopResult->lbaTestVal = M_BytesTo4ByteValue(M_Nibble0(result->device), result->lbaHi, result->lbaMid, result->lbaLow);
+    nopResult->lbaTestVal =
+        M_BytesTo4ByteValue(M_Nibble0(result->device), result->lbaHi, result->lbaMid, result->lbaLow);
 
     return SUCCESS;
 }
@@ -2091,23 +2077,22 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
     // can stop the test and move on.
     // If nopSupported is false or the first result is not as expected, we need to try more cases to figure out
     // if it responding as we expect it to, or if a field is missing or misaligned to a different location.
-    uint8_t successfulMatches = 0;
-    uint8_t brokenLBAResponses = 0;
+    uint8_t successfulMatches    = 0;
+    uint8_t brokenLBAResponses   = 0;
     uint8_t brokenCountResponses = 0;
-    uint8_t swappedLBAResponses = 0;  // Count tests where LBA Lo and Hi bytes are consistently reversed
-    int confidenceScore = 0;  // Track confidence in results (higher = more confident)
+    uint8_t swappedLBAResponses  = 0; // Count tests where LBA Lo and Hi bytes are consistently reversed
+    int     confidenceScore      = 0; // Track confidence in results (higher = more confident)
 
     // Print diagnostic info about SAT translator (helpful for debugging VPD issues)
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-        "NOP Test: SAT vendor='%s', product='%s'\n",
-        device->drive_info.bridge_info.t10SATvendorID,
-        device->drive_info.bridge_info.SATproductID);
+    print_tDevice_Verbose_Formatted_String(
+        device, VERBOSITY_COMMAND_VERBOSE, "NOP Test: SAT vendor='%s', product='%s'\n",
+        device->drive_info.bridge_info.t10SATvendorID, device->drive_info.bridge_info.SATproductID);
 
     // Offset discovery variables - for handling register misalignment in sense data
     // This can occur in libATA, some RAID HBAs, and other SATL implementations
     uint8_t useAlternateOffsets = 0;
-    int32_t countOffsetInResult = -1;  // Will be discovered in first test if standard extraction fails
-    int32_t lbaOffsetInResult = -1;    // Will be discovered for LBA Lo byte if standard extraction fails
+    int32_t countOffsetInResult = -1; // Will be discovered in first test if standard extraction fails
+    int32_t lbaOffsetInResult   = -1; // Will be discovered for LBA Lo byte if standard extraction fails
     // TODO: Implement status/error offset discovery similar to COUNT if needed for workarounds
     // int32_t statusOffsetInResult = -1;
     // int32_t errorOffsetInResult = -1;
@@ -2121,11 +2106,11 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
     for (int testNum = 0; testNum < NOP_MAX_TESTS; ++testNum)
     {
         bool countTestMatch = false;
-        bool lbaTestMatch = false;
+        bool lbaTestMatch   = false;
 
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-            "NOP Test %d: Sending COUNT=0x%02X, LBA=0x%08X\n",
-            testNum, nopTests[testNum].countTestVal, nopTests[testNum].lbaTestVal);
+                                               "NOP Test %d: Sending COUNT=0x%02X, LBA=0x%08X\n", testNum,
+                                               nopTests[testNum].countTestVal, nopTests[testNum].lbaTestVal);
 
         eReturnValues nopret = ata_NOP(device, ATA_NOP_RETURN_ABORTED, nopTests[testNum].countTestVal,
                                        nopTests[testNum].lbaTestVal, &nopResults[testNum]);
@@ -2138,33 +2123,34 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
         else
         {
             confidenceScore -= 10;
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                "Test %d: NOP return was 0x%02X (expected ABORTED), triggering additional pattern analysis\n",
-                testNum, nopret);
+            print_tDevice_Verbose_Formatted_String(
+                device, VERBOSITY_COMMAND_VERBOSE,
+                "Test %d: NOP return was 0x%02X (expected ABORTED), triggering additional pattern analysis\n", testNum,
+                nopret);
         }
 
-        sNOP_Test_Codes result = {
-            nopResults[testNum].secCnt, M_BytesTo4ByteValue(M_Nibble0(nopResults[testNum].device), nopResults[testNum].lbaHi,
-                                nopResults[testNum].lbaMid, nopResults[testNum].lbaLow) };
+        sNOP_Test_Codes result = {nopResults[testNum].secCnt,
+                                  M_BytesTo4ByteValue(M_Nibble0(nopResults[testNum].device), nopResults[testNum].lbaHi,
+                                                      nopResults[testNum].lbaMid, nopResults[testNum].lbaLow)};
 
         // Try standard extraction first
         uint8_t standardExtractionMatches = (result.countTestVal == nopTests[testNum].countTestVal) &&
-                                             (result.lbaTestVal == nopTests[testNum].lbaTestVal);
+                                            (result.lbaTestVal == nopTests[testNum].lbaTestVal);
 
-print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-            "Test %d: Standard extraction - COUNT match=%d, LBA match=%d\n",
-            testNum,
-            (result.countTestVal == nopTests[testNum].countTestVal),
-            (result.lbaTestVal == nopTests[testNum].lbaTestVal));
+        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                               "Test %d: Standard extraction - COUNT match=%d, LBA match=%d\n", testNum,
+                                               (result.countTestVal == nopTests[testNum].countTestVal),
+                                               (result.lbaTestVal == nopTests[testNum].lbaTestVal));
 
         // If standard extraction fails on first test, try to discover alternate offsets
         // This handles libATA, RAID HBAs, and other SATL implementations that put
         // registers in non-standard locations within the sense data
         if (!standardExtractionMatches && testNum == 0 && !useAlternateOffsets)
         {
-            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                "Test %d: Standard extraction failed, scanning for COUNT pattern 0x%02X in result bytes...\n",
-                testNum, nopTests[testNum].countTestVal);
+            print_tDevice_Verbose_Formatted_String(
+                device, VERBOSITY_COMMAND_VERBOSE,
+                "Test %d: Standard extraction failed, scanning for COUNT pattern 0x%02X in result bytes...\n", testNum,
+                nopTests[testNum].countTestVal);
 
             // Get a byte view of the result for pattern scanning
             uint8_t* resultBytes = (uint8_t*)&nopResults[testNum];
@@ -2175,9 +2161,10 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
                 if (resultBytes[byteIdx] == nopTests[testNum].countTestVal)
                 {
                     countOffsetInResult = (int32_t)byteIdx;
-                    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                        "Test %d: Found COUNT pattern 0x%02X at offset %d in result\n",
-                        testNum, nopTests[testNum].countTestVal, countOffsetInResult);
+                    print_tDevice_Verbose_Formatted_String(
+                        device, VERBOSITY_COMMAND_VERBOSE,
+                        "Test %d: Found COUNT pattern 0x%02X at offset %d in result\n", testNum,
+                        nopTests[testNum].countTestVal, countOffsetInResult);
                     break;
                 }
             }
@@ -2186,9 +2173,9 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
             if (countOffsetInResult >= 0)
             {
                 uint8_t lbaLoExpected = M_Byte0(nopTests[testNum].lbaTestVal);
-                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                    "Test %d: Scanning for LBA Lo pattern 0x%02X in result bytes...\n",
-                    testNum, lbaLoExpected);
+                print_tDevice_Verbose_Formatted_String(
+                    device, VERBOSITY_COMMAND_VERBOSE,
+                    "Test %d: Scanning for LBA Lo pattern 0x%02X in result bytes...\n", testNum, lbaLoExpected);
 
                 // Scan through result for LBA Lo byte
                 for (size_t byteIdx = 0; byteIdx < sizeof(ataReturnTFRs); ++byteIdx)
@@ -2197,16 +2184,16 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
                     {
                         // Check if Mid and Hi bytes follow in expected pattern
                         uint8_t lbaMidExpected = M_Byte1(nopTests[testNum].lbaTestVal);
-                        uint8_t lbaHiExpected = M_Byte2(nopTests[testNum].lbaTestVal);
+                        uint8_t lbaHiExpected  = M_Byte2(nopTests[testNum].lbaTestVal);
 
-                        if (byteIdx + 2 < sizeof(ataReturnTFRs) &&
-                            resultBytes[byteIdx + 1] == lbaMidExpected &&
+                        if (byteIdx + 2 < sizeof(ataReturnTFRs) && resultBytes[byteIdx + 1] == lbaMidExpected &&
                             resultBytes[byteIdx + 2] == lbaHiExpected)
                         {
                             lbaOffsetInResult = (int32_t)byteIdx;
-                            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                "Test %d: Found LBA pattern (0x%02X 0x%02X 0x%02X) at offset %d in result\n",
-                                testNum, lbaLoExpected, lbaMidExpected, lbaHiExpected, lbaOffsetInResult);
+                            print_tDevice_Verbose_Formatted_String(
+                                device, VERBOSITY_COMMAND_VERBOSE,
+                                "Test %d: Found LBA pattern (0x%02X 0x%02X 0x%02X) at offset %d in result\n", testNum,
+                                lbaLoExpected, lbaMidExpected, lbaHiExpected, lbaOffsetInResult);
                             break;
                         }
                     }
@@ -2217,24 +2204,27 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
             if (countOffsetInResult >= 0)
             {
                 useAlternateOffsets = 1;
-                confidenceScore += 15;  // Bonus for discovering the corruption pattern
-print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                    "Test %d: Alternate offsets discovered - COUNT offset=%d, LBA offset=%d\n",
-                    testNum, countOffsetInResult, lbaOffsetInResult);
+                confidenceScore += 15; // Bonus for discovering the corruption pattern
+                print_tDevice_Verbose_Formatted_String(
+                    device, VERBOSITY_COMMAND_VERBOSE,
+                    "Test %d: Alternate offsets discovered - COUNT offset=%d, LBA offset=%d\n", testNum,
+                    countOffsetInResult, lbaOffsetInResult);
 
                 // Re-extract test 0's result using discovered offsets
                 result.countTestVal = resultBytes[countOffsetInResult];
                 if (lbaOffsetInResult >= 0)
                 {
-                    uint8_t lbaLo = resultBytes[lbaOffsetInResult];
+                    uint8_t lbaLo  = resultBytes[lbaOffsetInResult];
                     uint8_t lbaMid = resultBytes[lbaOffsetInResult + 1];
-                    uint8_t lbaHi = resultBytes[lbaOffsetInResult + 2];
-                    result.lbaTestVal = M_BytesTo4ByteValue(M_Nibble0(nopResults[testNum].device), lbaHi, lbaMid, lbaLo);
+                    uint8_t lbaHi  = resultBytes[lbaOffsetInResult + 2];
+                    result.lbaTestVal =
+                        M_BytesTo4ByteValue(M_Nibble0(nopResults[testNum].device), lbaHi, lbaMid, lbaLo);
                 }
 
-                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                    "Test %d: Re-extracted COUNT from offset %d = 0x%02X, LBA from offset %d = 0x%08X\n",
-                    testNum, countOffsetInResult, result.countTestVal, lbaOffsetInResult, result.lbaTestVal);
+                print_tDevice_Verbose_Formatted_String(
+                    device, VERBOSITY_COMMAND_VERBOSE,
+                    "Test %d: Re-extracted COUNT from offset %d = 0x%02X, LBA from offset %d = 0x%08X\n", testNum,
+                    countOffsetInResult, result.countTestVal, lbaOffsetInResult, result.lbaTestVal);
             }
         }
 
@@ -2242,24 +2232,26 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
         if (useAlternateOffsets && testNum > 0 && countOffsetInResult >= 0)
         {
             print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                "Test %d: Using discovered offsets (COUNT=%d, LBA=%d)\n",
-                testNum, countOffsetInResult, lbaOffsetInResult);
-            uint8_t* resultBytes = (uint8_t*)&nopResults[testNum];
-            uint8_t extractedCount = resultBytes[countOffsetInResult];
-            result.countTestVal = extractedCount;
+                                                   "Test %d: Using discovered offsets (COUNT=%d, LBA=%d)\n", testNum,
+                                                   countOffsetInResult, lbaOffsetInResult);
+            uint8_t* resultBytes    = (uint8_t*)&nopResults[testNum];
+            uint8_t  extractedCount = resultBytes[countOffsetInResult];
+            result.countTestVal     = extractedCount;
 
             if (lbaOffsetInResult >= 0)
             {
-                uint8_t lbaLo = resultBytes[lbaOffsetInResult];
-                uint8_t lbaMid = resultBytes[lbaOffsetInResult + 1];
-                uint8_t lbaHi = resultBytes[lbaOffsetInResult + 2];
+                uint8_t lbaLo     = resultBytes[lbaOffsetInResult];
+                uint8_t lbaMid    = resultBytes[lbaOffsetInResult + 1];
+                uint8_t lbaHi     = resultBytes[lbaOffsetInResult + 2];
                 result.lbaTestVal = M_BytesTo4ByteValue(M_Nibble0(nopResults[testNum].device), lbaHi, lbaMid, lbaLo);
             }
 
             print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                "Test %d: Re-extracted COUNT from offset %d = 0x%02X (expected 0x%02X), LBA from offset %d = 0x%08X (expected 0x%08X)\n",
-                testNum, countOffsetInResult, extractedCount, nopTests[testNum].countTestVal,
-                lbaOffsetInResult, result.lbaTestVal, nopTests[testNum].lbaTestVal);
+                                                   "Test %d: Re-extracted COUNT from offset %d = 0x%02X (expected "
+                                                   "0x%02X), LBA from offset %d = 0x%08X (expected 0x%08X)\n",
+                                                   testNum, countOffsetInResult, extractedCount,
+                                                   nopTests[testNum].countTestVal, lbaOffsetInResult, result.lbaTestVal,
+                                                   nopTests[testNum].lbaTestVal);
         }
 
         if (result.countTestVal == nopTests[testNum].countTestVal)
@@ -2278,17 +2270,18 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
         {
             // Check if this is a Lo/Hi byte swap rather than true zeroing/corruption
             // PMCS SATLs place ATA registers in sense data in big-endian order (Lo where Hi belongs)
-            uint8_t expectedLo = M_Byte0(nopTests[testNum].lbaTestVal);
+            uint8_t expectedLo  = M_Byte0(nopTests[testNum].lbaTestVal);
             uint8_t expectedMid = M_Byte1(nopTests[testNum].lbaTestVal);
-            uint8_t expectedHi = M_Byte2(nopTests[testNum].lbaTestVal);
-            if (nopResults[testNum].lbaLow == expectedHi &&
-                nopResults[testNum].lbaMid == expectedMid &&
-                nopResults[testNum].lbaHi  == expectedLo)
+            uint8_t expectedHi  = M_Byte2(nopTests[testNum].lbaTestVal);
+            if (nopResults[testNum].lbaLow == expectedHi && nopResults[testNum].lbaMid == expectedMid &&
+                nopResults[testNum].lbaHi == expectedLo)
             {
                 ++swappedLBAResponses;
                 print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                    "Test %d: LBA Lo/Hi bytes are reversed (Lo=0x%02X got 0x%02X, Hi=0x%02X got 0x%02X) - swap pattern detected\n",
-                    testNum, expectedLo, nopResults[testNum].lbaLow, expectedHi, nopResults[testNum].lbaHi);
+                                                       "Test %d: LBA Lo/Hi bytes are reversed (Lo=0x%02X got 0x%02X, "
+                                                       "Hi=0x%02X got 0x%02X) - swap pattern detected\n",
+                                                       testNum, expectedLo, nopResults[testNum].lbaLow, expectedHi,
+                                                       nopResults[testNum].lbaHi);
             }
             else
             {
@@ -2314,21 +2307,24 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
                 // We are confident that this result is correct and can move on with accepting
                 // all other command responses.
                 print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                    "NOP Test: EARLY EXIT - High confidence detected (nopSupported=true, consistent results, confidence=%d)\n",
-                    confidenceScore);
-                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                       "NOP Test: EARLY EXIT - High confidence detected "
+                                                       "(nopSupported=true, consistent results, confidence=%d)\n",
+                                                       confidenceScore);
+                print_tDevice_Verbose_String(
+                    device, VERBOSITY_COMMAND_VERBOSE,
                     "NOP Test: Setting nonDataCountBroken=false, nonDataLBABroken=false, nonDataTest=ALLOW_ALL\n");
                 flush_tDevice_Verbose_Stream(device);
                 device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = false;
-                device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken = false;
+                device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken   = false;
                 device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack = SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED;
                 device->drive_info.passThroughHacks.ataPTHacks.nonDataTest    = ATA_NON_DATA_TEST_ALLOW_ALL;
                 return;
             }
             else
             {
-                // without this set, we have lower confidence in drive behavior nad need more testing to confirm the behavior.
-                // if it continues to pass, we are good to go onwards and this device responds as we expect it to.
+                // without this set, we have lower confidence in drive behavior nad need more testing to confirm the
+                // behavior. if it continues to pass, we are good to go onwards and this device responds as we expect it
+                // to.
             }
         }
         else
@@ -2343,14 +2339,15 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
             {
                 // this is a more common way we have seen these fields report in libata
                 uint8_t status = M_Byte3(senseFields.fixedCommandSpecificInformation);
-                uint8_t error = M_Byte2(senseFields.fixedCommandSpecificInformation);
-                // status cannot have ATA_STATUS_BIT_BUSY, ATA_STATUS_BIT_DEVICE_FAULT, ATA_STATUS_BIT_DATA_REQUEST, ATA_STATUS_BIT_CORRECTED_DATA/ATA_STATUS_BIT_ALIGNMENT_ERROR
-                // Status MAY have ATA_STATUS_BIT_SENSE_DATA_AVAILABLE, ATA_STATUS_BIT_SEEK_COMPLETE
-                // Error must only set ATA_ERROR_BIT_ABORT
+                uint8_t error  = M_Byte2(senseFields.fixedCommandSpecificInformation);
+                // status cannot have ATA_STATUS_BIT_BUSY, ATA_STATUS_BIT_DEVICE_FAULT, ATA_STATUS_BIT_DATA_REQUEST,
+                // ATA_STATUS_BIT_CORRECTED_DATA/ATA_STATUS_BIT_ALIGNMENT_ERROR Status MAY have
+                // ATA_STATUS_BIT_SENSE_DATA_AVAILABLE, ATA_STATUS_BIT_SEEK_COMPLETE Error must only set
+                // ATA_ERROR_BIT_ABORT
                 if ((status & ATA_STATUS_BIT_READY) && (status & ATA_STATUS_BIT_ERROR) &&
                     !(status & ATA_STATUS_BIT_BUSY) && !(status & ATA_STATUS_BIT_DEVICE_FAULT) &&
-                    !(status & ATA_STATUS_BIT_DATA_REQUEST) && !(status & ATA_STATUS_BIT_ALIGNMENT_ERROR)
-                    && error == ATA_ERROR_BIT_ABORT)
+                    !(status & ATA_STATUS_BIT_DATA_REQUEST) && !(status & ATA_STATUS_BIT_ALIGNMENT_ERROR) &&
+                    error == ATA_ERROR_BIT_ABORT)
                 {
                     // Looks like ATA status in the CSI field (libATA pattern).
                     // But ONLY set UNALIGNED_WRITE_BUG if the LBA bytes appear to NOT be a simple swap.
@@ -2360,100 +2357,116 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
                     uint8_t expectedLo  = M_Byte0(nopTests[testNum].lbaTestVal);
                     uint8_t expectedMid = M_Byte1(nopTests[testNum].lbaTestVal);
                     uint8_t expectedHi  = M_Byte2(nopTests[testNum].lbaTestVal);
-                    bool isSwappedLBA   = (nopResults[testNum].lbaLow == expectedHi &&
-                                           nopResults[testNum].lbaMid == expectedMid &&
-                                           nopResults[testNum].lbaHi  == expectedLo);
+                    bool    isSwappedLBA =
+                        (nopResults[testNum].lbaLow == expectedHi && nopResults[testNum].lbaMid == expectedMid &&
+                         nopResults[testNum].lbaHi == expectedLo);
                     if (!isSwappedLBA)
                     {
-                        // Looks like a common way we've seen this report in libATA which is not the right location, but we can work around this.
+                        // Looks like a common way we've seen this report in libATA which is not the right location, but
+                        // we can work around this.
                         device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack =
-                        SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG;
-                    // Try locating any other part of our command/pattern in the information/command specific information fields.
-                    // Note that during debugging 12B and 16B provided different responses with different registers in different locations!
-                    // It was observed that with the 12B device and count were next in command specific wheras with 16B it was LBA registers (not all of them though)
-                    //
-                    // Try finding the sent patterns in a different location, or an expected result in a
-                    // different location than was expected. This happens in libata with the "unaligned write command"
-                    // response.
+                            SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG;
+                        // Try locating any other part of our command/pattern in the information/command specific
+                        // information fields. Note that during debugging 12B and 16B provided different responses with
+                        // different registers in different locations! It was observed that with the 12B device and
+                        // count were next in command specific wheras with 16B it was LBA registers (not all of them
+                        // though)
+                        //
+                        // Try finding the sent patterns in a different location, or an expected result in a
+                        // different location than was expected. This happens in libata with the "unaligned write
+                        // command" response.
 
-                    // Search for COUNT pattern in command-specific information field (4 bytes)
-                    if (memchr(&senseFields.fixedCommandSpecificInformation, nopTests[testNum].countTestVal,
-                               sizeof(senseFields.fixedCommandSpecificInformation)))
-                    {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                            "Test %d: Found COUNT pattern 0x%02X in fixedCommandSpecificInformation\n",
-                            testNum, nopTests[testNum].countTestVal);
-                    }
+                        // Search for COUNT pattern in command-specific information field (4 bytes)
+                        if (memchr(&senseFields.fixedCommandSpecificInformation, nopTests[testNum].countTestVal,
+                                   sizeof(senseFields.fixedCommandSpecificInformation)))
+                        {
+                            print_tDevice_Verbose_Formatted_String(
+                                device, VERBOSITY_COMMAND_VERBOSE,
+                                "Test %d: Found COUNT pattern 0x%02X in fixedCommandSpecificInformation\n", testNum,
+                                nopTests[testNum].countTestVal);
+                        }
 
-                    // Search for COUNT pattern in sense-key-specific information field (3 bytes)
-                    if (senseFields.senseKeySpecificInformation.senseKeySpecificValid &&
-                        memchr(&senseFields.senseKeySpecificInformation.unknownDataType[0], nopTests[testNum].countTestVal,
-                               sizeof(senseFields.senseKeySpecificInformation.unknownDataType)))
-                    {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                            "Test %d: Found COUNT pattern 0x%02X in senseKeySpecificInformation\n",
-                            testNum, nopTests[testNum].countTestVal);
-                    }
+                        // Search for COUNT pattern in sense-key-specific information field (3 bytes)
+                        if (senseFields.senseKeySpecificInformation.senseKeySpecificValid &&
+                            memchr(&senseFields.senseKeySpecificInformation.unknownDataType[0],
+                                   nopTests[testNum].countTestVal,
+                                   sizeof(senseFields.senseKeySpecificInformation.unknownDataType)))
+                        {
+                            print_tDevice_Verbose_Formatted_String(
+                                device, VERBOSITY_COMMAND_VERBOSE,
+                                "Test %d: Found COUNT pattern 0x%02X in senseKeySpecificInformation\n", testNum,
+                                nopTests[testNum].countTestVal);
+                        }
 
-                    // Search for LBA pattern (must check as single 32-bit value or byte-by-byte)
-                    uint32_t lbaLowByte = M_Byte0(nopTests[testNum].lbaTestVal);
-                    uint32_t lbaMidByte = M_Byte1(nopTests[testNum].lbaTestVal);
-                    uint32_t lbaHiByte = M_Byte2(nopTests[testNum].lbaTestVal);
+                        // Search for LBA pattern (must check as single 32-bit value or byte-by-byte)
+                        uint32_t lbaLowByte = M_Byte0(nopTests[testNum].lbaTestVal);
+                        uint32_t lbaMidByte = M_Byte1(nopTests[testNum].lbaTestVal);
+                        uint32_t lbaHiByte  = M_Byte2(nopTests[testNum].lbaTestVal);
 
-                    if (memchr(&senseFields.fixedCommandSpecificInformation, M_STATIC_CAST(int, lbaLowByte),
-                               sizeof(senseFields.fixedCommandSpecificInformation)))
-                    {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                            "Test %d: Found LBA.Low pattern 0x%02X in fixedCommandSpecificInformation\n",
-                            testNum, lbaLowByte);
-                    }
+                        if (memchr(&senseFields.fixedCommandSpecificInformation, M_STATIC_CAST(int, lbaLowByte),
+                                   sizeof(senseFields.fixedCommandSpecificInformation)))
+                        {
+                            print_tDevice_Verbose_Formatted_String(
+                                device, VERBOSITY_COMMAND_VERBOSE,
+                                "Test %d: Found LBA.Low pattern 0x%02X in fixedCommandSpecificInformation\n", testNum,
+                                lbaLowByte);
+                        }
 
-                    if (memchr(&senseFields.fixedCommandSpecificInformation, M_STATIC_CAST(int, lbaMidByte),
-                               sizeof(senseFields.fixedCommandSpecificInformation)))
-                    {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                            "Test %d: Found LBA.Mid pattern 0x%02X in fixedCommandSpecificInformation\n",
-                            testNum, lbaMidByte);
-                    }
+                        if (memchr(&senseFields.fixedCommandSpecificInformation, M_STATIC_CAST(int, lbaMidByte),
+                                   sizeof(senseFields.fixedCommandSpecificInformation)))
+                        {
+                            print_tDevice_Verbose_Formatted_String(
+                                device, VERBOSITY_COMMAND_VERBOSE,
+                                "Test %d: Found LBA.Mid pattern 0x%02X in fixedCommandSpecificInformation\n", testNum,
+                                lbaMidByte);
+                        }
 
-                    if (memchr(&senseFields.fixedCommandSpecificInformation, M_STATIC_CAST(int, lbaHiByte),
-                               sizeof(senseFields.fixedCommandSpecificInformation)))
-                    {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                            "Test %d: Found LBA.Hi pattern 0x%02X in fixedCommandSpecificInformation\n",
-                            testNum, lbaHiByte);
-                    }
+                        if (memchr(&senseFields.fixedCommandSpecificInformation, M_STATIC_CAST(int, lbaHiByte),
+                                   sizeof(senseFields.fixedCommandSpecificInformation)))
+                        {
+                            print_tDevice_Verbose_Formatted_String(
+                                device, VERBOSITY_COMMAND_VERBOSE,
+                                "Test %d: Found LBA.Hi pattern 0x%02X in fixedCommandSpecificInformation\n", testNum,
+                                lbaHiByte);
+                        }
 
-                    if (senseFields.senseKeySpecificInformation.senseKeySpecificValid &&
-                        memchr(&senseFields.senseKeySpecificInformation.unknownDataType[0], M_STATIC_CAST(int, lbaLowByte),
-                               sizeof(senseFields.senseKeySpecificInformation.unknownDataType)))
-                    {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                            "Test %d: Found LBA.Low pattern 0x%02X in senseKeySpecificInformation\n",
-                            testNum, lbaLowByte);
-                    }
+                        if (senseFields.senseKeySpecificInformation.senseKeySpecificValid &&
+                            memchr(&senseFields.senseKeySpecificInformation.unknownDataType[0],
+                                   M_STATIC_CAST(int, lbaLowByte),
+                                   sizeof(senseFields.senseKeySpecificInformation.unknownDataType)))
+                        {
+                            print_tDevice_Verbose_Formatted_String(
+                                device, VERBOSITY_COMMAND_VERBOSE,
+                                "Test %d: Found LBA.Low pattern 0x%02X in senseKeySpecificInformation\n", testNum,
+                                lbaLowByte);
+                        }
 
-                    if (senseFields.senseKeySpecificInformation.senseKeySpecificValid &&
-                        memchr(&senseFields.senseKeySpecificInformation.unknownDataType[0], M_STATIC_CAST(int, lbaMidByte),
-                               sizeof(senseFields.senseKeySpecificInformation.unknownDataType)))
-                    {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                            "Test %d: Found LBA.Mid pattern 0x%02X in senseKeySpecificInformation\n",
-                            testNum, lbaMidByte);
-                    }
+                        if (senseFields.senseKeySpecificInformation.senseKeySpecificValid &&
+                            memchr(&senseFields.senseKeySpecificInformation.unknownDataType[0],
+                                   M_STATIC_CAST(int, lbaMidByte),
+                                   sizeof(senseFields.senseKeySpecificInformation.unknownDataType)))
+                        {
+                            print_tDevice_Verbose_Formatted_String(
+                                device, VERBOSITY_COMMAND_VERBOSE,
+                                "Test %d: Found LBA.Mid pattern 0x%02X in senseKeySpecificInformation\n", testNum,
+                                lbaMidByte);
+                        }
 
-                    if (senseFields.senseKeySpecificInformation.senseKeySpecificValid &&
-                        memchr(&senseFields.senseKeySpecificInformation.unknownDataType[0], M_STATIC_CAST(int, lbaHiByte),
-                               sizeof(senseFields.senseKeySpecificInformation.unknownDataType)))
-                    {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                            "Test %d: Found LBA.Hi pattern 0x%02X in senseKeySpecificInformation\n",
-                            testNum, lbaHiByte);
-                    }
-                    }  // end if (!isSwappedLBA)
+                        if (senseFields.senseKeySpecificInformation.senseKeySpecificValid &&
+                            memchr(&senseFields.senseKeySpecificInformation.unknownDataType[0],
+                                   M_STATIC_CAST(int, lbaHiByte),
+                                   sizeof(senseFields.senseKeySpecificInformation.unknownDataType)))
+                        {
+                            print_tDevice_Verbose_Formatted_String(
+                                device, VERBOSITY_COMMAND_VERBOSE,
+                                "Test %d: Found LBA.Hi pattern 0x%02X in senseKeySpecificInformation\n", testNum,
+                                lbaHiByte);
+                        }
+                    } // end if (!isSwappedLBA)
                     else
                     {
-                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                        print_tDevice_Verbose_Formatted_String(
+                            device, VERBOSITY_COMMAND_VERBOSE,
                             "Test %d: LBA is byte-swapped (not libATA pattern), skipping UNALIGNED_WRITE_BUG flag\n",
                             testNum);
                     }
@@ -2461,19 +2474,22 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
             }
             else
             {
-                //In descriptor format, then this would mean that the descriptor did not come back which
-                //basically means we are screwed.
+                // In descriptor format, then this would mean that the descriptor did not come back which
+                // basically means we are screwed.
             }
         }
     }
 
     // Determine test result based on confidence score and consistency
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-        "NOP Test Loop Complete: successfulMatches=%d, brokenCount=%d, brokenLBA=%d, swappedLBA=%d, confidenceScore=%d\n",
-        successfulMatches, brokenCountResponses, brokenLBAResponses, swappedLBAResponses, confidenceScore);
-    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-        "NOP Test Summary: Score=%d, Matches=%d, BrokenCount=%d, BrokenLBA=%d, SwappedLBA=%d\n",
-        confidenceScore, successfulMatches, brokenCountResponses, brokenLBAResponses, swappedLBAResponses);
+                                           "NOP Test Loop Complete: successfulMatches=%d, brokenCount=%d, "
+                                           "brokenLBA=%d, swappedLBA=%d, confidenceScore=%d\n",
+                                           successfulMatches, brokenCountResponses, brokenLBAResponses,
+                                           swappedLBAResponses, confidenceScore);
+    print_tDevice_Verbose_Formatted_String(
+        device, VERBOSITY_COMMAND_VERBOSE,
+        "NOP Test Summary: Score=%d, Matches=%d, BrokenCount=%d, BrokenLBA=%d, SwappedLBA=%d\n", confidenceScore,
+        successfulMatches, brokenCountResponses, brokenLBAResponses, swappedLBAResponses);
     flush_tDevice_Verbose_Stream(device);
 
     if (successfulMatches == NOP_MAX_TESTS && confidenceScore >= 50)
@@ -2483,7 +2499,8 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
         device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken   = false;
         device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack     = SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED;
         device->drive_info.passThroughHacks.ataPTHacks.nonDataTest        = ATA_NON_DATA_TEST_ALLOW_ALL;
-        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+        print_tDevice_Verbose_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
             "NOP Test Result: PASS (High Confidence) - Device properly echoes register values in standard locations\n");
     }
     else if (brokenCountResponses == NOP_MAX_TESTS && confidenceScore >= 20)
@@ -2491,7 +2508,8 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
         // All 6 tests show COUNT broken consistently with moderate-to-high confidence (Broadcom bug pattern)
         device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = true;
         device->drive_info.passThroughHacks.ataPTHacks.nonDataTest        = ATA_NON_DATA_TEST_COUNT_ZERO_ONLY;
-        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+        print_tDevice_Verbose_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
             "NOP Test Result: FAILED - COUNT register consistently zeroed by HBA (Broadcom 9300 pattern detected)\n");
     }
     else if (swappedLBAResponses == NOP_MAX_TESTS && confidenceScore >= 20)
@@ -2499,10 +2517,12 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
         // All 6 tests show LBA Lo and Hi consistently byte-swapped - SATL returns bytes in reversed byte order
         // The registers are all there, just Lo and Hi are exchanged. Do NOT block commands, just fix extraction.
         device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken = false;
-        device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack   = SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest      = ATA_NON_DATA_TEST_ALLOW_ALL;
+        device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack =
+            SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER;
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_ALLOW_ALL;
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-            "NOP Test Result: SWAPPED LBA BYTE ORDER - Lo and Hi bytes consistently reversed, setting SWAPPED_LBA_BYTE_ORDER hack\n");
+                                     "NOP Test Result: SWAPPED LBA BYTE ORDER - Lo and Hi bytes consistently reversed, "
+                                     "setting SWAPPED_LBA_BYTE_ORDER hack\n");
     }
     else if (brokenLBAResponses == NOP_MAX_TESTS && confidenceScore >= 20)
     {
@@ -2510,49 +2530,56 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
         device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken = true;
         device->drive_info.passThroughHacks.ataPTHacks.nonDataTest      = ATA_NON_DATA_TEST_LBA_ZERO_ONLY;
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-            "NOP Test Result: FAILED - LBA register consistently zeroed by HBA\n");
+                                     "NOP Test Result: FAILED - LBA register consistently zeroed by HBA\n");
     }
     else if (useAlternateOffsets && countOffsetInResult >= 0 && brokenLBAResponses == NOP_MAX_TESTS)
     {
         // We successfully discovered COUNT offset and all LBA tests consistently failed to match
         // This indicates: COUNT can be recovered from alternate offsets, LBA values returned but at wrong location
         // Set the flags to indicate the corruption, sat_helper will apply workarounds to extract correctly
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = false;  // COUNT is recoverable from offset
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken = true;     // LBA is misaligned/broken
-        device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack = SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_ALLOW_ALL;
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = false; // COUNT is recoverable from offset
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken   = true;  // LBA is misaligned/broken
+        device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack     = SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG;
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest        = ATA_NON_DATA_TEST_ALLOW_ALL;
+        print_tDevice_Verbose_Formatted_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
             "NOP Test Decision: TAKING libATA PATH (useAlternateOffsets=true, countOffsetInResult=%d, brokenLBA=%d)\n",
             countOffsetInResult, brokenLBAResponses);
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+        print_tDevice_Verbose_Formatted_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
             "NOP Test Result: WORKAROUND DETECTED - COUNT recoverable at offset %d, LBA misaligned\n",
             countOffsetInResult);
-        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+        print_tDevice_Verbose_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
             "NOP Test: Setting nonDataLBABroken=true, fixedSenseHack=UNALIGNED_WRITE_BUG, nonDataTest=ALLOW_ALL\n");
         flush_tDevice_Verbose_Stream(device);
     }
-    else if (successfulMatches == NOP_MAX_TESTS && brokenCountResponses == NOP_MAX_TESTS && brokenLBAResponses == NOP_MAX_TESTS && !useAlternateOffsets && confidenceScore >= 0)
+    else if (successfulMatches == NOP_MAX_TESTS && brokenCountResponses == NOP_MAX_TESTS &&
+             brokenLBAResponses == NOP_MAX_TESTS && !useAlternateOffsets && confidenceScore >= 0)
     {
         // This case was the old behavioral PMCS detection - now handled cleanly by swappedLBAResponses above.
         // Kept as fallback: all 6 tests had consistent behavior, LBA was consistently wrong in some other way,
         // but the command did return the expected ABORTED status (confidenceScore >= 0).
         // A very negative confidence score (e.g. device rejected the command with ASC=20h) drops to INCONCLUSIVE.
         device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = false;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken = true;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_LBA_ZERO_ONLY;
-        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest        = ATA_NON_DATA_TEST_LBA_ZERO_ONLY;
+        print_tDevice_Verbose_Formatted_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
             "NOP Test Decision: FALLBACK - Success=%d, BrokenCount=%d, BrokenLBA=%d, no alt offsets\n",
             successfulMatches, brokenCountResponses, brokenLBAResponses);
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-            "NOP Test Result: FAILED - LBA consistently wrong but not simple byte swap\n");
+                                     "NOP Test Result: FAILED - LBA consistently wrong but not simple byte swap\n");
     }
     else
     {
         // Low confidence, inconclusive, or mixed results - treat as untested for safety
         print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-            "NOP Test Result: INCONCLUSIVE - Success=%d, BrokenCount=%d, BrokenLBA=%d, Score=%d, AltOffsets=%s, Offset=%d\n",
-            successfulMatches, brokenCountResponses, brokenLBAResponses, confidenceScore,
-            useAlternateOffsets ? "true" : "false", countOffsetInResult);
+                                               "NOP Test Result: INCONCLUSIVE - Success=%d, BrokenCount=%d, "
+                                               "BrokenLBA=%d, Score=%d, AltOffsets=%s, Offset=%d\n",
+                                               successfulMatches, brokenCountResponses, brokenLBAResponses,
+                                               confidenceScore, useAlternateOffsets ? "true" : "false",
+                                               countOffsetInResult);
         device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_INDETERMINATE;
     }
 
@@ -2561,40 +2588,41 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
     if (device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack == SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG)
     {
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-            "NOP Verification: Running final verification test with workarounds active...\n");
+                                     "NOP Verification: Running final verification test with workarounds active...\n");
 
         // Unique verification pattern (not used in the 6 main tests)
-        const uint8_t verificationCountPattern = 0xB8;
-        const uint32_t verificationLBAPattern = 0xECF1D2;
+        const uint8_t  verificationCountPattern = 0xB8;
+        const uint32_t verificationLBAPattern   = 0xECF1D2;
 
         // Track what was broken before verification
         uint8_t countWasBrokenBefore = (brokenCountResponses == NOP_MAX_TESTS);
-        uint8_t lbaWasBrokenBefore = (brokenLBAResponses == NOP_MAX_TESTS);
+        uint8_t lbaWasBrokenBefore   = (brokenLBAResponses == NOP_MAX_TESTS);
 
         ataReturnTFRs verificationResult;
         explicit_zeroes(&verificationResult, sizeof(ataReturnTFRs));
 
-        eReturnValues verifyRet = ata_NOP(device, ATA_NOP_RETURN_ABORTED, verificationCountPattern, verificationLBAPattern, &verificationResult);
+        eReturnValues verifyRet = ata_NOP(device, ATA_NOP_RETURN_ABORTED, verificationCountPattern,
+                                          verificationLBAPattern, &verificationResult);
         if (verifyRet == SUCCESS || verifyRet == ABORTED)
         {
-            sNOP_Test_Codes verifyResult = { 0 , 0 };
-            eReturnValues getResult = get_NOP_Result(&verificationResult, &verifyResult);
+            sNOP_Test_Codes verifyResult = {0, 0};
+            eReturnValues   getResult    = get_NOP_Result(&verificationResult, &verifyResult);
             if (getResult == SUCCESS)
             {
                 uint8_t countFixedByWorkaround = (verifyResult.countTestVal == verificationCountPattern);
-                uint8_t lbaFixedByWorkaround = (verifyResult.lbaTestVal == verificationLBAPattern);
+                uint8_t lbaFixedByWorkaround   = (verifyResult.lbaTestVal == verificationLBAPattern);
 
-                print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                    "NOP Verification Results: COUNT %s, LBA %s\n",
-                    countFixedByWorkaround ? "FIXED" : "STILL_BROKEN",
-                    lbaFixedByWorkaround ? "FIXED" : "STILL_BROKEN");
+                print_tDevice_Verbose_Formatted_String(
+                    device, VERBOSITY_COMMAND_VERBOSE, "NOP Verification Results: COUNT %s, LBA %s\n",
+                    countFixedByWorkaround ? "FIXED" : "STILL_BROKEN", lbaFixedByWorkaround ? "FIXED" : "STILL_BROKEN");
 
                 int verificationBoost = 0;
                 if (countFixedByWorkaround && lbaFixedByWorkaround)
                 {
                     // Both registers fixed - strong validation of workaround
                     verificationBoost = 35;
-                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                    print_tDevice_Verbose_String(
+                        device, VERBOSITY_COMMAND_VERBOSE,
                         "NOP Verification: Both COUNT and LBA fixed by workaround (+35 confidence)\n");
                 }
                 else if (countFixedByWorkaround && countWasBrokenBefore)
@@ -2602,49 +2630,54 @@ print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
                     // COUNT was broken, now fixed
                     verificationBoost = 15;
                     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-                        "NOP Verification: COUNT fixed by workaround (+15 confidence)\n");
+                                                 "NOP Verification: COUNT fixed by workaround (+15 confidence)\n");
                 }
                 else if (lbaFixedByWorkaround && lbaWasBrokenBefore)
                 {
                     // LBA was broken, now fixed
                     verificationBoost = 15;
                     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-                        "NOP Verification: LBA fixed by workaround (+15 confidence)\n");
+                                                 "NOP Verification: LBA fixed by workaround (+15 confidence)\n");
                 }
-                else if ((countFixedByWorkaround && lbaFixedByWorkaround) || verifyResult.countTestVal == verificationCountPattern)
+                else if ((countFixedByWorkaround && lbaFixedByWorkaround) ||
+                         verifyResult.countTestVal == verificationCountPattern)
                 {
                     // Partial improvement on something that was broken
                     verificationBoost = 15;
                     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-                        "NOP Verification: Partial improvement detected (+15 confidence)\n");
+                                                 "NOP Verification: Partial improvement detected (+15 confidence)\n");
                 }
                 else
                 {
                     // Workaround didn't help
                     print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-                        "NOP Verification: Workaround did not resolve the issue (no boost)\n");
+                                                 "NOP Verification: Workaround did not resolve the issue (no boost)\n");
                 }
 
                 confidenceScore += verificationBoost;
 
                 print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
-                    "NOP Test Final Score after verification: %d\n", confidenceScore);
+                                                       "NOP Test Final Score after verification: %d\n",
+                                                       confidenceScore);
 
                 // If verification boosted us enough, upgrade INDETERMINATE to a specific determination
-                if (confidenceScore >= 50 && device->drive_info.passThroughHacks.ataPTHacks.nonDataTest == ATA_NON_DATA_TEST_INDETERMINATE)
+                if (confidenceScore >= 50 &&
+                    device->drive_info.passThroughHacks.ataPTHacks.nonDataTest == ATA_NON_DATA_TEST_INDETERMINATE)
                 {
                     if (countWasBrokenBefore && countFixedByWorkaround)
                     {
                         device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = true;
                         device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_COUNT_ZERO_ONLY;
-                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                        print_tDevice_Verbose_String(
+                            device, VERBOSITY_COMMAND_VERBOSE,
                             "NOP Verification Upgrade: Determined COUNT is broken (verified by workaround fix)\n");
                     }
                     else if (lbaWasBrokenBefore && lbaFixedByWorkaround)
                     {
                         device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken = true;
                         device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_LBA_ZERO_ONLY;
-                        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                        print_tDevice_Verbose_String(
+                            device, VERBOSITY_COMMAND_VERBOSE,
                             "NOP Verification Upgrade: Determined LBA is broken (verified by workaround fix)\n");
                     }
                 }
@@ -2934,7 +2967,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
         bool smartSupported = false;
         if (is_ATA_Identify_Word_Valid(le16_to_host(ident_word[82])))
         {
-            smartSupported = M_ToBool(le16_to_host(ident_word[82]) & BIT0);
+            smartSupported                              = M_ToBool(le16_to_host(ident_word[82]) & BIT0);
             device->drive_info.ata_Options.nopSupported = M_ToBool(le16_to_host(ident_word[82]) & BIT14);
         }
 
@@ -3048,7 +3081,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
                 uint8_t sectorSizeExponent = UINT8_C(0);
                 // get the number of logical blocks per physical blocks
                 sectorSizeExponent      = le16_to_host(ident_word[106]) & 0x000F;
-                *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize * power_Of_Two(sectorSizeExponent));
+                *fillPhysicalSectorSize = C_CAST(uint32_t, *fillLogicalSectorSize* power_Of_Two(sectorSizeExponent));
             }
         }
 
@@ -3187,12 +3220,22 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
         {
             // for the SCSI interface, copy this information back to the main drive info since SCSI translated info may
             // truncate these fields and we don't want that
-            safe_memcpy(device->drive_info.product_identification, MODEL_NUM_LEN + 1,
-                        device->drive_info.bridge_info.childDriveMN, MODEL_NUM_LEN);
-            safe_memcpy(device->drive_info.serialNumber, SERIAL_NUM_LEN + 1,
-                        device->drive_info.bridge_info.childDriveSN, SERIAL_NUM_LEN);
-            safe_memcpy(device->drive_info.product_revision, FW_REV_LEN + 1,
-                        device->drive_info.bridge_info.childDriveFW, FW_REV_LEN);
+            if (0 != safe_memcpy(device->drive_info.product_identification,
+                                 sizeof(device->drive_info.product_identification),
+                                 device->drive_info.bridge_info.childDriveMN, MODEL_NUM_LEN))
+            {
+                return MEMORY_FAILURE;
+            }
+            if (0 != safe_memcpy(device->drive_info.serialNumber, sizeof(device->drive_info.serialNumber),
+                                 device->drive_info.bridge_info.childDriveSN, SERIAL_NUM_LEN))
+            {
+                return MEMORY_FAILURE;
+            }
+            if (0 != safe_memcpy(device->drive_info.product_revision, sizeof(device->drive_info.product_revision),
+                                 device->drive_info.bridge_info.childDriveFW, FW_REV_LEN))
+            {
+                return MEMORY_FAILURE;
+            }
             device->drive_info.worldWideName = device->drive_info.bridge_info.childWWN;
         }
     }
@@ -3296,7 +3339,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
                 bool copyOfIDData          = false;
                 bool supportedCapabilities = false;
                 bool zonedDeviceInfo       = false;
-                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                 if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA,
                                                          ATA_ID_DATA_LOG_SUPPORTED_PAGES, logBuffer,
                                                          ATA_LOG_PAGE_LEN_BYTES, 0))
@@ -3339,14 +3382,14 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
                         }
                     }
                 }
-                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                 if (copyOfIDData && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA,
                                                                          ATA_ID_DATA_LOG_COPY_OF_IDENTIFY_DATA,
                                                                          logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
                 {
                     device->drive_info.softSATFlags.identifyDeviceDataLogSupported = true;
                 }
-                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                 if (supportedCapabilities &&
                     SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA,
                                                          ATA_ID_DATA_LOG_SUPPORTED_CAPABILITIES, logBuffer,
@@ -3411,7 +3454,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
                         }
                     }
                 }
-                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                 if (zonedDeviceInfo && SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_IDENTIFY_DEVICE_DATA,
                                                                             ATA_ID_DATA_LOG_ZONED_DEVICE_INFORMATION,
                                                                             logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
@@ -3435,7 +3478,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
             }
             if (readDeviceStatisticsLog)
             {
-                safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                 if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS, ATA_DEVICE_STATS_LOG_LIST,
                                                          logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0))
                 {
@@ -3476,7 +3519,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
                     if (device->drive_info.softSATFlags.deviceStatsPages.generalStatisitcsSupported)
                     {
                         // need to read this page and check if the data and time timestamp statistic is supported
-                        safe_memset(logBuffer, ATA_LOG_PAGE_LEN_BYTES, 0, ATA_LOG_PAGE_LEN_BYTES);
+                        explicit_zeroes(logBuffer, ATA_LOG_PAGE_LEN_BYTES);
                         if (SUCCESS == send_ATA_Read_Log_Ext_Cmd(device, ATA_LOG_DEVICE_STATISTICS,
                                                                  ATA_DEVICE_STATS_LOG_GENERAL, logBuffer,
                                                                  ATA_LOG_PAGE_LEN_BYTES, 0))
@@ -4705,9 +4748,9 @@ OPENSEA_TRANSPORT_API eReturnValues convert_LBA_To_CHS(const tDevice* M_NONNULL 
             {
                 uint32_t headsPerCylinder = le16_to_host(device->drive_info.IdentifyData.ata.Word003);
                 uint32_t sectorsPerTrack  = le16_to_host(device->drive_info.IdentifyData.ata.Word006);
-                *cylinder = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder * sectorsPerTrack));
-                *head     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
-                *sector   = C_CAST(uint8_t, (lba % sectorsPerTrack) + ATA_CHS_SECTOR_NUM_ADJUSTMENT);
+                *cylinder                 = C_CAST(uint16_t, lba / C_CAST(uint32_t, headsPerCylinder* sectorsPerTrack));
+                *head                     = C_CAST(uint8_t, (lba / sectorsPerTrack) % headsPerCylinder);
+                *sector                   = C_CAST(uint8_t, (lba % sectorsPerTrack) + ATA_CHS_SECTOR_NUM_ADJUSTMENT);
                 userAddressableCapacityCHS =
                     C_CAST(uint32_t, le16_to_host(device->drive_info.IdentifyData.ata.Word001)) *
                     C_CAST(uint32_t, le16_to_host(device->drive_info.IdentifyData.ata.Word003)) *
