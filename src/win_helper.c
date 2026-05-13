@@ -377,20 +377,21 @@ static bool get_IDs_From_TCHAR_String(DEVINST            instance,
                                                            propertyBuf, &propertyBufLen, 0))
                 {
                     // multiple strings can be returned.
-                    for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
+                    for (LPWSTR property = M_REINTERPRET_CAST(LPWSTR, propertyBuf);
+                         (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && *property;
+                         property += wcslen(property) + 1)
                     {
-                        if (property &&
-                            (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen &&
-                            wcslen(property))
+                        LPWSTR revisionStr = wcsstr(property, L"REV_");
+                        if (revisionStr)
                         {
-                            LPWSTR revisionStr = wcsstr(property, L"REV_");
-                            if (revisionStr)
+                            if (1 == swscanf(revisionStr, L"REV_%x", &device->drive_info.adapter_info.revision))
                             {
-                                if (1 == swscanf(revisionStr, L"REV_%x", &device->drive_info.adapter_info.revision))
-                                {
-                                    device->drive_info.adapter_info.revisionValid = true;
-                                    break;
-                                }
+                                device->drive_info.adapter_info.revisionValid = true;
+                                break;
+                            }
+                            else
+                            {
+                                device->drive_info.adapter_info.revisionValid = false;
                             }
                         }
                     }
@@ -473,6 +474,10 @@ static bool get_IDs_From_TCHAR_String(DEVINST            instance,
             {
                 device->drive_info.adapter_info.vendorIDValid = true;
             }
+            else
+            {
+                device->drive_info.adapter_info.vendorIDValid = false;
+            }
         }
 
         device->drive_info.adapter_info.infoType = ADAPTER_INFO_IEEE1394;
@@ -489,27 +494,29 @@ static bool get_IDs_From_TCHAR_String(DEVINST            instance,
                     CM_Get_DevNode_PropertyW(instance, propertyKey, &propertyType, propertyBuf, &propertyBufLen, 0))
                 {
                     // multiple strings can be returned for some properties. This one will most likely only return one.
-                    for (LPWSTR property = C_CAST(LPWSTR, propertyBuf); *property; property += wcslen(property) + 1)
+                    for (LPWSTR property = M_REINTERPRET_CAST(LPWSTR, propertyBuf);
+                         (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && *property;
+                         property += wcslen(property) + 1)
                     {
-                        if (property &&
-                            (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen &&
-                            wcslen(property))
-                        {
-                            int scannedVals = _snwscanf_s(C_CAST(const wchar_t*, propertyBuf), propertyBufLen,
-                                                          L"1394\\%x&%x", &device->drive_info.adapter_info.specifierID,
+                        size_t byteOffset   = C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf);
+                        size_t remainingLen = (propertyBufLen > byteOffset) ? (propertyBufLen - byteOffset) / sizeof(wchar_t) : 0;
+                        int    scannedVals  = _snwscanf_s(property, remainingLen,
+                                                          L"1394\\%I32x&%I32x",
+                                                          &device->drive_info.adapter_info.specifierID,
                                                           &device->drive_info.adapter_info.revision);
-                            if (scannedVals < 2)
-                            {
+                        if (scannedVals < 2)
+                        {
 #if defined(_DEBUG)
-                                printf("Could not scan all values. Scanned %d values\n", scannedVals);
+                            printf("Could not scan all values. Scanned %d values\n", scannedVals);
 #endif
-                            }
-                            else
-                            {
-                                device->drive_info.adapter_info.specifierIDValid = true;
-                                device->drive_info.adapter_info.revisionValid    = true;
-                                break;
-                            }
+                            device->drive_info.adapter_info.specifierIDValid = false;
+                            device->drive_info.adapter_info.revisionValid    = false;
+                        }
+                        else
+                        {
+                            device->drive_info.adapter_info.specifierIDValid = true;
+                            device->drive_info.adapter_info.revisionValid    = true;
+                            break;
                         }
                     }
                 }
@@ -2478,16 +2485,13 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                 DEVPROP_TYPEMOD_LIST ? 1 : 0;//this adjusts the loop
                                                                 because if this ISN'T set, then we don't need any more
                                                                 length than the string length for (LPWSTR property =
-                                                                C_CAST(LPWSTR, propertyBuf); *property; property +=
-                                                                wcslen(property) + propListAdditionalLen)
-                                                                                            {
-                                                                                                if (property &&
+                                                                C_CAST(LPWSTR, propertyBuf);
                                                                 (C_CAST(uintptr_t, property) - C_CAST(uintptr_t,
-                                                                propertyBuf)) < propertyBufLen && wcslen(property))
-                                                                                                {
-                                                                                                    wprintf(L"\t%s\n",
+                                                                propertyBuf)) < propertyBufLen && *property;
+                                                                property += wcslen(property) + propListAdditionalLen)
+                                                                                            {
+                                                                                                wprintf(L"\t%s\n",
                                                                 property);
-                                                                                                }
                                                                                             }
                                                                                         }
                                                                                             break;
@@ -2803,30 +2807,26 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                               // the string length
                                                                             for (LPWSTR property =
                                                                                      C_CAST(LPWSTR, propertyBuf);
+                                                                                 (C_CAST(uintptr_t, property) -
+                                                                                  C_CAST(uintptr_t, propertyBuf)) <
+                                                                                     propertyBufLen &&
                                                                                  *property;
                                                                                  property += wcslen(property) +
                                                                                              propListAdditionalLen)
                                                                             {
-                                                                                if (property &&
-                                                                                    (C_CAST(uintptr_t, property) -
-                                                                                     C_CAST(uintptr_t, propertyBuf)) <
-                                                                                        propertyBufLen &&
-                                                                                    wcslen(property))
+                                                                                if (0 >
+                                                                                    snprintf_err_handle(
+                                                                                        device->drive_info
+                                                                                            .driver_info.driverName,
+                                                                                        MAX_DRIVER_NAME, "%ls",
+                                                                                        property)) // this should
+                                                                                // convert the driver
+                                                                                // name to ascii
+                                                                                // string.-TJE
                                                                                 {
-                                                                                    if (0 >
-                                                                                        snprintf_err_handle(
-                                                                                            device->drive_info
-                                                                                                .driver_info.driverName,
-                                                                                            MAX_DRIVER_NAME, "%ls",
-                                                                                            property)) // this should
-                                                                                    // convert the driver
-                                                                                    // name to ascii
-                                                                                    // string.-TJE
-                                                                                    {
-                                                                                        perror(
-                                                                                            "Error converting driver "
-                                                                                            "name to ASCII string");
-                                                                                    }
+                                                                                    perror(
+                                                                                        "Error converting driver "
+                                                                                        "name to ASCII string");
                                                                                 }
                                                                             }
                                                                         }
@@ -2872,69 +2872,65 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                               // the string length
                                                                             for (LPWSTR property =
                                                                                      C_CAST(LPWSTR, propertyBuf);
+                                                                                 (C_CAST(uintptr_t, property) -
+                                                                                  C_CAST(uintptr_t, propertyBuf)) <
+                                                                                     propertyBufLen &&
                                                                                  *property;
                                                                                  property += wcslen(property) +
                                                                                              propListAdditionalLen)
                                                                             {
-                                                                                if (property &&
-                                                                                    (C_CAST(uintptr_t, property) -
-                                                                                     C_CAST(uintptr_t, propertyBuf)) <
-                                                                                        propertyBufLen &&
-                                                                                    wcslen(property))
+                                                                                if (0 >
+                                                                                    snprintf_err_handle(
+                                                                                        device->drive_info
+                                                                                            .driver_info
+                                                                                            .driverVersionString,
+                                                                                        MAX_DRIVER_VER_STR, "%ls",
+                                                                                        property))
                                                                                 {
-                                                                                    if (0 >
-                                                                                        snprintf_err_handle(
-                                                                                            device->drive_info
-                                                                                                .driver_info
-                                                                                                .driverVersionString,
-                                                                                            MAX_DRIVER_VER_STR, "%ls",
-                                                                                            property))
-                                                                                    {
-                                                                                        perror(
-                                                                                            "Error formatting driver "
-                                                                                            "version string\n");
-                                                                                    }
+                                                                                    perror(
+                                                                                        "Error formatting driver "
+                                                                                        "version string\n");
+                                                                                }
 #if defined(HAVE_MSFT_SECURE_LIB)
-                                                                                    int scanfRet = swscanf_s(
-                                                                                        property, L"%u.%u.%u.%u",
-                                                                                        &device->drive_info.driver_info
-                                                                                             .driverMajorVersion,
-                                                                                        &device->drive_info.driver_info
-                                                                                             .driverMinorVersion,
-                                                                                        &device->drive_info.driver_info
-                                                                                             .driverRevision,
-                                                                                        &device->drive_info.driver_info
-                                                                                             .driverBuildNumber);
+                                                                                int scanfRet = swscanf_s(
+                                                                                    property, L"%u.%u.%u.%u",
+                                                                                    &device->drive_info.driver_info
+                                                                                         .driverMajorVersion,
+                                                                                    &device->drive_info.driver_info
+                                                                                         .driverMinorVersion,
+                                                                                    &device->drive_info.driver_info
+                                                                                         .driverRevision,
+                                                                                    &device->drive_info.driver_info
+                                                                                         .driverBuildNumber);
 #else
-                                                                                    int scanfRet = swscanf(
-                                                                                        property, L"%u.%u.%u.%u",
-                                                                                        &device->drive_info.driver_info
-                                                                                             .driverMajorVersion,
-                                                                                        &device->drive_info.driver_info
-                                                                                             .driverMinorVersion,
-                                                                                        &device->drive_info.driver_info
-                                                                                             .driverRevision,
-                                                                                        &device->drive_info.driver_info
-                                                                                             .driverBuildNumber);
+                                                                                int scanfRet = swscanf(
+                                                                                    property, L"%u.%u.%u.%u",
+                                                                                    &device->drive_info.driver_info
+                                                                                         .driverMajorVersion,
+                                                                                    &device->drive_info.driver_info
+                                                                                         .driverMinorVersion,
+                                                                                    &device->drive_info.driver_info
+                                                                                         .driverRevision,
+                                                                                    &device->drive_info.driver_info
+                                                                                         .driverBuildNumber);
 #endif //__STDC__SECURE_LIB__
-                                                                                    if (scanfRet < 4 || scanfRet == EOF)
-                                                                                    {
+                                                                                if (scanfRet < 4 || scanfRet == EOF)
+                                                                                {
 #if defined(_DEBUG)
-                                                                                        print_str("Fatal error getting "
-                                                                                                  "driver version!\n");
+                                                                                    print_str("Fatal error getting "
+                                                                                              "driver version!\n");
 #endif //_DEBUG
-                                                                                    }
-                                                                                    else
-                                                                                    {
-                                                                                        device->drive_info.driver_info
-                                                                                            .majorVerValid = true;
-                                                                                        device->drive_info.driver_info
-                                                                                            .minorVerValid = true;
-                                                                                        device->drive_info.driver_info
-                                                                                            .revisionVerValid = true;
-                                                                                        device->drive_info.driver_info
-                                                                                            .buildVerValid = true;
-                                                                                    }
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    device->drive_info.driver_info
+                                                                                        .majorVerValid = true;
+                                                                                    device->drive_info.driver_info
+                                                                                        .minorVerValid = true;
+                                                                                    device->drive_info.driver_info
+                                                                                        .revisionVerValid = true;
+                                                                                    device->drive_info.driver_info
+                                                                                        .buildVerValid = true;
                                                                                 }
                                                                             }
                                                                         }
