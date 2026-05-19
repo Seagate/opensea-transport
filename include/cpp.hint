@@ -1,0 +1,14 @@
+// cpp.hint for opensea-transport
+// MSVC Browsing Database Parser hint file.
+// Defines the library API decorator so the parser can correctly identify
+// public function declarations in transport headers.
+// Common attribute macros (M_NODISCARD, M_NULLABLE, etc.) are defined in
+// opensea-common/include/cpp.hint and accumulated alongside this file.
+
+#define OPENSEA_TRANSPORT_API
+
+// External / vendor header macros (external/ciss/freebsd/smartpqi_ioctl.h).
+// These GCC struct-attribute macros would otherwise confuse the parser on the
+// trailing "} OS_ATTRIBUTE_PACKED TypeName;" struct definition pattern.
+#define OS_ATTRIBUTE_PACKED
+#define OS_ATTRIBUTE_ALIGNED(n)
