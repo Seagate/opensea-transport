@@ -1536,7 +1536,7 @@ extern "C"
     // forward declare csmi info to avoid including csmi_helper.h
     typedef struct s_csmiDeviceInfo csmiDeviceInfo, *ptrCsmiDeviceInfo;
 
-    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo* M_NULLABLE* M_NULLABLE csmidevinfo)
+    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo * M_NULLABLE * M_NULLABLE csmidevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, csmidevinfo));
     }
@@ -1544,7 +1544,7 @@ extern "C"
     // forward declare cciss device
     typedef struct s_cissDeviceInfo cissDeviceInfo, *ptrCissDeviceInfo;
 
-    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo* M_NULLABLE* M_NULLABLE cissdevinfo)
+    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo * M_NULLABLE * M_NULLABLE cissdevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, cissdevinfo));
     }
@@ -1581,6 +1581,15 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #define OS_HANDLE_NAME_MAX_LENGTH          256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
 #define OS_SECOND_HANDLE_NAME_LENGTH       30
+#if defined(__linux__) && !defined(VMK_CROSS_COMP)
+    typedef enum osFDTypeEnum
+    {
+        FD_TYPE_NONE,
+        FD_TYPE_BSG,
+        FD_TYPE_SG,
+        FD_TYPE_SD,
+    } osFDType;
+#endif
     // \struct typedef struct s_OSDriveInfo
     typedef struct s_OSDriveInfo
     {
@@ -1633,7 +1642,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     int                 fd;
     struct nvme_handle* nvmeFd;
 #    else
-    int fd; // primary handle
+    int      fd; // primary handle
+    osFDType primaryFDType;
 #    endif
     bool scsiAddressValid; // will be true if the SCSI address is a valid address
     struct
@@ -1657,7 +1667,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     int                 fd2;
     struct nvme_handle* nvmeFd2;
 #    else
-    int fd2; // secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
+    int      fd2; // secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
+    osFDType secondaryFDType;
 #    endif
     struct
     {
@@ -2677,7 +2688,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int        flags,
                                                                     eVerbosityLevels    scanVerbosity,
                                                                     uint32_t* M_NONNULL numberOfDevices,
-                                                                    scanDriveInfo* M_NONNULL* M_NULLABLE deviceList);
+                                                                    scanDriveInfo * M_NONNULL * M_NULLABLE deviceList);
 
     //-----------------------------------------------------------------------------
     //

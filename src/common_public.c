@@ -1417,9 +1417,11 @@ OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int    
                         {
                             char* genName   = M_NULLPTR;
                             char* blockName = M_NULLPTR;
+                            char* bsgHandle = M_NULLPTR;
                             if (SUCCESS ==
-                                map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
-                                                            &genName, &blockName))
+                                    map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                                                &genName, &blockName, &bsgHandle) &&
+                                (genName != M_NULLPTR && blockName != M_NULLPTR))
                             {
                                 if (0 > snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
                                                             SCAN_DISPLAY_HANDLE_STRING_LENGTH, "%s<->%s", genName,
@@ -1435,9 +1437,11 @@ OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int    
                         {
                             char* genName   = M_NULLPTR;
                             char* blockName = M_NULLPTR;
+                            char* bsgHandle = M_NULLPTR;
                             if (SUCCESS ==
-                                map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
-                                                            &genName, &blockName))
+                                    map_Block_To_Generic_Handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
+                                                                &genName, &blockName, &bsgHandle) &&
+                                blockName != M_NULLPTR)
                             {
                                 if (0 > snprintf_err_handle((*scanDeviceList)[deviceCountToBeShown].displayHandle,
                                                             SCAN_DISPLAY_HANDLE_STRING_LENGTH, "/dev/%s", blockName))

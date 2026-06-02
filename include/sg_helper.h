@@ -262,9 +262,11 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_WO(2)
     M_PARAM_WO(3)
+    M_PARAM_WO(4)
     eReturnValues map_Block_To_Generic_Handle(const char* M_NONNULL       handle,
                                               char* M_NONNULL* M_NULLABLE genericHandle,
-                                              char* M_NONNULL* M_NULLABLE blockHandle);
+                                              char* M_NONNULL* M_NULLABLE blockHandle,
+                                              char* M_NONNULL* M_NULLABLE blockGenericHandle);
 
     OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device);
 

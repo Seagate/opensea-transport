@@ -105,6 +105,15 @@
 #            pragma message "No NVMe header detected with __has_include. Assuming no NVMe support."
 #        endif
 #    endif
+#    if __has_include(<linux/bsg.h>)
+#        if defined(_DEBUG)
+#            pragma message "Using linux/bsg.h"
+#        endif
+#        include <linux/bsg.h>
+#        if !defined(SEA_BSG_IOCTL_H)
+#            define SEA_BSG_IOCTL_H
+#        endif
+#    endif
 #else
 #    if defined(SEA_NVME_IOCTL_H)
 #        include <linux/nvme_ioctl.h>
@@ -1274,8 +1283,9 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
         else // not NVMe, so we need to do some investigation of the handle. NOTE: this requires 2.6 and later kernel
              // since it reads a link in the /sys/class/ filesystem
         {
-            bool incomingBlock = false; // only set for SD!
-            bool bsg           = false;
+            // bool incomingBlock = false; // only set for SD!
+            bool incomingBSG = false;
+            bool incomingSG  = false;
             DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
             if (0 != safe_strcat(incomingHandleClassPath, PATH_MAX, "/sys/class/"))
             {
@@ -1287,11 +1297,11 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                 {
                     return;
                 }
-                incomingBlock = true;
+                // incomingBlock = true;
             }
             else if (is_Block_SCSI_Generic_Handle(handle))
             {
-                bsg = true;
+                incomingBSG = true;
                 if (0 != safe_strcat(incomingHandleClassPath, PATH_MAX, "bsg/"))
                 {
                     return;
@@ -1299,6 +1309,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
             }
             else if (is_SCSI_Generic_Handle(handle))
             {
+                incomingSG = true;
                 if (0 != safe_strcat(incomingHandleClassPath, PATH_MAX, "scsi_generic/"))
                 {
                     return;
@@ -1368,7 +1379,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                         get_Linux_SYS_FS_SCSI_Device_File_Info(sysFsInfo);
 
                         char* baseLink = basename(inHandleLink);
-                        if (bsg)
+                        if (incomingBSG)
                         {
                             if (snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH,
                                                     "/dev/bsg/%s", baseLink) < 0)
@@ -1377,7 +1388,8 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                                 return;
                             }
                         }
-                        else
+                        else // for both sg and sd, set accordingly. We are setting the block handle also as primary
+                             // here, but change it later to the bsg or sg
                         {
                             if (snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s",
                                                     baseLink) < 0)
@@ -1392,65 +1404,146 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                         // Lastly, call the mapping function to get the matching block handle and check what we got to
                         // set ATAPI, TAPE or leave as-is. Setting these is necessary to prevent talking to ATAPI as HDD
                         // due to overlapping A1h opcode
-                        char* block = M_NULLPTR;
-                        char* gen   = M_NULLPTR;
-                        if (SUCCESS == map_Block_To_Generic_Handle(handle, &gen, &block))
+                        char* blockHandle = M_NULLPTR;
+                        char* genHandle   = M_NULLPTR;
+                        char* bsgHandle   = M_NULLPTR;
+                        if (SUCCESS == map_Block_To_Generic_Handle(handle, &genHandle, &blockHandle, &bsgHandle))
                         {
-                            // printf("successfully mapped the handle. gen = %s\tblock=%s\n", gen, block);
-                            // Our incoming handle SHOULD always be sg/bsg, but just in case, we need to check before we
-                            // setup the second handle (mapped handle) information
-                            if (incomingBlock)
+                            if (genHandle != M_NULLPTR)
                             {
-                                // block device handle was sent into here (and we made it this far...unlikely)
-                                // Secondary handle will be a generic handle
-                                if (is_Block_SCSI_Generic_Handle(gen))
+#if defined(_DEBUG)
+                                printf("genHandle = %s\t", genHandle);
+#endif
+                            }
+                            if (blockHandle != M_NULLPTR)
+                            {
+#if defined(_DEBUG)
+                                printf("blockHandle = %s\t", blockHandle);
+#endif
+                            }
+                            if (bsgHandle != M_NULLPTR)
+                            {
+#if defined(_DEBUG)
+                                printf("blockGenericHandle = %s", bsgHandle);
+#endif
+                            }
+#if defined(_DEBUG)
+                            printf("\n");
+#endif
+
+                            if (incomingSG)
+                            {
+                                if (bsgHandle != M_NULLPTR) // save secondary handle name as bsg handle
                                 {
                                     if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
-                                                            "/dev/bsg/%s", gen) < 0)
+                                                            "/dev/bsg/%s", bsgHandle) < 0)
                                     {
-                                        safe_free(&block);
-                                        safe_free(&gen);
+                                        safe_free(&blockHandle);
+                                        safe_free(&genHandle);
+                                        safe_free(&bsgHandle);
+                                        safe_free(&duphandle);
                                         return;
                                     }
                                 }
-                                else
+                                else if (blockHandle != M_NULLPTR) // save secondary handle name as block handle
                                 {
                                     if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
-                                                            "/dev/%s", gen) < 0)
+                                                            "/dev/%s", blockHandle) < 0)
                                     {
-                                        safe_free(&gen);
+                                        safe_free(&blockHandle);
+                                        safe_free(&genHandle);
+                                        safe_free(&bsgHandle);
+                                        safe_free(&duphandle);
                                         return;
                                     }
                                 }
                             }
-                            else
+                            else if (incomingBSG)
                             {
-                                // generic handle was sent in
-                                // secondary handle will be a block handle
-                                if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
-                                                        "/dev/%s", block) < 0)
+                                if (genHandle != M_NULLPTR) // save secondary handle name as sg handle
                                 {
-                                    safe_free(&block);
-                                    return;
+                                    if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
+                                                            "/dev/%s", genHandle) < 0)
+                                    {
+                                        safe_free(&blockHandle);
+                                        safe_free(&genHandle);
+                                        safe_free(&bsgHandle);
+                                        safe_free(&duphandle);
+                                        return;
+                                    }
+                                }
+                                else if (blockHandle != M_NULLPTR) // save secondary handle name as block handle
+                                {
+                                    if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
+                                                            "/dev/%s", blockHandle) < 0)
+                                    {
+                                        safe_free(&blockHandle);
+                                        safe_free(&genHandle);
+                                        safe_free(&bsgHandle);
+                                        safe_free(&duphandle);
+                                        return;
+                                    }
+                                }
+                            }
+                            else // for block handle change the primary handle as well
+                            {
+                                if (bsgHandle != M_NULLPTR) // save primary handle name as bsg handle
+                                {
+                                    if (snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH,
+                                                            "/dev/bsg/%s", bsgHandle) < 0)
+                                    {
+                                        safe_free(&blockHandle);
+                                        safe_free(&genHandle);
+                                        safe_free(&bsgHandle);
+                                        safe_free(&duphandle);
+                                        return;
+                                    }
+                                }
+                                else if (genHandle != M_NULLPTR) // save primary handle name as sg handle
+                                {
+                                    if (snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH,
+                                                            "/dev/%s", genHandle) < 0)
+                                    {
+                                        safe_free(&blockHandle);
+                                        safe_free(&genHandle);
+                                        safe_free(&bsgHandle);
+                                        safe_free(&duphandle);
+                                        return;
+                                    }
+                                }
+
+                                // set block handle as secondary handle
+                                if (blockHandle != M_NULLPTR)
+                                {
+                                    if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
+                                                            "/dev/%s", blockHandle) < 0)
+                                    {
+                                        safe_free(&blockHandle);
+                                        safe_free(&genHandle);
+                                        safe_free(&bsgHandle);
+                                        safe_free(&duphandle);
+                                        return;
+                                    }
                                 }
                             }
 
-                            if (strstr(block, "sr") || strstr(block, "scd"))
+                            if (strstr(blockHandle, "sr") || strstr(blockHandle, "scd"))
                             {
                                 sysFsInfo->drive_type = ATAPI_DRIVE;
                             }
-                            else if (strstr(block, "st"))
+                            else if (strstr(blockHandle, "st"))
                             {
                                 sysFsInfo->drive_type = LEGACY_TAPE_DRIVE;
                             }
-                            else if (strstr(block, "ses"))
+                            else if (strstr(blockHandle, "ses"))
                             {
                                 // scsi enclosure services
                             }
                         }
                         // print_str("Finish handle mapping\n");
-                        safe_free(&block);
-                        safe_free(&gen);
+                        safe_free(&blockHandle);
+                        safe_free(&genHandle);
+                        safe_free(&bsgHandle);
                     }
                     else
                     {
@@ -1522,19 +1615,87 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
     }
 }
 
+static eReturnValues find_Link_In_ClassPath(const char* classPath,
+                                            const char* className,
+                                            const char* inHandleLink,
+                                            char**      handleName)
+{
+    eReturnValues   ret = UNKNOWN;
+    struct dirent** classList;
+
+    int numberOfItems =
+        scandir(classPath, &classList, M_NULLPTR /*not filtering anything. Just go through each item*/, alphasort);
+
+    for (int iter = 0; iter < numberOfItems && ret == UNKNOWN; ++iter)
+    {
+        // now we need to read the link for classPath/d_name into a buffer...then compare it to the one we
+        // read earlier.
+        size_t      tempLen = safe_strlen(classPath) + safe_strlen(classList[iter]->d_name) + 1;
+        char*       temp    = M_REINTERPRET_CAST(char*, safe_calloc(tempLen, sizeof(char)));
+        struct stat tempStat;
+        safe_memset(&tempStat, sizeof(struct stat), 0, sizeof(struct stat));
+        snprintf_err_handle(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
+        if (lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode)) /*check if this is a link*/
+        {
+            DECLARE_ZERO_INIT_ARRAY(char, mapLink, PATH_MAX);
+            if (readlink(temp, mapLink, PATH_MAX) > 0)
+            {
+#if defined(_DEBUG)
+                printf("read link as: %s\n", mapLink);
+#endif
+                // now, we need to check the links and see if they match.
+                // NOTE: If we are in the block class, we will see sda, sda1, sda 2. These are all matches
+                // (technically)
+                // We SHOULD match on the first disk without partition numbers since we did alphasort
+                // We need to match up until the class name (ex: block, bsg, scsi_generic)
+                char* classPtr = strstr(mapLink, className);
+                // need to match up to the classname
+                if (M_NULLPTR != classPtr &&
+                    strncmp(mapLink, inHandleLink,
+                            (M_STATIC_CAST(uintptr_t, classPtr) - M_STATIC_CAST(uintptr_t, mapLink))) == 0)
+                {
+                    ret = SUCCESS;
+#if defined(_DEBUG)
+                    printf("found match as: %s\n", mapLink);
+#endif
+                    if (0 != safe_strndup(handleName, basename(classPtr), safe_strlen(classPtr)))
+                    {
+                        ret = MEMORY_FAILURE;
+                    }
+                    break;
+                }
+            }
+        }
+        safe_free(&temp);
+    }
+    for (int classiter = 0; classiter < numberOfItems; ++classiter)
+    {
+        safe_free_dirent(&classList[classiter]);
+    }
+    safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &classList));
+
+    return ret;
+}
+
 // map a block handle (sd) to a generic handle (sg or bsg)
 // incoming handle can be either sd, sg, or bsg type
 // This depends on mapping in the file system provided by 2.6 and later.
 M_PARAM_RO(1)
 M_PARAM_WO(2)
 M_PARAM_WO(3)
-eReturnValues map_Block_To_Generic_Handle(const char* M_NONNULL handle, char** genericHandle, char** blockHandle)
+M_PARAM_WO(4)
+eReturnValues map_Block_To_Generic_Handle(const char* M_NONNULL handle,
+                                          char**                genericHandle,
+                                          char**                blockHandle,
+                                          char**                blockGenericHandle)
 {
-
     if (handle == M_NULLPTR)
     {
         return BAD_PARAMETER;
     }
+
+    eReturnValues ret               = FAILURE;
+    bool          atLeastOneMapping = false;
 
     // if the handle passed in contains "nvme" then we know it's a device on the nvme interface
     if (strstr(handle, "nvme") != M_NULLPTR)
@@ -1543,7 +1704,8 @@ eReturnValues map_Block_To_Generic_Handle(const char* M_NONNULL handle, char** g
     }
     else
     {
-        bool incomingBlock = false; // only set for SD!
+        bool incomingBlock   = false; // only set for SD!
+        bool incomingGeneric = false;
         DECLARE_ZERO_INIT_ARRAY(char, incomingHandleClassPath, PATH_MAX);
         if (0 != safe_strcat(incomingHandleClassPath, PATH_MAX, "/sys/class/"))
         {
@@ -1574,7 +1736,9 @@ eReturnValues map_Block_To_Generic_Handle(const char* M_NONNULL handle, char** g
                 perror("Failure setting scsi_generic into incomingHandleClassPath in map_Block_To_Generic_Handle");
                 return MEMORY_FAILURE;
             }
+            incomingGeneric = true;
         }
+
         // first make sure this directory exists
         struct stat inHandleStat;
         if (stat(incomingHandleClassPath, &inHandleStat) == 0 && S_ISDIR(inHandleStat.st_mode))
@@ -1595,199 +1759,159 @@ eReturnValues map_Block_To_Generic_Handle(const char* M_NONNULL handle, char** g
             DECLARE_ZERO_INIT_ARRAY(char, inHandleLink, PATH_MAX);
             if (readlink(incomingHandleClassPath, inHandleLink, PATH_MAX) > 0)
             {
-                // printf("full in handleLink = %s\n", inHandleLink);
+#if defined(_DEBUG)
+                printf("full in handleLink = %s\n", inHandleLink);
+#endif
                 // now we need to map it to a generic handle (sg...if sg not available, bsg)
-                const char* scsiGenericClass = "/sys/class/scsi_generic/";
-                const char* bsgClass         = "/sys/class/bsg/";
-                const char* blockClass       = "/sys/class/block/";
+                const char* scsiGenericClassPath = "/sys/class/scsi_generic/";
+                const char* bsgClassPath         = "/sys/class/bsg/";
+                const char* blockClassPath       = "/sys/class/block/";
+                const char* scsiGenericClassName = "scsi_generic";
+                const char* bsgClassName         = "bsg";
+                const char* blockClassName       = "block";
                 struct stat mapStat;
-                DECLARE_ZERO_INIT_ARRAY(char, classPath, PATH_MAX);
-                bool bsg = false;
+                bool        scanBSG   = false;
+                bool        scanSG    = false;
+                bool        scanBlock = false;
                 if (incomingBlock)
                 {
-                    // check for sg, then bsg
-                    if (stat(scsiGenericClass, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
+                    if (0 != safe_strndup(blockHandle, basename(handle), safe_strlen(basename(handle))))
                     {
-                        if (safe_strcpy(classPath, PATH_MAX, scsiGenericClass) != 0)
-                        {
-                            perror("Failure setting scsi_generic class path in map_Block_To_Generic_Handle");
-                            safe_free(&dupHandle);
-                            return MEMORY_FAILURE;
-                        }
+                        safe_free(&dupHandle);
+                        return NOT_SUPPORTED;
                     }
-                    else if (stat(bsgClass, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
+
+                    // check for sg, then bsg
+                    if (stat(scsiGenericClassPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
                     {
-                        if (safe_strcpy(classPath, PATH_MAX, bsgClass) != 0)
+                        scanSG = true;
+                    }
+
+                    if (stat(bsgClassPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
+                    {
+                        scanBSG = true;
+                    }
+
+                    if (!scanSG && !scanBSG) // could not find either sg or bsg
+                    {
+                        print_str("could not map to generic or block-generic class");
+                        safe_free(&dupHandle);
+                        return NOT_SUPPORTED;
+                    }
+                }
+                else if (incomingGeneric)
+                {
+                    if (0 != safe_strndup(genericHandle, basename(handle), safe_strlen(basename(handle))))
+                    {
+                        safe_free(&dupHandle);
+                        return NOT_SUPPORTED;
+                    }
+
+                    // check for bsg, then block
+                    if (stat(bsgClassPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
+                    {
+                        scanBSG = true;
+                    }
+
+                    if (stat(blockClassPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
+                    {
+                        scanBlock = true;
+                    }
+
+                    if (!scanBSG && !scanBlock) // could not find either sg or block
+                    {
+                        print_str("could not map to block-generic or block class");
+                        safe_free(&dupHandle);
+                        return NOT_SUPPORTED;
+                    }
+                }
+                else // incoming is block-generic
+                {
+                    if (0 != safe_strndup(blockGenericHandle, basename(handle), safe_strlen(basename(handle))))
+                    {
+                        safe_free(&dupHandle);
+                        return NOT_SUPPORTED;
+                    }
+
+                    // check for generic and then block
+                    if (stat(scsiGenericClassPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
+                    {
+                        scanSG = true;
+                    }
+
+                    if (stat(blockClassPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode))
+                    {
+                        scanBlock = true;
+                    }
+
+                    if (!scanSG && !scanBlock) // could not find either sg or block
+                    {
+                        print_str("could not map to generic or block class");
+                        safe_free(&dupHandle);
+                        return NOT_SUPPORTED;
+                    }
+                }
+
+                // now we need to loop through each think in the class folder, read the link, and check if we match.
+                if (scanBSG)
+                {
+                    eReturnValues scanRet =
+                        find_Link_In_ClassPath(bsgClassPath, bsgClassName, inHandleLink, blockGenericHandle);
+                    if (scanRet != SUCCESS)
+                    {
+#if defined(_DEBUG)
+                        print_str("Could not find map for BSG class");
+#endif
+                        if (scanRet == MEMORY_FAILURE)
                         {
-                            perror("Failure setting bsg class path in map_Block_To_Generic_Handle");
                             safe_free(&dupHandle);
                             return MEMORY_FAILURE;
                         }
-                        bsg = true;
                     }
                     else
-                    {
-                        // print_str("could not map to generic class");
-                        safe_free(&dupHandle);
-                        return NOT_SUPPORTED;
-                    }
+                        atLeastOneMapping = true;
                 }
-                else
+
+                if (scanSG)
                 {
-                    // check for block
-                    if (safe_strcpy(classPath, PATH_MAX, blockClass) != 0)
+                    eReturnValues scanRet =
+                        find_Link_In_ClassPath(scsiGenericClassPath, scsiGenericClassName, inHandleLink, genericHandle);
+                    if (scanRet != SUCCESS)
                     {
-                        perror("Failure setting block class path in map_Block_To_Generic_Handle");
-                        safe_free(&dupHandle);
-                        return MEMORY_FAILURE;
-                    }
-                    if (!(stat(classPath, &mapStat) == 0 && S_ISDIR(mapStat.st_mode)))
-                    {
-                        // print_str("could not map to block class");
-                        safe_free(&dupHandle);
-                        return NOT_SUPPORTED;
-                    }
-                }
-                // now we need to loop through each think in the class folder, read the link, and check if we match.
-                struct dirent** classList;
-                int             numberOfItems = scandir(classPath, &classList,
-                                                        M_NULLPTR /*not filtering anything. Just go through each item*/, alphasort);
-                if (numberOfItems < 0)
-                {
-                    perror("Failure scanning class directory in map_Block_To_Generic_Handle");
-                    safe_free(&dupHandle);
-                    return MEMORY_FAILURE;
-                }
-                eReturnValues ret = UNKNOWN;
-                for (int iter = 0; iter < numberOfItems && ret == UNKNOWN; ++iter)
-                {
-                    // now we need to read the link for classPath/d_name into a buffer...then compare it to the one we
-                    // read earlier.
-                    size_t tempLen = safe_strlen(classPath) + safe_strlen(classList[iter]->d_name) + 1;
-                    char*  temp    = M_REINTERPRET_CAST(char*, safe_calloc(tempLen, sizeof(char)));
-                    if (!temp)
-                    {
-                        perror("Failure allocating memory for temp in map_Block_To_Generic_Handle");
-                        safe_free(&dupHandle);
-                        return MEMORY_FAILURE;
-                    }
-                    struct stat tempStat;
-                    M_INITIALIZE_STRUCTURE(&tempStat, sizeof(struct stat));
-                    if (snprintf_err_handle(temp, tempLen, "%s%s", classPath, classList[iter]->d_name) < 0)
-                    {
-                        perror("Failure setting temp path in map_Block_To_Generic_Handle");
-                        safe_free(&temp);
-                        safe_free(&dupHandle);
-                        return MEMORY_FAILURE;
-                    }
-                    if (lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode)) /*check if this is a link*/
-                    {
-                        DECLARE_ZERO_INIT_ARRAY(char, mapLink, PATH_MAX);
-                        if (readlink(temp, mapLink, PATH_MAX) > 0)
+#if defined(_DEBUG)
+                        print_str("Could not find map for SG class");
+#endif
+                        if (scanRet == MEMORY_FAILURE)
                         {
-                            char*  className       = M_NULLPTR;
-                            size_t classNameLength = SIZE_T_C(0);
-                            // printf("read link as: %s\n", mapLink);
-                            // now, we need to check the links and see if they match.
-                            // NOTE: If we are in the block class, we will see sda, sda1, sda 2. These are all matches
-                            // (technically)
-                            //       We SHOULD match on the first disk without partition numbers since we did alphasort
-                            // We need to match up until the class name (ex: block, bsg, scsi_generic)
-                            if (incomingBlock) // block class
-                            {
-                                classNameLength = safe_strlen("scsi_generic") + 1;
-                                className       = M_REINTERPRET_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
-                                if (className)
-                                {
-                                    if (snprintf_err_handle(className, classNameLength, "scsi_generic") < 0)
-                                    {
-                                        perror(
-                                            "Failure setting scsi_generic class name in map_Block_To_Generic_Handle");
-                                        safe_free(&className);
-                                        safe_free(&temp);
-                                        safe_free(&dupHandle);
-                                        return MEMORY_FAILURE;
-                                    }
-                                }
-                            }
-                            else if (bsg) // bsg class
-                            {
-                                classNameLength = safe_strlen("bsg") + 1;
-                                className       = M_REINTERPRET_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
-                                if (className)
-                                {
-                                    if (snprintf_err_handle(className, classNameLength, "bsg") < 0)
-                                    {
-                                        perror("Failure setting bsg class name in map_Block_To_Generic_Handle");
-                                        safe_free(&className);
-                                        safe_free(&temp);
-                                        safe_free(&dupHandle);
-                                        return MEMORY_FAILURE;
-                                    }
-                                }
-                            }
-                            else // scsi_generic class
-                            {
-                                classNameLength = safe_strlen("block") + 1;
-                                className       = M_REINTERPRET_CAST(char*, safe_calloc(classNameLength, sizeof(char)));
-                                if (className)
-                                {
-                                    if (snprintf_err_handle(className, classNameLength, "block") < 0)
-                                    {
-                                        perror("Failure setting block class name in map_Block_To_Generic_Handle");
-                                        safe_free(&className);
-                                        safe_free(&temp);
-                                        safe_free(&dupHandle);
-                                        return MEMORY_FAILURE;
-                                    }
-                                }
-                            }
-                            if (className)
-                            {
-                                char* classPtr = strstr(mapLink, className);
-                                // need to match up to the classname
-                                if (M_NULLPTR != classPtr && strncmp(mapLink, inHandleLink,
-                                                                     (M_STATIC_CAST(uintptr_t, classPtr) -
-                                                                      M_STATIC_CAST(uintptr_t, mapLink))) == 0)
-                                {
-                                    ret = SUCCESS;
-                                    if (incomingBlock)
-                                    {
-                                        if (0 != safe_strndup(blockHandle, basehandle, safe_strlen(basehandle)) ||
-                                            0 != safe_strdup(genericHandle, basename(classPtr)))
-                                        {
-                                            ret = MEMORY_FAILURE;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        if (0 != safe_strndup(blockHandle, basename(classPtr),
-                                                              safe_strlen(basename(classPtr))) ||
-                                            0 != safe_strdup(genericHandle, basehandle))
-                                        {
-                                            ret = MEMORY_FAILURE;
-                                        }
-                                    }
-                                    safe_free(&className);
-                                    safe_free(&temp);
-                                    safe_free(&dupHandle);
-                                    break; // found a match, exit the loop
-                                }
-                            }
-                            safe_free(&className);
+                            safe_free(&dupHandle);
+                            return MEMORY_FAILURE;
                         }
                     }
-                    safe_free(&temp);
+                    else
+                        atLeastOneMapping = true;
                 }
-                for (int classiter = 0; classiter < numberOfItems; ++classiter)
+
+                if (scanBlock)
                 {
-                    safe_free_dirent(&classList[classiter]);
+                    eReturnValues scanRet =
+                        find_Link_In_ClassPath(blockClassPath, blockClassName, inHandleLink, blockHandle);
+                    if (scanRet != SUCCESS)
+                    {
+#if defined(_DEBUG)
+                        print_str("Could not find map for BLOCK class");
+#endif
+                        if (scanRet == MEMORY_FAILURE)
+                        {
+                            safe_free(&dupHandle);
+                            return MEMORY_FAILURE;
+                        }
+                    }
+                    else
+                        atLeastOneMapping = true;
                 }
-                safe_free_dirent(M_REINTERPRET_CAST(struct dirent**, &classList));
-                if (ret != UNKNOWN)
-                {
-                    return ret;
-                }
+
+                if (atLeastOneMapping)
+                    ret = SUCCESS;
             }
             else
             {
@@ -1803,7 +1927,8 @@ eReturnValues map_Block_To_Generic_Handle(const char* M_NONNULL handle, char** g
             return NOT_SUPPORTED;
         }
     }
-    return UNKNOWN;
+
+    return ret;
 }
 
 // This is used to open device->os_info.fd2 which is where we will store
@@ -1852,69 +1977,107 @@ static eReturnValues open_fd2(tDevice* M_NONNULL device)
     return ret;
 }
 
-#define LIN_MAX_HANDLE_LENGTH 16
+#define LIN_MAX_HANDLE_LENGTH 30
 static eReturnValues resolve_Block_Handle_To_Generic_Handle(const char* filename, char** genericHandle)
 {
-    if (is_Block_Device_Handle(filename))
+    char*         genHandle      = M_NULLPTR;
+    char*         blockHandle    = M_NULLPTR;
+    char*         blockGenHandle = M_NULLPTR;
+    eReturnValues mapResult      = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle, &blockGenHandle);
+
+    if (mapResult == SUCCESS)
     {
-        // print_str("\tBlock handle found, mapping...\n");
-        char*         genHandle   = M_NULLPTR;
-        char*         blockHandle = M_NULLPTR;
-        eReturnValues mapResult   = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle);
-#if defined(_DEBUG)
-        printf("sg = %s\tsd = %s\n", genHandle, blockHandle);
-#endif
-        if (mapResult == SUCCESS && genHandle != M_NULLPTR)
+        if (genHandle != M_NULLPTR)
         {
-            *genericHandle = M_REINTERPRET_CAST(char*, safe_calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
-            // print_str("Changing filename to SG device....\n");
-            if (is_SCSI_Generic_Handle(genHandle))
-            {
-                if (snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", genHandle) < 0)
-                {
-                    perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
-                    safe_free(genericHandle);
-                    safe_free(&genHandle);
-                    safe_free(&blockHandle);
-                    return MEMORY_FAILURE;
-                }
-            }
-            else
-            {
-                if (snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "/dev/bsg/%s", genHandle) < 0)
-                {
-                    perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
-                    safe_free(genericHandle);
-                    safe_free(&genHandle);
-                    safe_free(&blockHandle);
-                    return MEMORY_FAILURE;
-                }
-            }
 #if defined(_DEBUG)
-            printf("\tfilename = %s\n", *genericHandle);
+            printf("genHandle = %s\t", genHandle);
 #endif
         }
-        else // If we can't map, let still try anyway.
+        if (blockHandle != M_NULLPTR)
         {
-            // We couldn't map the sg and sd handles, but still moving forward assuming the user will provide correct
-            // device handle
-            if (0 != safe_strdup(genericHandle, filename))
+#if defined(_DEBUG)
+            printf("blockHandle = %s\t", blockHandle);
+#endif
+        }
+        if (blockGenHandle != M_NULLPTR)
+        {
+#if defined(_DEBUG)
+            printf("blockGenericHandle = %s", blockGenHandle);
+#endif
+        }
+#if defined(_DEBUG)
+        printf("\n");
+#endif
+        // copy incoming handle name into generic first
+        *genericHandle = M_REINTERPRET_CAST(char*, safe_calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
+        if (snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "%s", filename) < 0)
+        {
+            perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
+            safe_free(genericHandle);
+            safe_free(&genHandle);
+            safe_free(&blockHandle);
+            safe_free(&blockGenHandle);
+            return MEMORY_FAILURE;
+        }
+
+        if ((blockGenHandle != M_NULLPTR))
+        {
+            if (snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "/dev/bsg/%s", blockGenHandle) < 0)
             {
+                perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
+                safe_free(genericHandle);
                 safe_free(&genHandle);
                 safe_free(&blockHandle);
+                safe_free(&blockGenHandle);
                 return MEMORY_FAILURE;
             }
         }
-        safe_free(&genHandle);
-        safe_free(&blockHandle);
+        else if (genHandle != M_NULLPTR)
+        {
+            if (snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", genHandle) < 0)
+            {
+                perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
+                safe_free(genericHandle);
+                safe_free(&genHandle);
+                safe_free(&blockHandle);
+                safe_free(&blockGenHandle);
+                return MEMORY_FAILURE;
+            }
+        }
+        else if (blockHandle != M_NULLPTR)
+        {
+            if (snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", blockHandle) < 0)
+            {
+                perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
+                safe_free(genericHandle);
+                safe_free(&genHandle);
+                safe_free(&blockHandle);
+                safe_free(&blockGenHandle);
+                return MEMORY_FAILURE;
+            }
+        }
     }
-    else
+    else // If we can't map, let still try anyway.
     {
+        // We couldn't map the sg, bsg and sd handles, but still moving forward assuming the user will provide correct
+        // device handle
         if (0 != safe_strdup(genericHandle, filename))
         {
+            perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
+            safe_free(&genHandle);
+            safe_free(&blockHandle);
+            safe_free(&blockGenHandle);
             return MEMORY_FAILURE;
         }
     }
+    safe_free(&genHandle);
+    safe_free(&blockHandle);
+    safe_free(&blockGenHandle);
+
+#if defined(_DEBUG)
+    printf("%s: filename = %s, genericHandle = %s\n", __FUNCTION__, filename, *genericHandle);
+#endif
+
     return SUCCESS;
 }
 
@@ -2110,7 +2273,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* M_NONNULL dev
         }
         else // not an NVMe handle
         {
-            ret = linux_Get_SCSI_Device(device, genericHandle);
+            ret = linux_Get_SCSI_Device(device, filename);
         }
         if (ret == SUCCESS)
         {
@@ -2520,7 +2683,389 @@ static eReturnValues print_tDevice_Verbose_SGIOv3_Info(const tDevice* M_NONNULL 
     return ret;
 }
 
-M_PARAM_RW(1) eReturnValues send_sg_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
+#if defined(SEA_BSG_IOCTL_H)
+static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
+{
+    struct sg_io_v4 io_hdr;
+    uint8_t*        localSenseBuffer = M_NULLPTR;
+    eReturnValues   ret              = SUCCESS;
+    DECLARE_SEATIMER(commandTimer);
+#    ifdef _DEBUG
+    printf("-->%s \n", __FUNCTION__);
+#    endif
+
+    safe_memset(&io_hdr, sizeof(struct sg_io_v4), 0, sizeof(struct sg_io_v4));
+
+    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
+    {
+        print_str("Sending command with send_sg_io_v4\n");
+    }
+
+    io_hdr.guard       = 'Q';
+    io_hdr.protocol    = BSG_PROTOCOL_SCSI;
+    io_hdr.subprotocol = BSG_SUB_PROTOCOL_SCSI_CMD;
+
+    io_hdr.request_len = scsiIoCtx->cdbLength;
+    io_hdr.request     = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->cdb));
+
+    // Use user's sense or local?
+    if ((scsiIoCtx->senseDataSize) && (scsiIoCtx->psense != M_NULLPTR))
+    {
+        io_hdr.max_response_len = scsiIoCtx->senseDataSize;
+        io_hdr.response         = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->psense));
+    }
+    else
+    {
+        localSenseBuffer =
+            M_REINTERPRET_CAST(uint8_t*, safe_calloc_aligned(SPC3_SENSE_LEN, sizeof(uint8_t),
+                                                             scsiIoCtx->device->os_info.minimumAlignment));
+        if (!localSenseBuffer)
+        {
+            return MEMORY_FAILURE;
+        }
+        io_hdr.max_response_len = SPC3_SENSE_LEN;
+        io_hdr.response         = C_CAST(__u64, C_CAST(uintptr_t, localSenseBuffer));
+    }
+
+    switch (scsiIoCtx->direction)
+    {
+    case XFER_NO_DATA:
+        break;
+    case XFER_DATA_IN:
+        io_hdr.din_xfer_len = scsiIoCtx->dataLength;
+        io_hdr.din_xferp    = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->pdata));
+        break;
+    case XFER_DATA_OUT:
+        io_hdr.dout_xfer_len = scsiIoCtx->dataLength;
+        io_hdr.dout_xferp    = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->pdata));
+        break;
+    case XFER_DATA_IN_OUT:
+    case XFER_DATA_OUT_IN:
+        // v4 supports bidirectional: set both din and dout
+        io_hdr.din_xfer_len  = scsiIoCtx->dataLength;
+        io_hdr.din_xferp     = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->pdata));
+        io_hdr.dout_xfer_len = scsiIoCtx->dataLength;
+        io_hdr.dout_xferp    = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->pdata));
+        break;
+    default:
+        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
+        {
+            printf("%s Didn't understand direction\n", __FUNCTION__);
+        }
+        safe_free_aligned(&localSenseBuffer);
+        return BAD_PARAMETER;
+    }
+
+    // Set timeout
+    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
+        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    {
+        io_hdr.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
+        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < SG_MAX_CMD_TIMEOUT_SECONDS)
+        {
+            io_hdr.timeout *= 1000; // convert to milliseconds
+        }
+        else
+        {
+            io_hdr.timeout = UINT32_MAX;
+        }
+    }
+    else
+    {
+        if (scsiIoCtx->timeout != 0)
+        {
+            io_hdr.timeout = scsiIoCtx->timeout;
+            if (scsiIoCtx->timeout < SG_MAX_CMD_TIMEOUT_SECONDS)
+            {
+                io_hdr.timeout *= 1000; // convert to milliseconds
+            }
+            else
+            {
+                io_hdr.timeout = UINT32_MAX;
+            }
+        }
+        else
+        {
+            io_hdr.timeout = DEFAULT_COMMAND_TIMEOUT * 1000;
+        }
+    }
+
+    scsiIoCtx->returnStatus.format   = 0xFF;
+    scsiIoCtx->returnStatus.senseKey = 0;
+    scsiIoCtx->returnStatus.asc      = 0;
+    scsiIoCtx->returnStatus.ascq     = 0;
+
+    start_Timer(&commandTimer);
+    int ioctlResult = ioctl(scsiIoCtx->device->os_info.fd, SG_IO, &io_hdr);
+    stop_Timer(&commandTimer);
+
+    if (ioctlResult < 0)
+    {
+        set_Device_Last_Error(scsiIoCtx->device, errno);
+        ret = OS_PASSTHROUGH_FAILURE;
+        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        {
+            if (scsiIoCtx->device->os_info.last_error != 0)
+            {
+                print_str("Error: ");
+                print_Errno_To_Screen(errno);
+            }
+        }
+    }
+
+    if (localSenseBuffer != M_NULLPTR)
+    {
+        safe_memcpy(scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, localSenseBuffer,
+                    SPC3_SENSE_LEN);
+    }
+
+    // Parse sense data from response
+    if (io_hdr.response_len > 0)
+    {
+        uint8_t* responseBuf           = M_REINTERPRET_CAST(uint8_t*, C_CAST(uintptr_t, io_hdr.response));
+        scsiIoCtx->returnStatus.format = responseBuf[0];
+        get_Sense_Key_ASC_ASCQ_FRU(responseBuf, io_hdr.max_response_len, &scsiIoCtx->returnStatus.senseKey,
+                                   &scsiIoCtx->returnStatus.asc, &scsiIoCtx->returnStatus.ascq,
+                                   &scsiIoCtx->returnStatus.fru);
+    }
+
+    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+    {
+        switch (io_hdr.info & SG_INFO_DIRECT_IO_MASK)
+        {
+        case SG_INFO_INDIRECT_IO:
+            print_str("SG v4 IO Issued as Indirect IO\n");
+            break;
+        case SG_INFO_DIRECT_IO:
+            print_str("SG v4 IO Issued as Direct IO\n");
+            break;
+        case SG_INFO_MIXED_IO:
+            print_str("SG v4 IO Issued as Mixed IO\n");
+            break;
+        default:
+            print_str("SG v4 IO Issued as Unknown IO type\n");
+            break;
+        }
+    }
+
+    if ((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK)
+    {
+        if (io_hdr.device_status != 0) // SAM_STAT_GOOD???
+        {
+            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+            {
+                printf("SG Device Status = %02" PRIX8 "h", io_hdr.device_status);
+                switch (io_hdr.device_status)
+                {
+                case GOOD:
+                    print_str(" - Good\n");
+                    break;
+                case CHECK_CONDITION:
+                    print_str(" - Check Condition\n");
+                    break;
+                case CONDITION_GOOD:
+                    print_str(" - Condition Good\n");
+                    break;
+                case BUSY:
+                    print_str(" - Busy\n");
+                    break;
+                case INTERMEDIATE_GOOD:
+                    print_str(" - Intermediate Good\n");
+                    break;
+                case INTERMEDIATE_C_GOOD:
+                    print_str(" - Intermediate C Good\n");
+                    break;
+                case RESERVATION_CONFLICT:
+                    print_str(" - Reservation Conflict\n");
+                    break;
+                case COMMAND_TERMINATED:
+                    print_str(" - Command Terminated\n");
+                    break;
+                case QUEUE_FULL:
+                    print_str(" - Queue Full\n");
+                    break;
+#    if defined(TASK_ABORTED)
+                case TASK_ABORTED:
+#    else
+                case 0x20:
+#    endif
+                    print_str(" - Task Aborted\n");
+                    break;
+                default:
+                    print_str(" - Unknown Masked Status\n");
+                    break;
+                }
+            }
+            if (io_hdr.sb_len_wr == 0)
+            {
+                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                {
+                    print_str("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                }
+                // No sense data back. We need to set an error since the layers above are going to look for sense data
+                // and we don't have any.
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
+        }
+
+        if (io_hdr.transport_status != 0)
+        {
+            printf("SG Transport Status = %02" PRIX16 "h", io_hdr.transport_status);
+            switch (io_hdr.transport_status)
+            {
+            case OPENSEA_SG_ERR_DID_OK:
+                print_str(" - No Error\n");
+                break;
+            case OPENSEA_SG_ERR_DID_NO_CONNECT:
+                print_str(" - Could Not Connect\n");
+                break;
+            case OPENSEA_SG_ERR_DID_BUS_BUSY:
+                print_str(" - Bus Busy\n");
+                break;
+            case OPENSEA_SG_ERR_DID_TIME_OUT:
+                print_str(" - Timed Out\n");
+                break;
+            case OPENSEA_SG_ERR_DID_BAD_TARGET:
+                print_str(" - Bad Target Device\n");
+                break;
+            case OPENSEA_SG_ERR_DID_ABORT:
+                print_str(" - Abort\n");
+                break;
+            case OPENSEA_SG_ERR_DID_PARITY:
+                print_str(" - Parity Error\n");
+                break;
+            case OPENSEA_SG_ERR_DID_ERROR:
+                print_str(" - Internal Adapter Error\n");
+                break;
+            case OPENSEA_SG_ERR_DID_RESET:
+                print_str(" - SCSI Bus/Device Has Been Reset\n");
+                break;
+            case OPENSEA_SG_ERR_DID_BAD_INTR:
+                print_str(" - Bad Interrupt\n");
+                break;
+            case OPENSEA_SG_ERR_DID_PASSTHROUGH:
+                print_str(" - Forced Passthrough Past Mid-Layer\n");
+                break;
+            case OPENSEA_SG_ERR_DID_SOFT_ERROR:
+                print_str(" - Soft Error, Retry?\n");
+                break;
+            default:
+                print_str(" - Unknown Host Status\n");
+                break;
+            }
+
+            // host/transport level failure
+            if (io_hdr.response_len == 0)
+            {
+                // Special case for MegaRAID and controllers based on MegaRAID.
+                // These controllers block the command and set "Internal Adapter Error" with no other information
+                // available.
+                // TODO: Need to test and see if SAT passthrough trusted send/receive are also blocked to add them to
+                // this case. -TJE
+                if (io_hdr.transport_status == OPENSEA_SG_ERR_DID_ERROR &&
+                    (scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_IN ||
+                     scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_OUT))
+                {
+                    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                    {
+                        print_str("\tSpecial Case: Security Protocol Command Blocked\n");
+                    }
+                    ret = OS_COMMAND_BLOCKED;
+                }
+                else
+                {
+                    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+                    {
+                        print_str("\t(Transport Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+                    }
+                    ret = OS_PASSTHROUGH_FAILURE;
+                }
+            }
+        }
+
+        if (io_hdr.driver_status != 0)
+        {
+            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+            {
+                printf("SG Driver Status = %02" PRIX16 "h", io_hdr.driver_status);
+                switch (io_hdr.driver_status & OPENSEA_SG_ERR_DRIVER_MASK)
+                {
+                case OPENSEA_SG_ERR_DRIVER_OK:
+                    print_str(" - Driver OK");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_BUSY:
+                    print_str(" - Driver Busy");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_SOFT:
+                    print_str(" - Driver Soft Error");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_MEDIA:
+                    print_str(" - Driver Media Error");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_ERROR:
+                    print_str(" - Driver Error");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_INVALID:
+                    print_str(" - Driver Invalid");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_TIMEOUT:
+                    print_str(" - Driver Timeout");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_HARD:
+                    print_str(" - Driver Hard Error");
+                    break;
+                case OPENSEA_SG_ERR_DRIVER_SENSE:
+                    print_str(" - Driver Sense Data Available");
+                    break;
+                default:
+                    print_str(" - Unknown Driver Error");
+                    break;
+                }
+                // now error suggestions
+                switch (io_hdr.driver_status & OPENSEA_SG_ERR_SUGGEST_MASK)
+                {
+                case OPENSEA_SG_ERR_SUGGEST_NONE:
+                    break; // no suggestions, nothing necessary to print
+                case OPENSEA_SG_ERR_SUGGEST_RETRY:
+                    print_str(" - Suggest Retry");
+                    break;
+                case OPENSEA_SG_ERR_SUGGEST_ABORT:
+                    print_str(" - Suggest Abort");
+                    break;
+                case OPENSEA_SG_ERR_SUGGEST_REMAP:
+                    print_str(" - Suggest Remap");
+                    break;
+                case OPENSEA_SG_ERR_SUGGEST_DIE:
+                    print_str(" - Suggest Die");
+                    break;
+                case OPENSEA_SG_ERR_SUGGEST_SENSE:
+                    print_str(" - Suggest Sense");
+                    break;
+                default:
+                    print_str(" - Unknown suggestion");
+                    break;
+                }
+                print_str("\n");
+            }
+
+            // driver-level failure
+            if (io_hdr.response_len == 0)
+            {
+                ret = OS_PASSTHROUGH_FAILURE;
+            }
+        }
+    }
+
+    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+#    ifdef _DEBUG
+    printf("<--%s (%d)\n", __FUNCTION__, ret);
+#    endif
+    safe_free_aligned(&localSenseBuffer);
+    return ret;
+}
+#endif
+
+static eReturnValues send_sg_io_v3(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     sg_io_hdr_t   io_hdr;
     uint8_t*      localSenseBuffer = M_NULLPTR;
@@ -2691,6 +3236,31 @@ M_PARAM_RW(1) eReturnValues send_sg_io(ScsiIoCtx* M_NONNULL scsiIoCtx)
 #endif
     safe_free_aligned(&localSenseBuffer);
     return ret;
+}
+
+eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
+{
+#if defined(SEA_BSG_IOCTL_H)
+    if (is_Block_SCSI_Generic_Handle(scsiIoCtx->device->os_info.name) ||
+        (scsiIoCtx->device->os_info.secondHandleValid &&
+         is_Block_SCSI_Generic_Handle(scsiIoCtx->device->os_info.secondName)))
+    {
+        // BSG handles: must use v4, SG_GET_VERSION_NUM doesn't apply
+        return send_sg_io_v4(scsiIoCtx);
+    }
+    else if (is_SCSI_Generic_Handle(scsiIoCtx->device->os_info.name) &&
+             scsiIoCtx->device->os_info.sgDriverVersion.driverVersionValid &&
+             scsiIoCtx->device->os_info.sgDriverVersion.majorVersion >= 4)
+    {
+        // SG v4 driver on /dev/sg*: can use v4 (preferred) or v3
+        return send_sg_io_v4(scsiIoCtx);
+    }
+    else
+#endif
+    {
+        // SG driver 3.x on /dev/sg*, or /dev/sd* block handles: use v3
+        return send_sg_io_v3(scsiIoCtx);
+    }
 }
 
 static int nvme_filter(const struct dirent* entry)
