@@ -2910,7 +2910,7 @@ eReturnValues ata_ZAC_Management_Out(const tDevice* device,
         if (ptrData && dataSize > 0)
         {
             ataCommandOptions = create_ata_dma_out_cmd(device, ATA_ZONE_MANAGEMENT_OUT, ATA_CMD_TYPE_EXTENDED_TASKFILE,
-                                                      pagesToSend_ActionSpecific, ptrData, dataSize);
+                                                       pagesToSend_ActionSpecific, ptrData, dataSize);
         }
         else
         {
