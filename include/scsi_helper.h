@@ -799,18 +799,29 @@ extern "C"
                                             // data....this shouldn't be used when reading this page from a SAS device.
     } eScsiLogPageLengths;
 
-#define MODE_PARAMETER_HEADER_6_LEN       UINT8_C(4)
-#define MODE_PARAMETER_HEADER_10_LEN      UINT8_C(8)
+//! \def SCSI_FORMAT_STATUS_LOG_PAGE_MAX_LENGTH
+//! \brief Conservative maximum buffer size for the FORMAT STATUS log page (0x08).
+//!        Derivation: LOG_PAGE_HEADER_LENGTH (4)
+//!          + SCSI_LOG_PARAMETER_HEADER_LENGTH + SCSI_LOG_PARAMETER_MAX_DATA_LENGTH (4+255) for param 0x0000
+//!          + SCSI_LOG_PARAMETER_HEADER_LENGTH + 8 (4+8) for params 0x0001, 0x0002, 0x0003
+//!          + SCSI_LOG_PARAMETER_HEADER_LENGTH + 4 (4+4) for param 0x0004
+//!          = 4 + 259 + 12 + 12 + 12 + 8 = 307 bytes.
+//!        The SBC-4 spec maximum is 60 bytes (param 0 is at most 8 bytes of data);
+//!        this value uses UINT8_MAX as the param 0 data length as a defensive upper bound.
+#define SCSI_FORMAT_STATUS_LOG_PAGE_MAX_LENGTH UINT16_C(307)
 
-#define MODE_HEADER_6_MP_LEN_OFFSET       (0)
-#define MODE_HEADER_6_MEDIUM_TYPE_OFFSET  (1)
-#define MODE_HEADER_6_DEV_SPECIFIC        (2)
-#define MODE_HEADER_6_BLK_DESC_OFFSET     (3)
+#define MODE_PARAMETER_HEADER_6_LEN            UINT8_C(4)
+#define MODE_PARAMETER_HEADER_10_LEN           UINT8_C(8)
 
-#define MODE_HEADER_10_MP_LEN_OFFSET      (0)
-#define MODE_HEADER_10_MEDIUM_TYPE_OFFSET (2)
-#define MODE_HEADER_10_DEV_SPECIFIC       (3)
-#define MODE_HEADER_10_BLK_DESC_OFFSET    (6)
+#define MODE_HEADER_6_MP_LEN_OFFSET            (0)
+#define MODE_HEADER_6_MEDIUM_TYPE_OFFSET       (1)
+#define MODE_HEADER_6_DEV_SPECIFIC             (2)
+#define MODE_HEADER_6_BLK_DESC_OFFSET          (3)
+
+#define MODE_HEADER_10_MP_LEN_OFFSET           (0)
+#define MODE_HEADER_10_MEDIUM_TYPE_OFFSET      (2)
+#define MODE_HEADER_10_DEV_SPECIFIC            (3)
+#define MODE_HEADER_10_BLK_DESC_OFFSET         (6)
 
 #define GENERAL_BLOCK_DESCRIPTOR_LEN                                                                                   \
     UINT8_C(8) // for all devices without longLBA set and NOT direct access block devices
@@ -1004,6 +1015,47 @@ extern "C"
 
 #define SCSI_LOG_PARAMETER_HEADER_LENGTH UINT8_C(4) // bytes
 #define SCSI_VPD_PAGE_HEADER_LENGTH      UINT8_C(4) // bytes
+#define SCSI_DIAG_PAGE_HEADER_LENGTH     UINT8_C(4) // bytes - RECEIVE DIAGNOSTIC RESULTS page header
+
+//! \def SCSI_LOG_PARAMETER_MAX_DATA_LENGTH
+//! \brief Maximum data length of a single log page parameter entry.
+//!        The PARAMETER LENGTH field in a log page parameter descriptor is 1 byte
+//!        (uint8_t), so the maximum data payload per parameter is UINT8_MAX = 255 bytes.
+#define SCSI_LOG_PARAMETER_MAX_DATA_LENGTH UINT8_MAX
+
+//! \def SCSI_LOG_SUPPORTED_PAGES_MAX_LENGTH
+//! \brief Maximum byte length of the LP_SUPPORTED_LOG_PAGES list (no subpages).
+//!        The log page code field is 6 bits, so at most 64 unique page codes,
+//!        each reported as 1 byte, plus the 4-byte page header = 68 bytes.
+//!        This is a hard spec-derived ceiling; no conformant device can return more.
+#define SCSI_LOG_SUPPORTED_PAGES_MAX_LENGTH UINT16_C(68)
+
+//! \def SCSI_LOG_SUPPORTED_SUBPAGES_MAX_LENGTH
+//! \brief Practical maximum byte length of the LP_SUPPORTED_LOG_PAGES_AND_SUBPAGES
+//!        list for a direct-access block device (SPC-5 + SBC-4 + SAT + ZBC +
+//!        Seagate vendor pages). Each entry is a 2-byte (page, subpage) pair.
+//!        Derivation (88 entries x 2 bytes) + 4-byte header = 180 bytes:
+//!          - SPC/SBC standard pages with single subpage 0x00: 15 pages
+//!          - Page 0x00 (supported pages): subpages 0x00 and 0xFF = 2 entries
+//!          - Page 0x0D (temperature/environmental): subpages 0x00, 0x01, 0x02 = 3
+//!          - Page 0x0E (start-stop/utilization): subpages 0x00, 0x01 = 2
+//!          - Page 0x14 (zoned device statistics): subpage 0x01 = 1
+//!          - Page 0x15 (background scan/pending defects/LPS): 0x00, 0x01, 0x02 = 3
+//!          - Page 0x18 (protocol specific port): subpage 0x00 = 1
+//!          - Page 0x19 (general/group/cache stats): 0x00, 0x01-0x1F, 0x20 = 33
+//!          - Page 0x37 (Seagate cache statistics): subpage 0x00 = 1
+//!          - Page 0x3D (Seagate FARM): subpages 0x03, 0x04, 0x10-0x1F,
+//!                                      0xC0, 0xC1, 0xC2-0xC7 = 26
+//!          - Page 0x3E (Seagate factory log): subpage 0x00 = 1
+#define SCSI_LOG_SUPPORTED_SUBPAGES_MAX_LENGTH UINT16_C(180)
+
+//! \def SCSI_LOG_SUPPORTED_SUBPAGES_THEORETICAL_MAX_LENGTH
+//! \brief Absolute theoretical ceiling for the LP_SUPPORTED_LOG_PAGES_AND_SUBPAGES
+//!        list: 64 possible page codes x 256 possible subpages x 2 bytes per entry
+//!        + 4-byte header = 32,772 bytes. No real device approaches this; use
+//!        SCSI_LOG_SUPPORTED_SUBPAGES_MAX_LENGTH for practical allocation and use
+//!        this value only as a sanity-check upper bound in loop guards.
+#define SCSI_LOG_SUPPORTED_SUBPAGES_THEORETICAL_MAX_LENGTH UINT16_C(32772)
 
     // The values in here may be incomplete. They are from the SPC5 spec, Table E.19 - Standard Code value guidelines
     typedef enum eStandardCodeEnum
