@@ -2992,7 +2992,6 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
     return passthroughTypeSet;
 }
 
-OPENSEA_TRANSPORT_API
 OPENSEA_TRANSPORT_API bool is_LaCie_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
@@ -3012,7 +3011,6 @@ OPENSEA_TRANSPORT_API bool is_LaCie_USB_Vendor_ID(const char* M_NONNULL t10Vendo
     }
 }
 
-OPENSEA_TRANSPORT_API
 OPENSEA_TRANSPORT_API bool is_Seagate_USB_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
@@ -3032,7 +3030,6 @@ OPENSEA_TRANSPORT_API bool is_Seagate_USB_Vendor_ID(const char* M_NONNULL t10Ven
     }
 }
 
-OPENSEA_TRANSPORT_API
 OPENSEA_TRANSPORT_API bool is_Seagate_SAS_Vendor_ID(const char* M_NONNULL t10VendorIdent)
 {
     if (t10VendorIdent)
