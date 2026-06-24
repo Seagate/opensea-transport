@@ -1581,15 +1581,6 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #define OS_HANDLE_NAME_MAX_LENGTH          256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
 #define OS_SECOND_HANDLE_NAME_LENGTH       30
-#if defined(__linux__) && !defined(VMK_CROSS_COMP)
-    typedef enum osFDTypeEnum
-    {
-        FD_TYPE_NONE,
-        FD_TYPE_BSG,
-        FD_TYPE_SG,
-        FD_TYPE_SD,
-    } osFDType;
-#endif
     // \struct typedef struct s_OSDriveInfo
     typedef struct s_OSDriveInfo
     {
@@ -1642,8 +1633,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     int                 fd;
     struct nvme_handle* nvmeFd;
 #    else
-    int      fd; // primary handle
-    osFDType primaryFDType;
+    int fd; // primary handle
 #    endif
     bool scsiAddressValid; // will be true if the SCSI address is a valid address
     struct
@@ -1667,8 +1657,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     int                 fd2;
     struct nvme_handle* nvmeFd2;
 #    else
-    int      fd2; // secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
-    osFDType secondaryFDType;
+    int fd2; // secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
 #    endif
     struct
     {

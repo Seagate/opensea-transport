@@ -1612,6 +1612,17 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
             safe_free(&dupSecond);
             device->os_info.secondHandleValid = true;
         }
+
+        // Copy HCTL (Host:Channel:Target:LUN) from sysfs if available
+        // This is needed for BSG handles on pre-4.18 kernels where SG_GET_SCSI_ID ioctl fails
+        if (!device->os_info.scsiAddressValid)
+        {
+            device->os_info.scsiAddressValid    = true;
+            device->os_info.scsiAddress.host    = sysFsInfo.scsiAddress.host;
+            device->os_info.scsiAddress.channel = sysFsInfo.scsiAddress.channel;
+            device->os_info.scsiAddress.target  = sysFsInfo.scsiAddress.target;
+            device->os_info.scsiAddress.lun     = sysFsInfo.scsiAddress.lun;
+        }
     }
 }
 
@@ -1775,7 +1786,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* M_NONNULL handle,
                 bool        scanBlock = false;
                 if (incomingBlock)
                 {
-                    if (0 != safe_strndup(blockHandle, basename(handle), safe_strlen(basename(handle))))
+                    if (0 != safe_strndup(blockHandle, basehandle, safe_strlen(basehandle)))
                     {
                         safe_free(&dupHandle);
                         return NOT_SUPPORTED;
@@ -1801,7 +1812,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* M_NONNULL handle,
                 }
                 else if (incomingGeneric)
                 {
-                    if (0 != safe_strndup(genericHandle, basename(handle), safe_strlen(basename(handle))))
+                    if (0 != safe_strndup(genericHandle, basehandle, safe_strlen(basehandle)))
                     {
                         safe_free(&dupHandle);
                         return NOT_SUPPORTED;
@@ -1827,7 +1838,7 @@ eReturnValues map_Block_To_Generic_Handle(const char* M_NONNULL handle,
                 }
                 else // incoming is block-generic
                 {
-                    if (0 != safe_strndup(blockGenericHandle, basename(handle), safe_strlen(basename(handle))))
+                    if (0 != safe_strndup(blockGenericHandle, basehandle, safe_strlen(basehandle)))
                     {
                         safe_free(&dupHandle);
                         return NOT_SUPPORTED;
@@ -2081,7 +2092,7 @@ static eReturnValues resolve_Block_Handle_To_Generic_Handle(const char* filename
     return SUCCESS;
 }
 
-static eReturnValues linux_Get_NVMe_Device(tDevice* device, const char* deviceHandle)
+static eReturnValues linux_Get_NVMe_Device(tDevice* M_NONNULL device, const char* deviceHandle)
 {
 #if !defined(DISABLE_NVME_PASSTHROUGH)
     eReturnValues ret = SUCCESS;
@@ -2117,8 +2128,7 @@ static eReturnValues linux_Get_NVMe_Device(tDevice* device, const char* deviceHa
 
 static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char* deviceHandle)
 {
-    eReturnValues ret = SUCCESS;
-    int           k   = 0;
+    int k = 0;
 #if defined(_DEBUG)
     print_str("Getting SG SCSI address\n");
 #endif
@@ -2129,6 +2139,7 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
     if (getHctl == 0 && errno == 0) // when this succeeds, both of these will be zeros
     {
         // print_str("Got hctlInfo\n");
+        device->os_info.scsiAddressValid    = true;
         device->os_info.scsiAddress.host    = C_CAST(uint8_t, hctlInfo.host_no);
         device->os_info.scsiAddress.channel = C_CAST(uint8_t, hctlInfo.channel);
         device->os_info.scsiAddress.target  = C_CAST(uint8_t, hctlInfo.scsi_id);
@@ -2149,10 +2160,21 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
     // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
     if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
     {
-        printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, deviceHandle, k);
-        perror("SG_GET_VERSION_NUM");
-        close(device->os_info.fd);
-        ret = FAILURE;
+        if (is_Block_SCSI_Generic_Handle(deviceHandle))
+        {
+            // BSG handle on pre-4.18: version check failed, but we'll use v3 SG_IO instead of v4
+            device->os_info.sgDriverVersion.driverVersionValid = true;
+            device->os_info.sgDriverVersion.majorVersion       = 3; // Default to v3 for BSG on older kernels
+            device->os_info.sgDriverVersion.minorVersion       = 0;
+            device->os_info.sgDriverVersion.revision           = 0;
+        }
+        else
+        {
+            printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, deviceHandle, k);
+            perror("SG_GET_VERSION_NUM");
+            close(device->os_info.fd);
+            return FAILURE;
+        }
     }
     else
     {
@@ -2164,29 +2186,30 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
         device->os_info.sgDriverVersion.revision =
             C_CAST(uint8_t, k - (device->os_info.sgDriverVersion.majorVersion * 10000) -
                                 (device->os_info.sgDriverVersion.minorVersion * 100));
-
-        // set scsi interface and scsi drive until we know otherwise
-        set_Device_DriveType(device, SCSI_DRIVE);
-        set_Device_InterfaceType(device, SCSI_INTERFACE);
-        set_Device_MediaType(device, MEDIA_HDD);
-        // now have the device information fields set
-#if defined(_DEBUG)
-        print_str("Setting interface, drive type, secondary handles\n");
-#endif
-        set_Device_Fields_From_Handle(deviceHandle, device);
-        setup_Passthrough_Hacks_By_ID(device);
-
-#if defined(_DEBUG)
-        printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", get_Device_Handle_Name(device),
-               get_Device_Handle_Friendly_Name(device), device->os_info.secondName, device->os_info.secondFriendlyName);
-        printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel,
-               device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
-
-        printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion,
-               device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
-#endif
     }
-    return ret;
+
+    // set scsi interface and scsi drive until we know otherwise
+    set_Device_DriveType(device, SCSI_DRIVE);
+    set_Device_InterfaceType(device, SCSI_INTERFACE);
+    set_Device_MediaType(device, MEDIA_HDD);
+    // now have the device information fields set
+#if defined(_DEBUG)
+    print_str("Setting interface, drive type, secondary handles\n");
+#endif
+    set_Device_Fields_From_Handle(deviceHandle, device);
+    setup_Passthrough_Hacks_By_ID(device);
+
+#if defined(_DEBUG)
+    printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", get_Device_Handle_Name(device),
+           get_Device_Handle_Friendly_Name(device), device->os_info.secondName, device->os_info.secondFriendlyName);
+    printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel,
+           device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
+
+    printf("SG driver version = %u.%u.%u\n", device->os_info.sgDriverVersion.majorVersion,
+           device->os_info.sgDriverVersion.minorVersion, device->os_info.sgDriverVersion.revision);
+#endif
+
+    return SUCCESS;
 }
 
 M_NONNULL_PARAM_LIST(1, 2)
@@ -2235,6 +2258,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* M_NONNULL dev
         safe_free(&genericHandle);
         return ret;
     }
+
     if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
     {
         set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
@@ -2255,7 +2279,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* M_NONNULL dev
         set_Device_DriveType(device, SCSI_DRIVE);
         set_Device_InterfaceType(device, SCSI_INTERFACE);
         set_Device_MediaType(device, MEDIA_HDD);
-        set_Device_Fields_From_Handle(genericHandle, device);
+        set_Device_Fields_From_Handle(filename, device);
         setup_Passthrough_Hacks_By_ID(device);
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondHandleValid
                                                                        ? device->os_info.secondName
@@ -2414,7 +2438,7 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 }
 
 // Helper function to print SG IO direct/indirect/mixed type information
-static void print_sg_io_direct_type_info(const tDevice* M_NONNULL device, sg_io_hdr_t* M_NONNULL io_hdr)
+static void print_sgv3_io_direct_type_info(const tDevice* M_NONNULL device, sg_io_hdr_t* M_NONNULL io_hdr)
 {
     switch (io_hdr->info & SG_INFO_DIRECT_IO_MASK)
     {
@@ -2435,9 +2459,9 @@ static void print_sg_io_direct_type_info(const tDevice* M_NONNULL device, sg_io_
 
 // Helper function to print SG IO masked status (SCSI device status)
 // Returns modified ret value if sense data unavailable
-static eReturnValues print_sg_io_masked_status(const tDevice* M_NONNULL device,
-                                               sg_io_hdr_t* M_NONNULL   io_hdr,
-                                               eReturnValues            ret)
+static eReturnValues print_sgv3_io_masked_status(const tDevice* M_NONNULL device,
+                                                 sg_io_hdr_t* M_NONNULL   io_hdr,
+                                                 eReturnValues            ret)
 {
     if (io_hdr->masked_status == 0)
         return ret;
@@ -2497,7 +2521,7 @@ static eReturnValues print_sg_io_masked_status(const tDevice* M_NONNULL device,
 }
 
 // Helper function to print SG IO message status
-static void print_sg_io_message_status(const tDevice* M_NONNULL device, sg_io_hdr_t* M_NONNULL io_hdr)
+static void print_sgv3_io_message_status(const tDevice* M_NONNULL device, sg_io_hdr_t* M_NONNULL io_hdr)
 {
     if (io_hdr->msg_status == 0)
         return;
@@ -2508,10 +2532,10 @@ static void print_sg_io_message_status(const tDevice* M_NONNULL device, sg_io_hd
 
 // Helper function to print SG IO host status (SCSI adapter/bus status)
 // Returns modified ret value if sense data unavailable or special cases
-static eReturnValues print_sg_io_host_status(const tDevice* M_NONNULL device,
-                                             sg_io_hdr_t* M_NONNULL   io_hdr,
-                                             ScsiIoCtx* M_NONNULL     scsiIoCtx,
-                                             eReturnValues            ret)
+static eReturnValues print_sgv3_io_host_status(const tDevice* M_NONNULL device,
+                                               sg_io_hdr_t* M_NONNULL   io_hdr,
+                                               ScsiIoCtx* M_NONNULL     scsiIoCtx,
+                                               eReturnValues            ret)
 {
     if (io_hdr->host_status == 0)
         return ret;
@@ -2585,9 +2609,9 @@ static eReturnValues print_sg_io_host_status(const tDevice* M_NONNULL device,
 
 // Helper function to print SG IO driver status (Linux SCSI driver status)
 // Returns modified ret value if sense data unavailable
-static eReturnValues print_sg_io_driver_status(const tDevice* M_NONNULL device,
-                                               sg_io_hdr_t* M_NONNULL   io_hdr,
-                                               eReturnValues            ret)
+static eReturnValues print_sgv3_io_driver_status(const tDevice* M_NONNULL device,
+                                                 sg_io_hdr_t* M_NONNULL   io_hdr,
+                                                 eReturnValues            ret)
 {
     if (io_hdr->driver_status == 0)
         return ret;
@@ -2670,20 +2694,280 @@ static eReturnValues print_tDevice_Verbose_SGIOv3_Info(const tDevice* M_NONNULL 
                                                        ScsiIoCtx* M_NONNULL     scsiIoCtx,
                                                        eReturnValues            ret)
 {
-    print_sg_io_direct_type_info(device, io_hdr);
+    print_sgv3_io_direct_type_info(device, io_hdr);
 
     if ((io_hdr->info & SG_INFO_OK_MASK) != SG_INFO_OK)
     {
-        ret = print_sg_io_masked_status(device, io_hdr, ret);
-        print_sg_io_message_status(device, io_hdr);
-        ret = print_sg_io_host_status(device, io_hdr, scsiIoCtx, ret);
-        ret = print_sg_io_driver_status(device, io_hdr, ret);
+        ret = print_sgv3_io_masked_status(device, io_hdr, ret);
+        print_sgv3_io_message_status(device, io_hdr);
+        ret = print_sgv3_io_host_status(device, io_hdr, scsiIoCtx, ret);
+        ret = print_sgv3_io_driver_status(device, io_hdr, ret);
     }
 
     return ret;
 }
 
 #if defined(SEA_BSG_IOCTL_H)
+// Helper function to print SG IO direct/indirect/mixed type information
+static void print_sgv4_io_direct_type_info(const tDevice* M_NONNULL device, sg_io_v4* M_NONNULL io_hdr)
+{
+    switch (io_hdr->info & SG_INFO_DIRECT_IO_MASK)
+    {
+    case SG_INFO_INDIRECT_IO:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SG IO Issued as Indirect IO\n");
+        break;
+    case SG_INFO_DIRECT_IO:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SG IO Issued as Direct IO\n");
+        break;
+    case SG_INFO_MIXED_IO:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SG IO Issued as Mixed IO\n");
+        break;
+    default:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "SG IO Issued as Unknown IO type\n");
+        break;
+    }
+}
+
+// Helper function to print SG IO device status
+// Returns modified ret value if sense data unavailable
+static eReturnValues print_sgv4_io_device_status(const tDevice* M_NONNULL device,
+                                                 sg_io_v4* M_NONNULL      io_hdr,
+                                                 eReturnValues            ret)
+{
+    if (io_hdr->device_status == 0)
+        return ret;
+
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "SG Device Status = %02" PRIX8 "h",
+                                           io_hdr->device_status);
+    switch (io_hdr->device_status)
+    {
+    case GOOD:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Good\n");
+        break;
+    case CHECK_CONDITION:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Check Condition\n");
+        break;
+    case CONDITION_GOOD:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Condition Good\n");
+        break;
+    case BUSY:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Busy\n");
+        break;
+    case INTERMEDIATE_GOOD:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Intermediate Good\n");
+        break;
+    case INTERMEDIATE_C_GOOD:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Intermediate C Good\n");
+        break;
+    case RESERVATION_CONFLICT:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Reservation Conflict\n");
+        break;
+    case COMMAND_TERMINATED:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Command Terminated\n");
+        break;
+    case QUEUE_FULL:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Queue Full\n");
+        break;
+#    if defined(TASK_ABORTED)
+    case TASK_ABORTED:
+#    else
+    case 0x20:
+#    endif
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Task Aborted\n");
+        break;
+    default:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Unknown Masked Status\n");
+        break;
+    }
+
+    // If no sense data available, set error status
+    if (io_hdr->response_len == 0)
+    {
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                     "\t(Device Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+        ret = OS_PASSTHROUGH_FAILURE;
+    }
+
+    return ret;
+}
+
+// Helper function to print SG IO transport status (SCSI adapter/bus status)
+// Returns modified ret value if sense data unavailable or special cases
+static eReturnValues print_sgv4_io_transport_status(const tDevice* M_NONNULL device,
+                                                    sg_io_v4* M_NONNULL      io_hdr,
+                                                    ScsiIoCtx* M_NONNULL     scsiIoCtx,
+                                                    eReturnValues            ret)
+{
+    if (io_hdr->transport_status == 0)
+        return ret;
+
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "SG Transport Status = %02" PRIX16 "h",
+                                           io_hdr->transport_status);
+    switch (io_hdr->transport_status)
+    {
+    case OPENSEA_SG_ERR_DID_OK:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - No Error\n");
+        break;
+    case OPENSEA_SG_ERR_DID_NO_CONNECT:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Could Not Connect\n");
+        break;
+    case OPENSEA_SG_ERR_DID_BUS_BUSY:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Bus Busy\n");
+        break;
+    case OPENSEA_SG_ERR_DID_TIME_OUT:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Timed Out\n");
+        break;
+    case OPENSEA_SG_ERR_DID_BAD_TARGET:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Bad Target Device\n");
+        break;
+    case OPENSEA_SG_ERR_DID_ABORT:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Abort\n");
+        break;
+    case OPENSEA_SG_ERR_DID_PARITY:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Parity Error\n");
+        break;
+    case OPENSEA_SG_ERR_DID_ERROR:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Internal Adapter Error\n");
+        break;
+    case OPENSEA_SG_ERR_DID_RESET:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - SCSI Bus/Device Has Been Reset\n");
+        break;
+    case OPENSEA_SG_ERR_DID_BAD_INTR:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Bad Interrupt\n");
+        break;
+    case OPENSEA_SG_ERR_DID_PASSTHROUGH:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Forced Passthrough Past Mid-Layer\n");
+        break;
+    case OPENSEA_SG_ERR_DID_SOFT_ERROR:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Soft Error, Retry?\n");
+        break;
+    default:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Unknown Host Status\n");
+        break;
+    }
+
+    if (io_hdr->response_len == 0)
+    {
+        // Special case for MegaRAID controllers that block certain commands
+        if (io_hdr->host_status == OPENSEA_SG_ERR_DID_ERROR &&
+            (scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_IN ||
+             scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_OUT))
+        {
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                         "\tSpecial Case: Security Protocol Command Blocked\n");
+            ret = OS_COMMAND_BLOCKED;
+        }
+        else
+        {
+            print_tDevice_Verbose_String(
+                device, VERBOSITY_COMMAND_VERBOSE,
+                "\t(Transport Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+            ret = OS_PASSTHROUGH_FAILURE;
+        }
+    }
+
+    return ret;
+}
+
+// Helper function to print SG IO driver status (Linux SCSI driver status)
+// Returns modified ret value if sense data unavailable
+static eReturnValues print_sgv4_io_driver_status(const tDevice* M_NONNULL device,
+                                                 sg_io_v4* M_NONNULL      io_hdr,
+                                                 eReturnValues            ret)
+{
+    if (io_hdr->driver_status == 0)
+        return ret;
+
+    print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "SG Driver Status = %02" PRIX16 "h",
+                                           io_hdr->driver_status);
+    switch (io_hdr->driver_status & OPENSEA_SG_ERR_DRIVER_MASK)
+    {
+    case OPENSEA_SG_ERR_DRIVER_OK:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver OK");
+        break;
+    case OPENSEA_SG_ERR_DRIVER_BUSY:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Busy");
+        break;
+    case OPENSEA_SG_ERR_DRIVER_SOFT:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Soft Error");
+        break;
+    case OPENSEA_SG_ERR_DRIVER_MEDIA:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Media Error");
+        break;
+    case OPENSEA_SG_ERR_DRIVER_ERROR:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Error");
+        break;
+    case OPENSEA_SG_ERR_DRIVER_INVALID:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Invalid");
+        break;
+    case OPENSEA_SG_ERR_DRIVER_TIMEOUT:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Timeout");
+        break;
+    case OPENSEA_SG_ERR_DRIVER_HARD:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Hard Error");
+        break;
+    case OPENSEA_SG_ERR_DRIVER_SENSE:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Driver Sense Data Available");
+        break;
+    default:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Unknown Driver Error");
+        break;
+    }
+
+    // Error suggestions
+    switch (io_hdr->driver_status & OPENSEA_SG_ERR_SUGGEST_MASK)
+    {
+    case OPENSEA_SG_ERR_SUGGEST_NONE:
+        break; // no suggestions
+    case OPENSEA_SG_ERR_SUGGEST_RETRY:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Suggest Retry");
+        break;
+    case OPENSEA_SG_ERR_SUGGEST_ABORT:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Suggest Abort");
+        break;
+    case OPENSEA_SG_ERR_SUGGEST_REMAP:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Suggest Remap");
+        break;
+    case OPENSEA_SG_ERR_SUGGEST_DIE:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Suggest Die");
+        break;
+    case OPENSEA_SG_ERR_SUGGEST_SENSE:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Suggest Sense");
+        break;
+    default:
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, " - Unknown suggestion");
+        break;
+    }
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE, "\n");
+
+    if (io_hdr->response_len == 0)
+    {
+        print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                     "\t(Driver Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
+        ret = OS_PASSTHROUGH_FAILURE;
+    }
+
+    return ret;
+}
+
+// Main helper: Print all SG_IOv4 diagnostic information with device-aware verbosity
+static eReturnValues print_tDevice_Verbose_SGIOv4_Info(const tDevice* M_NONNULL device,
+                                                       sg_io_v4* M_NONNULL      io_hdr,
+                                                       ScsiIoCtx* M_NONNULL     scsiIoCtx,
+                                                       eReturnValues            ret)
+{
+    print_sgv4_io_direct_type_info(device, io_hdr);
+
+    if ((io_hdr->info & SG_INFO_OK_MASK) != SG_INFO_OK)
+    {
+        ret = print_sgv4_io_device_status(device, io_hdr, ret);
+        ret = print_sgv4_io_transport_status(device, io_hdr, scsiIoCtx, ret);
+        ret = print_sgv4_io_driver_status(device, io_hdr, ret);
+    }
+
+    return ret;
+}
+
 static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     struct sg_io_v4 io_hdr;
@@ -2694,25 +2978,23 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
     printf("-->%s \n", __FUNCTION__);
 #    endif
 
-    safe_memset(&io_hdr, sizeof(struct sg_io_v4), 0, sizeof(struct sg_io_v4));
+    // safe_memset(&io_hdr, sizeof(struct sg_io_v4), 0, sizeof(struct sg_io_v4));
+    M_INITIALIZE_STRUCTURE(&io_hdr, sizeof(sg_io_v4));
 
-    if (VERBOSITY_BUFFERS <= scsiIoCtx->device->deviceVerbosity)
-    {
-        print_str("Sending command with send_sg_io_v4\n");
-    }
+    print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "Sending command with send_sg_io_v4\n");
 
     io_hdr.guard       = 'Q';
     io_hdr.protocol    = BSG_PROTOCOL_SCSI;
     io_hdr.subprotocol = BSG_SUB_PROTOCOL_SCSI_CMD;
 
     io_hdr.request_len = scsiIoCtx->cdbLength;
-    io_hdr.request     = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->cdb));
+    io_hdr.request     = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->cdb));
 
     // Use user's sense or local?
     if ((scsiIoCtx->senseDataSize) && (scsiIoCtx->psense != M_NULLPTR))
     {
         io_hdr.max_response_len = scsiIoCtx->senseDataSize;
-        io_hdr.response         = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->psense));
+        io_hdr.response         = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->psense));
     }
     else
     {
@@ -2724,7 +3006,7 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
             return MEMORY_FAILURE;
         }
         io_hdr.max_response_len = SPC3_SENSE_LEN;
-        io_hdr.response         = C_CAST(__u64, C_CAST(uintptr_t, localSenseBuffer));
+        io_hdr.response         = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, localSenseBuffer));
     }
 
     switch (scsiIoCtx->direction)
@@ -2733,41 +3015,41 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
         break;
     case XFER_DATA_IN:
         io_hdr.din_xfer_len = scsiIoCtx->dataLength;
-        io_hdr.din_xferp    = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->pdata));
+        io_hdr.din_xferp    = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
         break;
     case XFER_DATA_OUT:
         io_hdr.dout_xfer_len = scsiIoCtx->dataLength;
-        io_hdr.dout_xferp    = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->pdata));
+        io_hdr.dout_xferp    = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
         break;
     case XFER_DATA_IN_OUT:
     case XFER_DATA_OUT_IN:
         // v4 supports bidirectional: set both din and dout
         io_hdr.din_xfer_len  = scsiIoCtx->dataLength;
-        io_hdr.din_xferp     = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->pdata));
+        io_hdr.din_xferp     = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
         io_hdr.dout_xfer_len = scsiIoCtx->dataLength;
-        io_hdr.dout_xferp    = C_CAST(__u64, C_CAST(uintptr_t, scsiIoCtx->pdata));
+        io_hdr.dout_xferp    = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
         break;
     default:
-        if (VERBOSITY_QUIET < scsiIoCtx->device->deviceVerbosity)
-        {
-            printf("%s Didn't understand direction\n", __FUNCTION__);
-        }
+        print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "%s Didn't understand direction\n",
+                                               __func__);
         safe_free_aligned(&localSenseBuffer);
         return BAD_PARAMETER;
     }
 
     // Set timeout
-    if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds > 0 &&
-        scsiIoCtx->device->drive_info.defaultTimeoutSeconds > scsiIoCtx->timeout)
+    const uint32_t deviceTimeout = get_tDevice_Default_Command_Timeout(scsiIoCtx->device);
+    if (deviceTimeout > 0 && deviceTimeout > scsiIoCtx->timeout)
     {
-        io_hdr.timeout = scsiIoCtx->device->drive_info.defaultTimeoutSeconds;
-        if (scsiIoCtx->device->drive_info.defaultTimeoutSeconds < SG_MAX_CMD_TIMEOUT_SECONDS)
+        io_hdr.timeout = deviceTimeout;
+        // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security) that
+        // we DON'T do a conversion and leave the time as the max...
+        if (deviceTimeout < SG_MAX_CMD_TIMEOUT_SECONDS)
         {
             io_hdr.timeout *= 1000; // convert to milliseconds
         }
         else
         {
-            io_hdr.timeout = UINT32_MAX;
+            io_hdr.timeout = UINT32_MAX; // no timeout or maximum timeout
         }
     }
     else
@@ -2775,18 +3057,20 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
         if (scsiIoCtx->timeout != 0)
         {
             io_hdr.timeout = scsiIoCtx->timeout;
+            // this check is to make sure on commands that set a very VERY large timeout (*cough* *cough* ata security)
+            // that we DON'T do a conversion and leave the time as the max...
             if (scsiIoCtx->timeout < SG_MAX_CMD_TIMEOUT_SECONDS)
             {
                 io_hdr.timeout *= 1000; // convert to milliseconds
             }
             else
             {
-                io_hdr.timeout = UINT32_MAX;
+                io_hdr.timeout = UINT32_MAX; // no timeout or maximum timeout
             }
         }
         else
         {
-            io_hdr.timeout = DEFAULT_COMMAND_TIMEOUT * 1000;
+            io_hdr.timeout = DEFAULT_COMMAND_TIMEOUT * 1000; // default to 15 second timeout
         }
     }
 
@@ -2802,21 +3086,30 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
     if (ioctlResult < 0)
     {
         set_Device_Last_Error(scsiIoCtx->device, errno);
-        ret = OS_PASSTHROUGH_FAILURE;
-        if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
+        ret           = OS_PASSTHROUGH_FAILURE;
+        errno_t error = M_STATIC_CAST(errno_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device));
+        if (error != 0)
         {
-            if (scsiIoCtx->device->os_info.last_error != 0)
+            char* errormsg = get_strerror(error);
+            if (errormsg != M_NULLPTR)
             {
-                print_str("Error: ");
-                print_Errno_To_Screen(errno);
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "%d - %s", error,
+                                                       errormsg);
+                safe_free(&errormsg);
+            }
+            else
+            {
+                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "%d", error);
             }
         }
     }
 
     if (localSenseBuffer != M_NULLPTR)
     {
-        safe_memcpy(scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, localSenseBuffer,
-                    SPC3_SENSE_LEN);
+        M_IGNORE_SAFE_ERRNO_CALL(
+            safe_memcpy(scsiIoCtx->device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, localSenseBuffer,
+                        SPC3_SENSE_LEN),
+            "Using exact same SPC3_SENSE_LEN for both source and destination, so this should never fail");
     }
 
     // Parse sense data from response
@@ -2829,234 +3122,10 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
                                    &scsiIoCtx->returnStatus.fru);
     }
 
-    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-    {
-        switch (io_hdr.info & SG_INFO_DIRECT_IO_MASK)
-        {
-        case SG_INFO_INDIRECT_IO:
-            print_str("SG v4 IO Issued as Indirect IO\n");
-            break;
-        case SG_INFO_DIRECT_IO:
-            print_str("SG v4 IO Issued as Direct IO\n");
-            break;
-        case SG_INFO_MIXED_IO:
-            print_str("SG v4 IO Issued as Mixed IO\n");
-            break;
-        default:
-            print_str("SG v4 IO Issued as Unknown IO type\n");
-            break;
-        }
-    }
+    // Print SG_IOv4 diagnostic information with device-aware verbosity
+    ret = print_tDevice_Verbose_SGIOv4_Info(scsiIoCtx->device, &io_hdr, scsiIoCtx, ret);
 
-    if ((io_hdr.info & SG_INFO_OK_MASK) != SG_INFO_OK)
-    {
-        if (io_hdr.device_status != 0) // SAM_STAT_GOOD???
-        {
-            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-            {
-                printf("SG Device Status = %02" PRIX8 "h", io_hdr.device_status);
-                switch (io_hdr.device_status)
-                {
-                case GOOD:
-                    print_str(" - Good\n");
-                    break;
-                case CHECK_CONDITION:
-                    print_str(" - Check Condition\n");
-                    break;
-                case CONDITION_GOOD:
-                    print_str(" - Condition Good\n");
-                    break;
-                case BUSY:
-                    print_str(" - Busy\n");
-                    break;
-                case INTERMEDIATE_GOOD:
-                    print_str(" - Intermediate Good\n");
-                    break;
-                case INTERMEDIATE_C_GOOD:
-                    print_str(" - Intermediate C Good\n");
-                    break;
-                case RESERVATION_CONFLICT:
-                    print_str(" - Reservation Conflict\n");
-                    break;
-                case COMMAND_TERMINATED:
-                    print_str(" - Command Terminated\n");
-                    break;
-                case QUEUE_FULL:
-                    print_str(" - Queue Full\n");
-                    break;
-#    if defined(TASK_ABORTED)
-                case TASK_ABORTED:
-#    else
-                case 0x20:
-#    endif
-                    print_str(" - Task Aborted\n");
-                    break;
-                default:
-                    print_str(" - Unknown Masked Status\n");
-                    break;
-                }
-            }
-            if (io_hdr.sb_len_wr == 0)
-            {
-                if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-                {
-                    print_str("\t(Masked Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
-                }
-                // No sense data back. We need to set an error since the layers above are going to look for sense data
-                // and we don't have any.
-                ret = OS_PASSTHROUGH_FAILURE;
-            }
-        }
-
-        if (io_hdr.transport_status != 0)
-        {
-            printf("SG Transport Status = %02" PRIX16 "h", io_hdr.transport_status);
-            switch (io_hdr.transport_status)
-            {
-            case OPENSEA_SG_ERR_DID_OK:
-                print_str(" - No Error\n");
-                break;
-            case OPENSEA_SG_ERR_DID_NO_CONNECT:
-                print_str(" - Could Not Connect\n");
-                break;
-            case OPENSEA_SG_ERR_DID_BUS_BUSY:
-                print_str(" - Bus Busy\n");
-                break;
-            case OPENSEA_SG_ERR_DID_TIME_OUT:
-                print_str(" - Timed Out\n");
-                break;
-            case OPENSEA_SG_ERR_DID_BAD_TARGET:
-                print_str(" - Bad Target Device\n");
-                break;
-            case OPENSEA_SG_ERR_DID_ABORT:
-                print_str(" - Abort\n");
-                break;
-            case OPENSEA_SG_ERR_DID_PARITY:
-                print_str(" - Parity Error\n");
-                break;
-            case OPENSEA_SG_ERR_DID_ERROR:
-                print_str(" - Internal Adapter Error\n");
-                break;
-            case OPENSEA_SG_ERR_DID_RESET:
-                print_str(" - SCSI Bus/Device Has Been Reset\n");
-                break;
-            case OPENSEA_SG_ERR_DID_BAD_INTR:
-                print_str(" - Bad Interrupt\n");
-                break;
-            case OPENSEA_SG_ERR_DID_PASSTHROUGH:
-                print_str(" - Forced Passthrough Past Mid-Layer\n");
-                break;
-            case OPENSEA_SG_ERR_DID_SOFT_ERROR:
-                print_str(" - Soft Error, Retry?\n");
-                break;
-            default:
-                print_str(" - Unknown Host Status\n");
-                break;
-            }
-
-            // host/transport level failure
-            if (io_hdr.response_len == 0)
-            {
-                // Special case for MegaRAID and controllers based on MegaRAID.
-                // These controllers block the command and set "Internal Adapter Error" with no other information
-                // available.
-                // TODO: Need to test and see if SAT passthrough trusted send/receive are also blocked to add them to
-                // this case. -TJE
-                if (io_hdr.transport_status == OPENSEA_SG_ERR_DID_ERROR &&
-                    (scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_IN ||
-                     scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_OUT))
-                {
-                    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-                    {
-                        print_str("\tSpecial Case: Security Protocol Command Blocked\n");
-                    }
-                    ret = OS_COMMAND_BLOCKED;
-                }
-                else
-                {
-                    if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-                    {
-                        print_str("\t(Transport Status) Sense data not available, assuming OS_PASSTHROUGH_FAILURE\n");
-                    }
-                    ret = OS_PASSTHROUGH_FAILURE;
-                }
-            }
-        }
-
-        if (io_hdr.driver_status != 0)
-        {
-            if (VERBOSITY_COMMAND_VERBOSE <= scsiIoCtx->device->deviceVerbosity)
-            {
-                printf("SG Driver Status = %02" PRIX16 "h", io_hdr.driver_status);
-                switch (io_hdr.driver_status & OPENSEA_SG_ERR_DRIVER_MASK)
-                {
-                case OPENSEA_SG_ERR_DRIVER_OK:
-                    print_str(" - Driver OK");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_BUSY:
-                    print_str(" - Driver Busy");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_SOFT:
-                    print_str(" - Driver Soft Error");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_MEDIA:
-                    print_str(" - Driver Media Error");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_ERROR:
-                    print_str(" - Driver Error");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_INVALID:
-                    print_str(" - Driver Invalid");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_TIMEOUT:
-                    print_str(" - Driver Timeout");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_HARD:
-                    print_str(" - Driver Hard Error");
-                    break;
-                case OPENSEA_SG_ERR_DRIVER_SENSE:
-                    print_str(" - Driver Sense Data Available");
-                    break;
-                default:
-                    print_str(" - Unknown Driver Error");
-                    break;
-                }
-                // now error suggestions
-                switch (io_hdr.driver_status & OPENSEA_SG_ERR_SUGGEST_MASK)
-                {
-                case OPENSEA_SG_ERR_SUGGEST_NONE:
-                    break; // no suggestions, nothing necessary to print
-                case OPENSEA_SG_ERR_SUGGEST_RETRY:
-                    print_str(" - Suggest Retry");
-                    break;
-                case OPENSEA_SG_ERR_SUGGEST_ABORT:
-                    print_str(" - Suggest Abort");
-                    break;
-                case OPENSEA_SG_ERR_SUGGEST_REMAP:
-                    print_str(" - Suggest Remap");
-                    break;
-                case OPENSEA_SG_ERR_SUGGEST_DIE:
-                    print_str(" - Suggest Die");
-                    break;
-                case OPENSEA_SG_ERR_SUGGEST_SENSE:
-                    print_str(" - Suggest Sense");
-                    break;
-                default:
-                    print_str(" - Unknown suggestion");
-                    break;
-                }
-                print_str("\n");
-            }
-
-            // driver-level failure
-            if (io_hdr.response_len == 0)
-            {
-                ret = OS_PASSTHROUGH_FAILURE;
-            }
-        }
-    }
-
-    scsiIoCtx->device->drive_info.lastCommandTimeNanoSeconds = get_Nano_Seconds(commandTimer);
+    set_tDevice_Last_Command_Completion_Time_NS(scsiIoCtx->device, get_Nano_Seconds(commandTimer));
 #    ifdef _DEBUG
     printf("<--%s (%d)\n", __FUNCTION__, ret);
 #    endif
@@ -3079,7 +3148,7 @@ static eReturnValues send_sg_io_v3(ScsiIoCtx* M_NONNULL scsiIoCtx)
     //  Start with zapping the io_hdr
     M_INITIALIZE_STRUCTURE(&io_hdr, sizeof(sg_io_hdr_t));
 
-    print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "Sending command with send_IO\n");
+    print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "Sending command with send_sg_io_v3\n");
 
     // Set up the io_hdr
     io_hdr.interface_id = 'S';
@@ -3245,8 +3314,12 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         (scsiIoCtx->device->os_info.secondHandleValid &&
          is_Block_SCSI_Generic_Handle(scsiIoCtx->device->os_info.secondName)))
     {
-        // BSG handles: must use v4, SG_GET_VERSION_NUM doesn't apply
-        return send_sg_io_v4(scsiIoCtx);
+        // BSG handles: pre 4.18, v3, otherwise v4
+        if (scsiIoCtx->device->os_info.sgDriverVersion.driverVersionValid &&
+            scsiIoCtx->device->os_info.sgDriverVersion.majorVersion >= 4)
+            return send_sg_io_v4(scsiIoCtx);
+        else
+            return send_sg_io_v3(scsiIoCtx);
     }
     else if (is_SCSI_Generic_Handle(scsiIoCtx->device->os_info.name) &&
              scsiIoCtx->device->os_info.sgDriverVersion.driverVersionValid &&
