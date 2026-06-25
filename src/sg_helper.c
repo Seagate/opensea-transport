@@ -105,6 +105,7 @@
 #            pragma message "No NVMe header detected with __has_include. Assuming no NVMe support."
 #        endif
 #    endif
+
 #    if __has_include(<linux/bsg.h>)
 #        if defined(_DEBUG)
 #            pragma message "Using linux/bsg.h"
@@ -113,6 +114,11 @@
 #        if !defined(SEA_BSG_IOCTL_H)
 #            define SEA_BSG_IOCTL_H
 #        endif
+#    endif
+     // Always include our sg_io_v4.h for consistent struct definition (cross-compilation compatible)
+#    include "sg_io_v4.h"
+#    if !defined(SEA_BSG_IOCTL_H)
+#        define SEA_BSG_IOCTL_H
 #    endif
 #else
 #    if defined(SEA_NVME_IOCTL_H)
@@ -124,6 +130,14 @@
 #    else
 #        pragma message                                                                                                \
             "No NVMe header detected. Assuming no NVMe support. Define one of the following to include the correct NVMe header: SEA_NVME_IOCTL_H, SEA_NVME_H, or SEA_UAPI_NVME_H\nThese specify whether the NVMe IOCTL is in /usr/include/linux/nvme_ioctl.h, /usr/include/linux/nvme.h, or /usr/include/uapi/nvme.h"
+#    endif
+#    if defined(SEA_BSG_IOCTL_H)
+#        include <linux/bsg.h>
+#    endif
+     // Always include our sg_io_v4.h for consistent struct definition (cross-compilation compatible)
+#    include "sg_io_v4.h"
+#    if !defined(SEA_BSG_IOCTL_H)
+#        define SEA_BSG_IOCTL_H
 #    endif
 #endif
 
@@ -2709,7 +2723,7 @@ static eReturnValues print_tDevice_Verbose_SGIOv3_Info(const tDevice* M_NONNULL 
 
 #if defined(SEA_BSG_IOCTL_H)
 // Helper function to print SG IO direct/indirect/mixed type information
-static void print_sgv4_io_direct_type_info(const tDevice* M_NONNULL device, sg_io_v4* M_NONNULL io_hdr)
+static void print_sgv4_io_direct_type_info(const tDevice* M_NONNULL device, struct sg_io_v4* M_NONNULL io_hdr)
 {
     switch (io_hdr->info & SG_INFO_DIRECT_IO_MASK)
     {
@@ -2730,9 +2744,9 @@ static void print_sgv4_io_direct_type_info(const tDevice* M_NONNULL device, sg_i
 
 // Helper function to print SG IO device status
 // Returns modified ret value if sense data unavailable
-static eReturnValues print_sgv4_io_device_status(const tDevice* M_NONNULL device,
-                                                 sg_io_v4* M_NONNULL      io_hdr,
-                                                 eReturnValues            ret)
+static eReturnValues print_sgv4_io_device_status(const tDevice* M_NONNULL   device,
+                                                 struct sg_io_v4* M_NONNULL io_hdr,
+                                                 eReturnValues              ret)
 {
     if (io_hdr->device_status == 0)
         return ret;
@@ -2793,10 +2807,10 @@ static eReturnValues print_sgv4_io_device_status(const tDevice* M_NONNULL device
 
 // Helper function to print SG IO transport status (SCSI adapter/bus status)
 // Returns modified ret value if sense data unavailable or special cases
-static eReturnValues print_sgv4_io_transport_status(const tDevice* M_NONNULL device,
-                                                    sg_io_v4* M_NONNULL      io_hdr,
-                                                    ScsiIoCtx* M_NONNULL     scsiIoCtx,
-                                                    eReturnValues            ret)
+static eReturnValues print_sgv4_io_transport_status(const tDevice* M_NONNULL   device,
+                                                    struct sg_io_v4* M_NONNULL io_hdr,
+                                                    ScsiIoCtx* M_NONNULL       scsiIoCtx,
+                                                    eReturnValues              ret)
 {
     if (io_hdr->transport_status == 0)
         return ret;
@@ -2849,7 +2863,7 @@ static eReturnValues print_sgv4_io_transport_status(const tDevice* M_NONNULL dev
     if (io_hdr->response_len == 0)
     {
         // Special case for MegaRAID controllers that block certain commands
-        if (io_hdr->host_status == OPENSEA_SG_ERR_DID_ERROR &&
+        if (io_hdr->transport_status == OPENSEA_SG_ERR_DID_ERROR &&
             (scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_IN ||
              scsiIoCtx->cdb[CDB_OPERATION_CODE] == SECURITY_PROTOCOL_OUT))
         {
@@ -2871,9 +2885,9 @@ static eReturnValues print_sgv4_io_transport_status(const tDevice* M_NONNULL dev
 
 // Helper function to print SG IO driver status (Linux SCSI driver status)
 // Returns modified ret value if sense data unavailable
-static eReturnValues print_sgv4_io_driver_status(const tDevice* M_NONNULL device,
-                                                 sg_io_v4* M_NONNULL      io_hdr,
-                                                 eReturnValues            ret)
+static eReturnValues print_sgv4_io_driver_status(const tDevice* M_NONNULL   device,
+                                                 struct sg_io_v4* M_NONNULL io_hdr,
+                                                 eReturnValues              ret)
 {
     if (io_hdr->driver_status == 0)
         return ret;
@@ -2951,10 +2965,10 @@ static eReturnValues print_sgv4_io_driver_status(const tDevice* M_NONNULL device
 }
 
 // Main helper: Print all SG_IOv4 diagnostic information with device-aware verbosity
-static eReturnValues print_tDevice_Verbose_SGIOv4_Info(const tDevice* M_NONNULL device,
-                                                       sg_io_v4* M_NONNULL      io_hdr,
-                                                       ScsiIoCtx* M_NONNULL     scsiIoCtx,
-                                                       eReturnValues            ret)
+static eReturnValues print_tDevice_Verbose_SGIOv4_Info(const tDevice* M_NONNULL   device,
+                                                       struct sg_io_v4* M_NONNULL io_hdr,
+                                                       ScsiIoCtx* M_NONNULL       scsiIoCtx,
+                                                       eReturnValues              ret)
 {
     print_sgv4_io_direct_type_info(device, io_hdr);
 
@@ -2979,7 +2993,7 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
 #    endif
 
     // safe_memset(&io_hdr, sizeof(struct sg_io_v4), 0, sizeof(struct sg_io_v4));
-    M_INITIALIZE_STRUCTURE(&io_hdr, sizeof(sg_io_v4));
+    M_INITIALIZE_STRUCTURE(&io_hdr, sizeof(struct sg_io_v4));
 
     print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "Sending command with send_sg_io_v4\n");
 
@@ -2988,13 +3002,13 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
     io_hdr.subprotocol = BSG_SUB_PROTOCOL_SCSI_CMD;
 
     io_hdr.request_len = scsiIoCtx->cdbLength;
-    io_hdr.request     = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->cdb));
+    io_hdr.request     = M_STATIC_CAST(uint64_t, M_STATIC_CAST(uintptr_t, scsiIoCtx->cdb));
 
     // Use user's sense or local?
     if ((scsiIoCtx->senseDataSize) && (scsiIoCtx->psense != M_NULLPTR))
     {
         io_hdr.max_response_len = scsiIoCtx->senseDataSize;
-        io_hdr.response         = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->psense));
+        io_hdr.response         = M_STATIC_CAST(uint64_t, M_STATIC_CAST(uintptr_t, scsiIoCtx->psense));
     }
     else
     {
@@ -3006,7 +3020,7 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
             return MEMORY_FAILURE;
         }
         io_hdr.max_response_len = SPC3_SENSE_LEN;
-        io_hdr.response         = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, localSenseBuffer));
+        io_hdr.response         = M_STATIC_CAST(uint64_t, M_STATIC_CAST(uintptr_t, localSenseBuffer));
     }
 
     switch (scsiIoCtx->direction)
@@ -3015,19 +3029,19 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
         break;
     case XFER_DATA_IN:
         io_hdr.din_xfer_len = scsiIoCtx->dataLength;
-        io_hdr.din_xferp    = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
+        io_hdr.din_xferp    = M_STATIC_CAST(uint64_t, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
         break;
     case XFER_DATA_OUT:
         io_hdr.dout_xfer_len = scsiIoCtx->dataLength;
-        io_hdr.dout_xferp    = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
+        io_hdr.dout_xferp    = M_STATIC_CAST(uint64_t, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
         break;
     case XFER_DATA_IN_OUT:
     case XFER_DATA_OUT_IN:
         // v4 supports bidirectional: set both din and dout
         io_hdr.din_xfer_len  = scsiIoCtx->dataLength;
-        io_hdr.din_xferp     = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
+        io_hdr.din_xferp     = M_STATIC_CAST(uint64_t, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
         io_hdr.dout_xfer_len = scsiIoCtx->dataLength;
-        io_hdr.dout_xferp    = M_STATIC_CAST(__u64, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
+        io_hdr.dout_xferp    = M_STATIC_CAST(uint64_t, M_STATIC_CAST(uintptr_t, scsiIoCtx->pdata));
         break;
     default:
         print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET, "%s Didn't understand direction\n",
@@ -3117,7 +3131,7 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
     {
         uint8_t* responseBuf           = M_REINTERPRET_CAST(uint8_t*, C_CAST(uintptr_t, io_hdr.response));
         scsiIoCtx->returnStatus.format = responseBuf[0];
-        get_Sense_Key_ASC_ASCQ_FRU(responseBuf, io_hdr.max_response_len, &scsiIoCtx->returnStatus.senseKey,
+        get_Sense_Key_ASC_ASCQ_FRU(responseBuf, io_hdr.response_len, &scsiIoCtx->returnStatus.senseKey,
                                    &scsiIoCtx->returnStatus.asc, &scsiIoCtx->returnStatus.ascq,
                                    &scsiIoCtx->returnStatus.fru);
     }
@@ -3314,12 +3328,8 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         (scsiIoCtx->device->os_info.secondHandleValid &&
          is_Block_SCSI_Generic_Handle(scsiIoCtx->device->os_info.secondName)))
     {
-        // BSG handles: pre 4.18, v3, otherwise v4
-        if (scsiIoCtx->device->os_info.sgDriverVersion.driverVersionValid &&
-            scsiIoCtx->device->os_info.sgDriverVersion.majorVersion >= 4)
-            return send_sg_io_v4(scsiIoCtx);
-        else
-            return send_sg_io_v3(scsiIoCtx);
+        // BSG handles: SEA_BSG_IOCTL_H guarantees kernel 4.18+ with v4 support
+        return send_sg_io_v4(scsiIoCtx);
     }
     else if (is_SCSI_Generic_Handle(scsiIoCtx->device->os_info.name) &&
              scsiIoCtx->device->os_info.sgDriverVersion.driverVersionValid &&
@@ -3331,7 +3341,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
     else
 #endif
     {
-        // SG driver 3.x on /dev/sg*, or /dev/sd* block handles: use v3
+        // SG driver 3.x on /dev/sg*, pre-4.18 BSG, or /dev/sd* block handles: use v3
         return send_sg_io_v3(scsiIoCtx);
     }
 }
