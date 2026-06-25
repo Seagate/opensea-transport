@@ -105,7 +105,6 @@
 #            pragma message "No NVMe header detected with __has_include. Assuming no NVMe support."
 #        endif
 #    endif
-
 #    if __has_include(<linux/bsg.h>)
 #        if defined(_DEBUG)
 #            pragma message "Using linux/bsg.h"
@@ -114,11 +113,11 @@
 #        if !defined(SEA_BSG_IOCTL_H)
 #            define SEA_BSG_IOCTL_H
 #        endif
-#    endif
-     // Always include our sg_io_v4.h for consistent struct definition (cross-compilation compatible)
-#    include "sg_io_v4.h"
-#    if !defined(SEA_BSG_IOCTL_H)
-#        define SEA_BSG_IOCTL_H
+#    else
+#        include "sg_io_v4.h" // Always include our sg_io_v4.h for consistent struct definition (cross-compilation compatible)
+#        if !defined(SEA_BSG_IOCTL_H)
+#            define SEA_BSG_IOCTL_H
+#        endif
 #    endif
 #else
 #    if defined(SEA_NVME_IOCTL_H)
@@ -133,11 +132,11 @@
 #    endif
 #    if defined(SEA_BSG_IOCTL_H)
 #        include <linux/bsg.h>
-#    endif
-     // Always include our sg_io_v4.h for consistent struct definition (cross-compilation compatible)
-#    include "sg_io_v4.h"
-#    if !defined(SEA_BSG_IOCTL_H)
-#        define SEA_BSG_IOCTL_H
+#    else
+#        include "sg_io_v4.h" // Always include our sg_io_v4.h for consistent struct definition (cross-compilation compatible)
+#        if !defined(SEA_BSG_IOCTL_H)
+#            define SEA_BSG_IOCTL_H
+#        endif
 #    endif
 #endif
 
