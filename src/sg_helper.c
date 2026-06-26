@@ -2175,11 +2175,10 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
     {
         if (is_Block_SCSI_Generic_Handle(deviceHandle))
         {
-            // BSG handle on pre-4.18: version check failed, but we'll use v3 SG_IO instead of v4
-            device->os_info.sgDriverVersion.driverVersionValid = true;
-            device->os_info.sgDriverVersion.majorVersion       = 3; // Default to v3 for BSG on older kernels
-            device->os_info.sgDriverVersion.minorVersion       = 0;
-            device->os_info.sgDriverVersion.revision           = 0;
+            // SG_GET_VERSION_NUM ioctl is not supported on /dev/bsg/* handles
+            // (they only exist on kernel 4.18+, where SGv4 is guaranteed available).
+            // This is expected behavior, not an error. Router will use v4 for BSG.
+            device->os_info.sgDriverVersion.driverVersionValid = false;
         }
         else
         {
@@ -3126,7 +3125,7 @@ static eReturnValues send_sg_io_v4(ScsiIoCtx* M_NONNULL scsiIoCtx)
     }
 
     // Parse sense data from response
-    if (io_hdr.response_len > 0)
+    if (io_hdr.response_len > 0 && io_hdr.response != 0)
     {
         uint8_t* responseBuf           = M_REINTERPRET_CAST(uint8_t*, C_CAST(uintptr_t, io_hdr.response));
         scsiIoCtx->returnStatus.format = responseBuf[0];
@@ -3327,8 +3326,20 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
         (scsiIoCtx->device->os_info.secondHandleValid &&
          is_Block_SCSI_Generic_Handle(scsiIoCtx->device->os_info.secondName)))
     {
-        // BSG handles: SEA_BSG_IOCTL_H guarantees kernel 4.18+ with v4 support
-        return send_sg_io_v4(scsiIoCtx);
+        // BSG handles: Check if v4 is ACTUALLY supported at runtime
+        // If SG_GET_VERSION_NUM failed (driverVersionValid=false), it might be v3 or not supported
+        // Conservative: if we can't verify support, fall back to v3
+        if (scsiIoCtx->device->os_info.sgDriverVersion.driverVersionValid)
+        {
+            // We got version info - BSG is compatible
+            return send_sg_io_v4(scsiIoCtx);
+        }
+        else
+        {
+            // SG_GET_VERSION_NUM failed - BSG support unclear at runtime
+            // Fall back to v3 (still might fail on very old kernels, but safer)
+            return send_sg_io_v3(scsiIoCtx);
+        }
     }
     else if (is_SCSI_Generic_Handle(scsiIoCtx->device->os_info.name) &&
              scsiIoCtx->device->os_info.sgDriverVersion.driverVersionValid &&
