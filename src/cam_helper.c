@@ -1313,7 +1313,7 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
     default:
         print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET,
                                                "Target Device does not have a valid interface %d\n",
-                                               scsiIoCtx->get_Device_InterfaceType(device));
+                                               get_Device_InterfaceType(scsiIoCtx->device));
     }
     // printf("<-- %s\n",__FUNCTION__);
     if (scsiIoCtx->device->delay_io)
