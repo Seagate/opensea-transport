@@ -91,8 +91,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
-        os_Controller_Reset(const tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -119,8 +118,7 @@ extern "C"
 
     OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* device);
 
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
-        os_nvme_Subsystem_Reset(const tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(const tDevice* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -136,7 +134,7 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Lock_Device(const tDevice* device);
 
     OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(const tDevice* device);
 
@@ -154,16 +152,13 @@ extern "C"
     //!   OS_COMMAND_BLOCKED = failed to perform the reset
     //
     //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unlock_Device(const tDevice* device);
 
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
-        os_Update_File_System_Cache(const tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Update_File_System_Cache(const tDevice* device);
 
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
-        os_Unmount_File_Systems_On_Device(const tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unmount_File_Systems_On_Device(const tDevice* device);
 
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
-        os_Erase_Boot_Sectors(const tDevice* device);
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(const tDevice* device);
 
 #if defined(__cplusplus)
 }
