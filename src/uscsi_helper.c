@@ -151,7 +151,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
         char *tempSecondName = tempSecondNameBuf;
 
         // set the block handle
-        snprintf_err_handle(&tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s", tempFriendlyName);
+        snprintf_err_handle(tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s", tempFriendlyName);
 
         set_Second_Device_Name_In_tDevice(device, tempSecondName, tempFriendlyName);
 
