@@ -498,12 +498,12 @@ static bool get_IDs_From_TCHAR_String(DEVINST            instance,
                          (C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf)) < propertyBufLen && *property;
                          property += wcslen(property) + 1)
                     {
-                        size_t byteOffset   = C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf);
-                        size_t remainingLen = (propertyBufLen > byteOffset) ? (propertyBufLen - byteOffset) / sizeof(wchar_t) : 0;
-                        int    scannedVals  = _snwscanf_s(property, remainingLen,
-                                                          L"1394\\%I32x&%I32x",
-                                                          &device->drive_info.adapter_info.specifierID,
-                                                          &device->drive_info.adapter_info.revision);
+                        size_t byteOffset = C_CAST(uintptr_t, property) - C_CAST(uintptr_t, propertyBuf);
+                        size_t remainingLen =
+                            (propertyBufLen > byteOffset) ? (propertyBufLen - byteOffset) / sizeof(wchar_t) : 0;
+                        int scannedVals = _snwscanf_s(property, remainingLen, L"1394\\%I32x&%I32x",
+                                                      &device->drive_info.adapter_info.specifierID,
+                                                      &device->drive_info.adapter_info.revision);
                         if (scannedVals < 2)
                         {
 #if defined(_DEBUG)
@@ -2814,19 +2814,17 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                                  property += wcslen(property) +
                                                                                              propListAdditionalLen)
                                                                             {
-                                                                                if (0 >
-                                                                                    snprintf_err_handle(
-                                                                                        device->drive_info
-                                                                                            .driver_info.driverName,
-                                                                                        MAX_DRIVER_NAME, "%ls",
-                                                                                        property)) // this should
+                                                                                if (0 > snprintf_err_handle(
+                                                                                            device->drive_info
+                                                                                                .driver_info.driverName,
+                                                                                            MAX_DRIVER_NAME, "%ls",
+                                                                                            property)) // this should
                                                                                 // convert the driver
                                                                                 // name to ascii
                                                                                 // string.-TJE
                                                                                 {
-                                                                                    perror(
-                                                                                        "Error converting driver "
-                                                                                        "name to ASCII string");
+                                                                                    perror("Error converting driver "
+                                                                                           "name to ASCII string");
                                                                                 }
                                                                             }
                                                                         }
@@ -2881,15 +2879,13 @@ static eReturnValues get_Adapter_IDs(tDevice*                   device,
                                                                             {
                                                                                 if (0 >
                                                                                     snprintf_err_handle(
-                                                                                        device->drive_info
-                                                                                            .driver_info
+                                                                                        device->drive_info.driver_info
                                                                                             .driverVersionString,
                                                                                         MAX_DRIVER_VER_STR, "%ls",
                                                                                         property))
                                                                                 {
-                                                                                    perror(
-                                                                                        "Error formatting driver "
-                                                                                        "version string\n");
+                                                                                    perror("Error formatting driver "
+                                                                                           "version string\n");
                                                                                 }
 #if defined(HAVE_MSFT_SECURE_LIB)
                                                                                 int scanfRet = swscanf_s(
@@ -6643,7 +6639,7 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks(ScsiIoCtx* scsiIoCtx);
 static M_INLINE bool is_Reassign_Blocks_LongLBA(uint8_t cdbByte1)
 {
     // if longlba is one, all LBAs are 8bytes long and should use the newer IOCTL for this CDB
-    if ((cdbByte1 & BIT1) == 1)
+    if (cdbByte1 & BIT1)
     {
         return true;
     }
@@ -6749,10 +6745,10 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks_Ex(ScsiIoCtx* scsiIoCtx
         for (uint32_t iter = REASSIGN_BLOCKS_LIST_HEADER_LENGTH, counter = 0;
              iter < scsiIoCtx->dataLength && counter < lbaEntries; iter += REASSIGN_BLOCKS_LONG_LBA_LENGTH, ++counter)
         {
-            winReassignBlocks->BlockNumber[counter].QuadPart =
+            winReassignBlocks->BlockNumber[counter].QuadPart = M_STATIC_CAST(LONGLONG,
                 M_BytesTo8ByteValue(scsiIoCtx->pdata[iter], scsiIoCtx->pdata[iter + 1], scsiIoCtx->pdata[iter + 2],
                                     scsiIoCtx->pdata[iter + 3], scsiIoCtx->pdata[iter + 4], scsiIoCtx->pdata[iter + 5],
-                                    scsiIoCtx->pdata[iter + 6], scsiIoCtx->pdata[iter + 7]);
+                                    scsiIoCtx->pdata[iter + 6], scsiIoCtx->pdata[iter + 7]));
         }
         BOOL ioResult = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_DISK_REASSIGN_BLOCKS_EX, winReassignBlocks,
                                         reassignStructLen, M_NULLPTR, 0, &bytesReturned, M_NULLPTR);
@@ -9879,7 +9875,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(tDevice* M_NO
 
 // TODO: We may need to switch between locking fd and scsiSrbHandle in some way...for now just locking fd value.
 // https://docs.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_lock_volume
-OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(0))
@@ -9900,7 +9896,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* 
     return ret;
 }
 
-OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -15381,7 +15377,6 @@ static void set_Command_Completion_For_OS_Read_Write_ATA(tDevice* M_NONNULL devi
     copy_Last_Command_RTFRs_To_tDevice(device, &rtfrs);
 }
 
-M_PARAM_RO(1)
 M_PARAM_RW(1) static eReturnValues set_Command_Completion_For_OS_Read_Write(tDevice* M_NONNULL device, DWORD lastError)
 {
     eReturnValues ret = SUCCESS;

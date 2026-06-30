@@ -1313,7 +1313,7 @@ M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
     default:
         print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_QUIET,
                                                "Target Device does not have a valid interface %d\n",
-                                               scsiIoCtx->get_Device_InterfaceType(device));
+                                               get_Device_InterfaceType(scsiIoCtx->device));
     }
     // printf("<-- %s\n",__FUNCTION__);
     if (scsiIoCtx->device->delay_io)
@@ -2249,7 +2249,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED
     return SUCCESS;
 }
 
-OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     // There is nothing to lock since you cannot open a CAM device with O_NONBLOCK
     if (device->os_info.lockCount < UINT16_MAX)
@@ -2260,7 +2260,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* 
     return SUCCESS;
 }
 
-OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     // There is nothing to unlock since you cannot open a CAM device with O_NONBLOCK
     if (device->os_info.lockCount > 0)

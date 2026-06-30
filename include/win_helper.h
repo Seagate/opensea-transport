@@ -254,7 +254,7 @@ extern "C"
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
     //
     //-----------------------------------------------------------------------------
-    M_PARAM_RO(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx);
+    M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx);
 
     OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device);
 

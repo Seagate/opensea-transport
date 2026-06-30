@@ -140,16 +140,18 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
 
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
-        DECLARE_ZERO_INIT_ARRAY(char, tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        DECLARE_ZERO_INIT_ARRAY(char, tempFriendlyNameBuf, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        char *tempFriendlyName = tempFriendlyNameBuf;
         // set the friendly name
-        set_Device_Name(deviceHandle, &tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
+        set_Device_Name(deviceHandle, tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
 
         set_Device_Name_In_tDevice(device, deviceHandle, tempFriendlyName);
 
-        DECLARE_ZERO_INIT_ARRAY(char, tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH);
+        DECLARE_ZERO_INIT_ARRAY(char, tempSecondNameBuf, OS_SECOND_HANDLE_NAME_LENGTH);
+        char *tempSecondName = tempSecondNameBuf;
 
         // set the block handle
-        snprintf_err_handle(&tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s", tempFriendlyName);
+        snprintf_err_handle(tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s", tempFriendlyName);
 
         set_Second_Device_Name_In_tDevice(device, tempSecondName, tempFriendlyName);
 
@@ -673,7 +675,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED
 
 #define DRIVE_HANDLE_LOCK_RANGE_START  (0)
 #define DRIVE_HANDLE_LOCK_RANGE_LENGTH (0) // 0 means full drive/file
-OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))
@@ -710,7 +712,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Lock_Device(const tDevice* 
     return ret;
 }
 
-OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (device->os_info.lockCount == UINT16_C(1))

@@ -365,11 +365,11 @@ static eReturnValues intel_RAID_FW_Request(const tDevice* M_NONNULL device,
             {
                 char* winErrorStr = get_windows_error_str(M_STATIC_CAST(winsyserror_t, device->os_info.last_error));
                 print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Windows Error: %s\n",
-                                                       winErrorStr);
+                                                       winErrorStr == M_NULLPTR ? "Unknown Error" : winErrorStr);
                 safe_free(&winErrorStr);
                 char* statusStr = get_Intel_Firmware_SRB_Status_String(raidFirmwareRequest->Header.ReturnCode);
                 print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Intel RAID Firmware: %s\n",
-                                                       statusStr);
+                                                       statusStr == M_NULLPTR ? "Unknown Status" : statusStr);
                 safe_free(&statusStr);
             }
             if (MSFT_BOOL_FALSE(success))
@@ -944,11 +944,11 @@ static eReturnValues send_Intel_NVM_Passthrough_Command(nvmeCmdCtx* nvmeIoCtx)
             char* winErrorStr =
                 get_windows_error_str(M_STATIC_CAST(winsyserror_t, nvmeIoCtx->device->os_info.last_error));
             print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Windows Error: %s\n",
-                                                   winErrorStr);
+                                                   winErrorStr == M_NULLPTR ? "Unknown Error" : winErrorStr);
             safe_free(&winErrorStr);
             char* statusStr = get_Intel_SRB_Status_String(nvmPassthroughCommand->Header.ReturnCode);
             print_tDevice_Verbose_Formatted_String(nvmeIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "SRB Status: %s\n",
-                                                   statusStr);
+                                                   statusStr == M_NULLPTR ? "Unknown Status" : statusStr);
             safe_free(&statusStr);
 
             // set command time
