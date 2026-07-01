@@ -301,7 +301,7 @@ typedef struct s_sysFSLowLevelDeviceInfo
     char     fullDevicePath[OPENSEA_PATH_MAX];
     char     primaryHandleStr[OS_HANDLE_NAME_MAX_LENGTH];      // dev/sg or /dev/nvmexny (namespace handle)
     char     secondaryHandleStr[OS_SECOND_HANDLE_NAME_LENGTH]; // dev/sd or /dev/nvmex (controller handle)
-    char     tertiaryHandleStr[OS_SECOND_HANDLE_NAME_LENGTH];  // dev/bsg or /dev/ngXnY (nvme generic handle)
+    char     tertiaryHandleStr[OS_THIRD_HANDLE_NAME_LENGTH];   // dev/bsg or /dev/ngXnY (nvme generic handle)
     uint16_t queueDepth;                                       // if 0, then this was unable to be read and populated
 } sysFSLowLevelDeviceInfo;
 
@@ -1306,11 +1306,11 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
             }
             if (is_Block_Device_Handle(handle))
             {
+                // incomingBlock = true;
                 if (0 != safe_strcat(incomingHandleClassPath, PATH_MAX, "block/"))
                 {
                     return;
                 }
-                // incomingBlock = true;
             }
             else if (is_Block_SCSI_Generic_Handle(handle))
             {
@@ -1392,20 +1392,28 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                         get_Linux_SYS_FS_SCSI_Device_File_Info(sysFsInfo);
 
                         char* baseLink = basename(inHandleLink);
-                        if (incomingBSG)
+                        if (incomingBSG) // set incoming bsg to tertiary
                         {
-                            if (snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH,
+                            if (snprintf_err_handle(sysFsInfo->tertiaryHandleStr, OS_THIRD_HANDLE_NAME_LENGTH,
                                                     "/dev/bsg/%s", baseLink) < 0)
                             {
                                 safe_free(&duphandle);
                                 return;
                             }
                         }
-                        else // for both sg and sd, set accordingly. We are setting the block handle also as primary
-                             // here, but change it later to the bsg or sg
+                        else if (incomingSG) // set incoming sg to primary
                         {
                             if (snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH, "/dev/%s",
                                                     baseLink) < 0)
+                            {
+                                safe_free(&duphandle);
+                                return;
+                            }
+                        }
+                        else // set incoming sd to secondary
+                        {
+                            if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
+                                                    "/dev/%s", baseLink) < 0)
                             {
                                 safe_free(&duphandle);
                                 return;
@@ -1446,9 +1454,9 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
 
                             if (incomingSG)
                             {
-                                if (bsgHandle != M_NULLPTR) // save secondary handle name as bsg handle
+                                if (bsgHandle != M_NULLPTR) // save tertiary handle name as bsg handle
                                 {
-                                    if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
+                                    if (snprintf_err_handle(sysFsInfo->tertiaryHandleStr, OS_THIRD_HANDLE_NAME_LENGTH,
                                                             "/dev/bsg/%s", bsgHandle) < 0)
                                     {
                                         safe_free(&blockHandle);
@@ -1458,7 +1466,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                                         return;
                                     }
                                 }
-                                else if (blockHandle != M_NULLPTR) // save secondary handle name as block handle
+                                if (blockHandle != M_NULLPTR) // save secondary handle name as block handle
                                 {
                                     if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
                                                             "/dev/%s", blockHandle) < 0)
@@ -1473,9 +1481,9 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                             }
                             else if (incomingBSG)
                             {
-                                if (genHandle != M_NULLPTR) // save secondary handle name as sg handle
+                                if (genHandle != M_NULLPTR) // save primary handle name as sg handle
                                 {
-                                    if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
+                                    if (snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH,
                                                             "/dev/%s", genHandle) < 0)
                                     {
                                         safe_free(&blockHandle);
@@ -1485,7 +1493,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                                         return;
                                     }
                                 }
-                                else if (blockHandle != M_NULLPTR) // save secondary handle name as block handle
+                                if (blockHandle != M_NULLPTR) // save secondary handle name as block handle
                                 {
                                     if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
                                                             "/dev/%s", blockHandle) < 0)
@@ -1500,9 +1508,9 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                             }
                             else // for block handle change the primary handle as well
                             {
-                                if (bsgHandle != M_NULLPTR) // save primary handle name as bsg handle
+                                if (bsgHandle != M_NULLPTR) // save tertiary handle name as bsg handle
                                 {
-                                    if (snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH,
+                                    if (snprintf_err_handle(sysFsInfo->tertiaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH,
                                                             "/dev/bsg/%s", bsgHandle) < 0)
                                     {
                                         safe_free(&blockHandle);
@@ -1512,24 +1520,10 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                                         return;
                                     }
                                 }
-                                else if (genHandle != M_NULLPTR) // save primary handle name as sg handle
+                                if (genHandle != M_NULLPTR) // save primary handle name as sg handle
                                 {
                                     if (snprintf_err_handle(sysFsInfo->primaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH,
                                                             "/dev/%s", genHandle) < 0)
-                                    {
-                                        safe_free(&blockHandle);
-                                        safe_free(&genHandle);
-                                        safe_free(&bsgHandle);
-                                        safe_free(&duphandle);
-                                        return;
-                                    }
-                                }
-
-                                // set block handle as secondary handle
-                                if (blockHandle != M_NULLPTR)
-                                {
-                                    if (snprintf_err_handle(sysFsInfo->secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH,
-                                                            "/dev/%s", blockHandle) < 0)
                                     {
                                         safe_free(&blockHandle);
                                         safe_free(&genHandle);
@@ -1598,7 +1592,8 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
             safe_memcpy(&device->drive_info.driver_info, sizeof(driverInfo), &sysFsInfo.driver_info,
                         sizeof(driverInfo)),
             "Using exact same internal structure definition of driverInfo so this should never fail");
-        if (safe_strlen(sysFsInfo.primaryHandleStr) > 0)
+        if (safe_strlen(sysFsInfo.primaryHandleStr) >
+            0) // This means we were able to get sg handle, either incoming or mapped through bsg or sd handle
         {
             char* dupHandle = M_NULLPTR;
             if (0 != safe_strdup(&dupHandle, sysFsInfo.primaryHandleStr) || dupHandle == M_NULLPTR)
@@ -1610,6 +1605,23 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
                 set_Device_Name_In_tDevice(device, sysFsInfo.primaryHandleStr, basename(dupHandle));
             }
             safe_free(&dupHandle);
+        }
+        else // This is when the incoming handle was bsg or sd, and we were not able to map sg handle, in this case
+             // fallback to set sd handle to primary name
+        {
+            if (safe_strlen(sysFsInfo.secondaryHandleStr) > 0) // if we get sd handle
+            {
+                char* dupHandle = M_NULLPTR;
+                if (0 != safe_strdup(&dupHandle, sysFsInfo.secondaryHandleStr) || dupHandle == M_NULLPTR)
+                {
+                    set_Device_Name_In_tDevice(device, sysFsInfo.secondaryHandleStr, M_NULLPTR);
+                }
+                else
+                {
+                    set_Device_Name_In_tDevice(device, sysFsInfo.secondaryHandleStr, basename(dupHandle));
+                }
+                safe_free(&dupHandle);
+            }
         }
         if (safe_strlen(sysFsInfo.secondaryHandleStr) > 0)
         {
@@ -1624,6 +1636,20 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
             }
             safe_free(&dupSecond);
             device->os_info.secondHandleValid = true;
+        }
+        if (safe_strlen(sysFsInfo.tertiaryHandleStr) > 0)
+        {
+            char* dupThird = M_NULLPTR;
+            if (0 != safe_strdup(&dupThird, sysFsInfo.tertiaryHandleStr) || dupThird == M_NULLPTR)
+            {
+                set_Third_Device_Name_In_tDevice(device, sysFsInfo.tertiaryHandleStr, M_NULLPTR);
+            }
+            else
+            {
+                set_Third_Device_Name_In_tDevice(device, sysFsInfo.tertiaryHandleStr, basename(dupThird));
+            }
+            safe_free(&dupThird);
+            device->os_info.thirdHandleValid = true;
         }
 
         // Copy HCTL (Host:Channel:Target:LUN) from sysfs if available
@@ -1962,7 +1988,8 @@ M_PARAM_RW(1)
 static eReturnValues open_fd2(tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
-    if (device->os_info.secondHandleValid && !device->os_info.secondHandleOpened)
+    if (device->os_info.secondHandleValid && is_Block_Device_Handle(device->os_info.secondName) &&
+        is_SCSI_Generic_Handle(get_Device_Handle_Name(device)) && !device->os_info.fd2Opened)
     {
         char*             deviceHandle = M_NULLPTR;
         ePosixHandleFlags handleFlags  = POSIX_HANDLE_FLAGS_DEFAULT;
@@ -1991,7 +2018,7 @@ static eReturnValues open_fd2(tDevice* M_NONNULL device)
         free_Posix_Resolved_Filename(&deviceHandle);
         if (device->os_info.fd2 > 0)
         {
-            device->os_info.secondHandleOpened = true;
+            device->os_info.fd2Opened = true;
         }
         else
         {
@@ -2001,6 +2028,55 @@ static eReturnValues open_fd2(tDevice* M_NONNULL device)
     return ret;
 }
 
+// This is used to open device->os_info.fd3 which is where we will store
+// a /dev/sg handle which is a sg handle for SCSI devices.
+// This is case where we have opened the device->os_info.fd as bsg handle and we can't send
+// SG_RESET_* commands on bsg handles
+M_PARAM_RW(1)
+static eReturnValues open_fd3(tDevice* M_NONNULL device)
+{
+    eReturnValues ret = SUCCESS;
+    if (device->os_info.thirdHandleValid && is_Block_SCSI_Generic_Handle(device->os_info.thirdName) &&
+        is_SCSI_Generic_Handle(get_Device_Handle_Name(device)) &&
+        !device->os_info.fd3Opened) // Ex. fd = /dev/bsg, and primary name is /dev/sg --> we need
+                                    // fd3 to send sg_reset commands
+    {
+        char*             deviceHandle = M_NULLPTR;
+        ePosixHandleFlags handleFlags  = POSIX_HANDLE_FLAGS_DEFAULT;
+        ret                            = posix_Resolve_Filename_Link(get_Device_Handle_Name(device), &deviceHandle);
+        if (ret != SUCCESS)
+        {
+            free_Posix_Resolved_Filename(&deviceHandle);
+            return ret;
+        }
+
+        if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
+        {
+            handleFlags = POSIX_HANDLE_FLAGS_REQUIRE_EXCLUSIVE;
+        }
+        else if (device->dFlags & HANDLE_RECOMMEND_EXCLUSIVE_ACCESS)
+        {
+            handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
+        }
+
+        ret = posix_Get_Device_Handle(deviceHandle, &device->os_info.fd3, &handleFlags, 0);
+        if (ret != SUCCESS)
+        {
+            free_Posix_Resolved_Filename(&deviceHandle);
+            return ret;
+        }
+        free_Posix_Resolved_Filename(&deviceHandle);
+        if (device->os_info.fd3 > 0)
+        {
+            device->os_info.fd3Opened = true;
+        }
+        else
+        {
+            ret = FAILURE;
+        }
+    }
+    return ret;
+}
 #define LIN_MAX_HANDLE_LENGTH 30
 static eReturnValues resolve_Block_Handle_To_Generic_Handle(const char* filename, char** genericHandle)
 {
@@ -2139,7 +2215,7 @@ static eReturnValues linux_Get_NVMe_Device(tDevice* M_NONNULL device, const char
 #endif     // DISABLE_NVME_PASSTHROUGH
 }
 
-static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char* deviceHandle)
+static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char* genericHandle, const char* fileName)
 {
     int k = 0;
 #if defined(_DEBUG)
@@ -2173,7 +2249,7 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
     // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
     if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
     {
-        if (is_Block_SCSI_Generic_Handle(deviceHandle))
+        if (is_Block_SCSI_Generic_Handle(genericHandle))
         {
             // SG_GET_VERSION_NUM ioctl is not supported on /dev/bsg/* handles
             // (they only exist on kernel 4.18+, where SGv4 is guaranteed available).
@@ -2182,7 +2258,8 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
         }
         else
         {
-            printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, deviceHandle, k);
+            printf("%s: SG_GET_VERSION_NUM on %s (opened as %s) failed version=%d\n", __FUNCTION__, fileName,
+                   genericHandle, k);
             perror("SG_GET_VERSION_NUM");
             close(device->os_info.fd);
             return FAILURE;
@@ -2208,12 +2285,13 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
 #if defined(_DEBUG)
     print_str("Setting interface, drive type, secondary handles\n");
 #endif
-    set_Device_Fields_From_Handle(deviceHandle, device);
+    set_Device_Fields_From_Handle(fileName, device);
     setup_Passthrough_Hacks_By_ID(device);
 
 #if defined(_DEBUG)
-    printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n", get_Device_Handle_Name(device),
-           get_Device_Handle_Friendly_Name(device), device->os_info.secondName, device->os_info.secondFriendlyName);
+    printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n3rdName = %s\t3rdFName = %s\n",
+           get_Device_Handle_Name(device), get_Device_Handle_Friendly_Name(device), device->os_info.secondName,
+           device->os_info.secondFriendlyName, device->os_info.thirdName, device->os_info.thirdFriendlyName);
     printf("h:c:t:l = %u:%u:%u:%u\n", device->os_info.scsiAddress.host, device->os_info.scsiAddress.channel,
            device->os_info.scsiAddress.target, device->os_info.scsiAddress.lun);
 
@@ -2309,7 +2387,7 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* M_NONNULL dev
         }
         else // not an NVMe handle
         {
-            ret = linux_Get_SCSI_Device(device, filename);
+            ret = linux_Get_SCSI_Device(device, genericHandle, filename);
         }
         if (ret == SUCCESS)
         {
@@ -2387,17 +2465,65 @@ static eReturnValues sg_reset(int fd, int resetType)
 
 OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device)
 {
-    return sg_reset(device->os_info.fd, SG_SCSI_RESET_DEVICE);
+    int* fdToRescan = M_CONST_CAST(int*, &device->os_info.fd);
+    // If 3rd name is valid, meaning we have opened the BSG handle, and we can't call SG_SCSI_RESET
+    // Fallback is to open sg handle, which could be opened via primary name
+    if (device->os_info.thirdHandleValid && is_Block_SCSI_Generic_Handle(device->os_info.thirdName) &&
+        is_SCSI_Generic_Handle(get_Device_Handle_Name(device)))
+    {
+        // First open the handle
+        if (SUCCESS == open_fd3(M_CONST_CAST(tDevice*, device)))
+        {
+#if defined(_DEBUG)
+            printf("using fd3: %s\n", get_Device_Handle_Name(device));
+#endif
+            fdToRescan = M_CONST_CAST(int*, &device->os_info.fd3);
+        }
+    }
+
+    return sg_reset(*fdToRescan, SG_SCSI_RESET_DEVICE);
 }
 
 OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device)
 {
-    return sg_reset(device->os_info.fd, SG_SCSI_RESET_BUS);
+    int* fdToRescan = M_CONST_CAST(int*, &device->os_info.fd);
+    // If 3rd name is valid, meaning we have opened the BSG handle, and we can't call SG_SCSI_RESET
+    // Fallback is to open sg handle, which could be opened via primary name
+    if (device->os_info.thirdHandleValid && is_Block_SCSI_Generic_Handle(device->os_info.thirdName) &&
+        is_SCSI_Generic_Handle(get_Device_Handle_Name(device)))
+    {
+        // First open the handle
+        if (SUCCESS == open_fd3(M_CONST_CAST(tDevice*, device)))
+        {
+#if defined(_DEBUG)
+            printf("using fd3: %s\n", get_Device_Handle_Name(device));
+#endif
+            fdToRescan = M_CONST_CAST(int*, &device->os_info.fd3);
+        }
+    }
+
+    return sg_reset(*fdToRescan, SG_SCSI_RESET_BUS);
 }
 
 OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(const tDevice* M_NONNULL device)
 {
-    return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
+    int* fdToRescan = M_CONST_CAST(int*, &device->os_info.fd);
+    // If 3rd name is valid, meaning we have opened the BSG handle, and we can't call SG_SCSI_RESET
+    // Fallback is to open sg handle, which could be opened via primary name
+    if (device->os_info.thirdHandleValid && is_Block_SCSI_Generic_Handle(device->os_info.thirdName) &&
+        is_SCSI_Generic_Handle(get_Device_Handle_Name(device)))
+    {
+        // First open the handle
+        if (SUCCESS == open_fd3(M_CONST_CAST(tDevice*, device)))
+        {
+#if defined(_DEBUG)
+            printf("using fd3: %s\n", get_Device_Handle_Name(device));
+#endif
+            fdToRescan = M_CONST_CAST(int*, &device->os_info.fd3);
+        }
+    }
+
+    return sg_reset(*fdToRescan, SG_SCSI_RESET_HOST);
 }
 
 M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
@@ -3322,24 +3448,11 @@ static eReturnValues send_sg_io_v3(ScsiIoCtx* M_NONNULL scsiIoCtx)
 eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
 {
 #if defined(SEA_BSG_IOCTL_H)
-    if (is_Block_SCSI_Generic_Handle(scsiIoCtx->device->os_info.name) ||
-        (scsiIoCtx->device->os_info.secondHandleValid &&
-         is_Block_SCSI_Generic_Handle(scsiIoCtx->device->os_info.secondName)))
+    if (scsiIoCtx->device->os_info.thirdHandleValid &&
+        is_Block_SCSI_Generic_Handle(scsiIoCtx->device->os_info.thirdName))
     {
-        // BSG handles: Check if v4 is ACTUALLY supported at runtime
-        // If SG_GET_VERSION_NUM failed (driverVersionValid=false), it might be v3 or not supported
-        // Conservative: if we can't verify support, fall back to v3
-        if (scsiIoCtx->device->os_info.sgDriverVersion.driverVersionValid)
-        {
-            // We got version info - BSG is compatible
-            return send_sg_io_v4(scsiIoCtx);
-        }
-        else
-        {
-            // SG_GET_VERSION_NUM failed - BSG support unclear at runtime
-            // Fall back to v3 (still might fail on very old kernels, but safer)
-            return send_sg_io_v3(scsiIoCtx);
-        }
+        // BSG always use v4 version
+        return send_sg_io_v4(scsiIoCtx);
     }
     else if (is_SCSI_Generic_Handle(scsiIoCtx->device->os_info.name) &&
              scsiIoCtx->device->os_info.sgDriverVersion.driverVersionValid &&
@@ -3351,7 +3464,7 @@ eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
     else
 #endif
     {
-        // SG driver 3.x on /dev/sg*, pre-4.18 BSG, or /dev/sd* block handles: use v3
+        // SG driver 3.x on /dev/sg*, or /dev/sd* block handles: use v3
         return send_sg_io_v3(scsiIoCtx);
     }
 }
@@ -3906,11 +4019,21 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
             retValue                = close(dev->os_info.fd);
             dev->os_info.last_error = errno;
 
-            if (dev->os_info.secondHandleValid && dev->os_info.secondHandleOpened)
+            if (dev->os_info.secondHandleValid && is_Block_Device_Handle(dev->os_info.secondName) &&
+                is_SCSI_Generic_Handle(get_Device_Handle_Name(dev)) && dev->os_info.fd2Opened)
             {
                 if (close(dev->os_info.fd2) == 0)
                 {
                     dev->os_info.fd2 = -1;
+                }
+            }
+
+            if (dev->os_info.thirdHandleValid && is_Block_SCSI_Generic_Handle(dev->os_info.thirdName) &&
+                is_SCSI_Generic_Handle(get_Device_Handle_Name(dev)) && dev->os_info.fd3Opened)
+            {
+                if (close(dev->os_info.fd3) == 0)
+                {
+                    dev->os_info.fd3 = -1;
                 }
             }
         }
@@ -4527,15 +4650,27 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(tDevice* M_NO
             }
             ++attempts;
         } while (attempts < EXCL_ATTEMPT_MAX);
-        if (device->os_info.secondHandleValid)
+        if (device->os_info.secondHandleValid && is_Block_Device_Handle(device->os_info.secondName) &&
+            is_SCSI_Generic_Handle(get_Device_Handle_Name(device)))
         {
-            if (device->os_info.secondHandleOpened)
+            if (device->os_info.fd2Opened)
             {
                 close(device->os_info.fd2);
-                device->os_info.secondHandleOpened = false;
+                device->os_info.fd2Opened = false;
             }
             device->dFlags |= HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
             open_fd2(device);
+        }
+        if (device->os_info.thirdHandleValid && is_Block_SCSI_Generic_Handle(device->os_info.thirdName) &&
+            is_SCSI_Generic_Handle(get_Device_Handle_Name(device)))
+        {
+            if (device->os_info.fd3Opened)
+            {
+                close(device->os_info.fd3);
+                device->os_info.fd3Opened = false;
+            }
+            device->dFlags |= HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
+            open_fd3(device);
         }
     }
     return ret;
@@ -4550,9 +4685,15 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Lock_Device(const tDevice* 
         {
             ret = FAILURE;
         }
-        if (device->os_info.secondHandleValid && device->os_info.secondHandleOpened)
+        if (device->os_info.secondHandleValid && is_Block_Device_Handle(device->os_info.secondName) &&
+            is_SCSI_Generic_Handle(get_Device_Handle_Name(device)) && device->os_info.fd2Opened)
         {
             lock_unlock_handle(device, device->os_info.fd2, true);
+        }
+        if (device->os_info.thirdHandleValid && is_Block_SCSI_Generic_Handle(device->os_info.thirdName) &&
+            is_SCSI_Generic_Handle(get_Device_Handle_Name(device)) && device->os_info.fd3Opened)
+        {
+            lock_unlock_handle(device, device->os_info.fd3, true);
         }
     }
     if (ret == SUCCESS && device->os_info.lockCount < UINT16_MAX)
@@ -4573,9 +4714,15 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unlock_Device(const tDevice
         {
             ret = FAILURE;
         }
-        if (device->os_info.secondHandleValid && device->os_info.secondHandleOpened)
+        if (device->os_info.secondHandleValid && is_Block_Device_Handle(device->os_info.secondName) &&
+            is_SCSI_Generic_Handle(get_Device_Handle_Name(device)) && device->os_info.fd2Opened)
         {
             lock_unlock_handle(device, device->os_info.fd2, false);
+        }
+        if (device->os_info.thirdHandleValid && is_Block_SCSI_Generic_Handle(device->os_info.thirdName) &&
+            is_SCSI_Generic_Handle(get_Device_Handle_Name(device)) && device->os_info.fd3Opened)
+        {
+            lock_unlock_handle(device, device->os_info.fd3, true);
         }
     }
     if (ret == SUCCESS && device->os_info.lockCount > 0)
@@ -4592,7 +4739,8 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Update_File_System_Cache(co
 #if defined(_DEBUG)
     print_str("Updating file system cache\n");
 #endif
-    if (device->os_info.secondHandleValid && SUCCESS == open_fd2(M_CONST_CAST(tDevice*, device)))
+    if (device->os_info.secondHandleValid && is_Block_Device_Handle(device->os_info.secondName) &&
+        is_SCSI_Generic_Handle(get_Device_Handle_Name(device)) && SUCCESS == open_fd2(M_CONST_CAST(tDevice*, device)))
     {
 #if defined(_DEBUG)
         printf("using fd2: %s\n", device->os_info.secondName);

@@ -775,14 +775,6 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
         retValue                = close(dev->os_info.fd);
         dev->os_info.last_error = errno;
 
-        // if (dev->os_info.secondHandleValid && dev->os_info.secondHandleOpened)
-        // {
-        //     if (close(dev->os_info.fd2) == 0)
-        //     {
-        //         dev->os_info.fd2 = -1;
-        //     }
-        // }
-
         if (retValue == 0)
         {
             dev->os_info.fd = -1;

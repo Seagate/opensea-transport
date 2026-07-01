@@ -1014,11 +1014,22 @@ OPENSEA_TRANSPORT_API void print_Low_Level_Info(const tDevice* M_NONNULL device)
         {
             printf("\t\t\tSecond Handle name: %s\n", device->os_info.secondName);
             printf("\t\t\tSecond Handle friendly name: %s\n", device->os_info.secondFriendlyName);
-            if (device->os_info.secondHandleOpened)
-            {
-                print_str("\t\t\tSecond handle is open\n");
-            }
         }
+#    if !defined(VMK_CROSS_COMP)
+        if (device->os_info.thirdHandleValid)
+        {
+            printf("\t\t\tThird Handle name: %s\n", device->os_info.thirdName);
+            printf("\t\t\tThird Handle friendly name: %s\n", device->os_info.thirdFriendlyName);
+        }
+        if (device->os_info.fd2Opened)
+        {
+            print_str("\t\t\tSecond handle is open\n");
+        }
+        if (device->os_info.fd3Opened)
+        {
+            print_str("\t\t\tThird handle is open\n");
+        }
+#    endif
         if (device->os_info.sgDriverVersion.driverVersionValid)
         {
             print_str("\t\t\tSG Driver Version:\n");

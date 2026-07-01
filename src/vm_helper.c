@@ -146,7 +146,7 @@ typedef struct s_sysVMLowLevelDeviceInfo
     char     fullDevicePath[OPENSEA_PATH_MAX];
     char     primaryHandleStr[OS_HANDLE_NAME_MAX_LENGTH];      // dev/sg or /dev/nvmexny (namespace handle)
     char     secondaryHandleStr[OS_SECOND_HANDLE_NAME_LENGTH]; // dev/sd or /dev/nvmex (controller handle)
-    char     tertiaryHandleStr[OS_SECOND_HANDLE_NAME_LENGTH];  // dev/bsg or /dev/ngXnY (nvme generic handle)
+    char     tertiaryHandleStr[OS_THIRD_HANDLE_NAME_LENGTH];   // dev/bsg or /dev/ngXnY (nvme generic handle)
     uint16_t queueDepth;                                       // if 0, then this was unable to be read and populated
 } sysVMLowLevelDeviceInfo;
 
