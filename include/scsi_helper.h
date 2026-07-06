@@ -689,6 +689,7 @@ extern "C"
 
     typedef enum eScsiModeParametersEnum // does not do subpage codes...only page codes. Add more as needed
     {
+        MP_UNIT_ATTENTION            = 0x00,
         MP_READ_WRITE_ERROR_RECOVERY = 0x01,
         MP_DISCONNECT_RECONNECT      = 0x02,
         MP_RIGID_DISK_GEOMETRY       = 0x04, // This is long obsolete.
