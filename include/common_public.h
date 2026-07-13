@@ -1536,7 +1536,7 @@ extern "C"
     // forward declare csmi info to avoid including csmi_helper.h
     typedef struct s_csmiDeviceInfo csmiDeviceInfo, *ptrCsmiDeviceInfo;
 
-    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo* M_NULLABLE* M_NULLABLE csmidevinfo)
+    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo * M_NULLABLE * M_NULLABLE csmidevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, csmidevinfo));
     }
@@ -1544,7 +1544,7 @@ extern "C"
     // forward declare cciss device
     typedef struct s_cissDeviceInfo cissDeviceInfo, *ptrCissDeviceInfo;
 
-    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo* M_NULLABLE* M_NULLABLE cissdevinfo)
+    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo * M_NULLABLE * M_NULLABLE cissdevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, cissdevinfo));
     }
@@ -1581,6 +1581,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #define OS_HANDLE_NAME_MAX_LENGTH          256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
 #define OS_SECOND_HANDLE_NAME_LENGTH       30
+#define OS_THIRD_HANDLE_NAME_LENGTH        30
     // \struct typedef struct s_OSDriveInfo
     typedef struct s_OSDriveInfo
     {
@@ -1646,7 +1647,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     bool secondHandleValid; // must be true for remaining fields to be used.
     char secondName[OS_SECOND_HANDLE_NAME_LENGTH];
     char secondFriendlyName[OS_SECOND_HANDLE_NAME_LENGTH];
-    bool secondHandleOpened;
+#    if !defined(VMK_CROSS_COMP)
+    bool thirdHandleValid; // must be true for remaining fields to be used.
+    char thirdName[OS_THIRD_HANDLE_NAME_LENGTH];
+    char thirdFriendlyName[OS_THIRD_HANDLE_NAME_LENGTH];
+#    endif
 #    if defined(VMK_CROSS_COMP)
     /**
      * In VMWare we discover or send IOCTL to NVMe throught NDDK.
@@ -1657,7 +1662,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     int                 fd2;
     struct nvme_handle* nvmeFd2;
 #    else
-    int fd2; // secondary handle. Ex: fd = sg handle opened, fd2 = sd handle opened.
+    bool fd2Opened; // Ex: fd = sg/bsg handle opened, fd2 = sd handle opened.
+    int  fd2;       // second handle. Ex: fd = sg/bsg handle opened, fd2 = sd handle opened.
+    bool fd3Opened; // Ex: fd = bsg handle opened, fd3 = sg handle opened.
+    int  fd3;       // third handle. Ex: fd = bsg handle opened, fd3 = sg handle opened.
 #    endif
     struct
     {
@@ -1773,7 +1781,6 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     bool     secondHandleValid; // must be true for remaining fields to be used.
     char     secondName[OS_SECOND_HANDLE_NAME_LENGTH];
     char     secondFriendlyName[OS_SECOND_HANDLE_NAME_LENGTH];
-    bool     secondHandleOpened;
     uint8_t  otherPadd[50];
 #elif defined(__NetBSD__) || defined(__OpenBSD__)
     int                 fd;
@@ -2007,6 +2014,36 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                 M_IGNORE_SAFE_ERRNO_CALL(safe_strncpy(device->os_info.secondFriendlyName,
                                                       sizeof(device->os_info.secondFriendlyName), friendlyName,
                                                       OS_SECOND_HANDLE_NAME_LENGTH),
+                                         "This should always fit within this buffer.");
+            }
+#else
+        M_USE_UNUSED(friendlyName);
+#endif
+            // TODO: Make second handles available for all systems since this can come in handy  and make everything
+            // easier to manage.
+        }
+    }
+
+    M_PARAM_RW(1)
+    M_PARAM_RO(2)
+    M_PARAM_RO(3)
+    M_NULL_TERM_STRING(2)
+    M_NULL_TERM_STRING(3)
+    static M_INLINE void set_Third_Device_Name_In_tDevice(tDevice* M_NONNULL     device,
+                                                          const char* M_NONNULL  name,
+                                                          const char* M_NULLABLE friendlyName)
+    {
+        if (device != M_NULLPTR && name != M_NULLPTR)
+        {
+#if defined(__linux__) && !defined(VMK_CROSS_COMP)
+            M_IGNORE_SAFE_ERRNO_CALL(safe_strncpy(device->os_info.thirdName, sizeof(device->os_info.thirdName), name,
+                                                  OS_THIRD_HANDLE_NAME_LENGTH),
+                                     "This should always fit within this buffer.");
+            if (friendlyName != M_NULLPTR)
+            {
+                M_IGNORE_SAFE_ERRNO_CALL(safe_strncpy(device->os_info.thirdFriendlyName,
+                                                      sizeof(device->os_info.thirdFriendlyName), friendlyName,
+                                                      OS_THIRD_HANDLE_NAME_LENGTH),
                                          "This should always fit within this buffer.");
             }
 #else
@@ -2677,7 +2714,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int        flags,
                                                                     eVerbosityLevels    scanVerbosity,
                                                                     uint32_t* M_NONNULL numberOfDevices,
-                                                                    scanDriveInfo* M_NONNULL* M_NULLABLE deviceList);
+                                                                    scanDriveInfo * M_NONNULL * M_NULLABLE deviceList);
 
     //-----------------------------------------------------------------------------
     //
