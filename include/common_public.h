@@ -1057,8 +1057,13 @@ extern "C"
         SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED,   // Trust that translation of error fields is valid for any sense codes
                                                   // as SAT allows since testing shows that even other sense codes still
                                                   // put the registers where SAT specifies
-        SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, // Sometimes with a response of unaligned write we can get partial
-                                                  // data, but in the wrong locations
+        SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, // libata / SATL quirk for ASC/ASCQ 21/04 ("Unaligned Write
+                             // Command"). Some translators return a fixed-format sense block
+                             // where ATA task-file bytes are only partially recoverable and may
+                             // be placed in non-standard locations. This mode means the caller
+                             // may recover whatever fields can be validated by NOP discovery,
+                             // must treat unrecovered fields as zero, and should prefer
+                             // WARN_INCOMPLETE_* when the response is only partially reliable.
         SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER, // Some SATLs (e.g., PMCS) return LBA bytes in Command
                                                                   // Specific Information with swapped byte order
     } eSATFixedFormatSenseHack;

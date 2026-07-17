@@ -618,17 +618,28 @@ OPENSEA_TRANSPORT_API eReturnValues send_ATA_SCT_Feature_Control(const tDevice* 
     ret = send_ATA_SCT_Command(device, featureControlBuffer, LEGACY_DRIVE_SEC_SIZE, true);
 
     // add in copying rtfrs into status or option flags here
+    // Guard with ATA_STATUS_BIT_READY: Status=0 means RTFRs were extracted from a non-standard sense
+    // position (e.g. SATL returning "Unaligned Write Command" for all commands) and are unreliable.
+    // A valid ATA response always has at least the READY bit set in Status. Return WARN_INCOMPLETE_RFTRS
+    // to signal the caller that the state could not be reliably determined.
     if (ret == SUCCESS)
     {
-        if (functionCode == 0x0002)
+        if (device->drive_info.lastCommandRTFRs.status & ATA_STATUS_BIT_READY)
         {
-            *state = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow,
-                                         device->drive_info.lastCommandRTFRs.secCnt);
+            if (functionCode == 0x0002)
+            {
+                *state = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow,
+                                             device->drive_info.lastCommandRTFRs.secCnt);
+            }
+            else if (functionCode == 0x0003)
+            {
+                *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow,
+                                                   device->drive_info.lastCommandRTFRs.secCnt);
+            }
         }
-        else if (functionCode == 0x0003)
+        else
         {
-            *optionFlags = M_BytesTo2ByteValue(device->drive_info.lastCommandRTFRs.lbaLow,
-                                               device->drive_info.lastCommandRTFRs.secCnt);
+            ret = WARN_INCOMPLETE_RFTRS;
         }
     }
     safe_free_aligned(&featureControlBuffer);
@@ -2081,6 +2092,12 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
     uint8_t brokenLBAResponses   = 0;
     uint8_t brokenCountResponses = 0;
     uint8_t swappedLBAResponses  = 0; // Count tests where LBA Lo and Hi bytes are consistently reversed
+    // Count tests that return the libata-specific ASC/ASCQ 21/04 signature.
+    // This is stronger evidence than the raw ABORTED status for this one translator bug,
+    // because libata may return a non-standard response that still carries the same fixed
+    // sense code across all NOP probes. We use that repeated signature to arm the
+    // unaligned-write workaround even when the NOP command itself does not return ABORTED.
+    uint8_t unalignedWriteResponses = 0;
     int     confidenceScore      = 0; // Track confidence in results (higher = more confident)
 
     // Print diagnostic info about SAT translator (helpful for debugging VPD issues)
@@ -2114,6 +2131,14 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
 
         eReturnValues nopret = ata_NOP(device, ATA_NOP_RETURN_ABORTED, nopTests[testNum].countTestVal,
                                        nopTests[testNum].lbaTestVal, &nopResults[testNum]);
+
+        senseDataFields nopSenseFields;
+        get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &nopSenseFields);
+        if (nopSenseFields.validStructure && nopSenseFields.fixedFormat &&
+            nopSenseFields.scsiStatusCodes.asc == 0x21 && nopSenseFields.scsiStatusCodes.ascq == 0x04)
+        {
+            ++unalignedWriteResponses;
+        }
 
         // Track confidence: ABORTED is expected, other return values indicate unexpected behavior
         if (nopret == ABORTED)
@@ -2532,11 +2557,14 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
                                      "NOP Test Result: FAILED - LBA register consistently zeroed by HBA\n");
     }
-    else if (useAlternateOffsets && countOffsetInResult >= 0 && brokenLBAResponses == NOP_MAX_TESTS)
+    else if (useAlternateOffsets && countOffsetInResult >= 0 && brokenLBAResponses == NOP_MAX_TESTS &&
+             (confidenceScore >= 0 || unalignedWriteResponses == NOP_MAX_TESTS))
     {
-        // We successfully discovered COUNT offset and all LBA tests consistently failed to match
-        // This indicates: COUNT can be recovered from alternate offsets, LBA values returned but at wrong location
-        // Set the flags to indicate the corruption, sat_helper will apply workarounds to extract correctly
+        // We successfully discovered a stable COUNT offset while all LBA probes failed in the same way.
+        // This means the SATL is returning a reproducible but non-standard fixed-format sense layout.
+        // For the libata 21/04 bug, we deliberately allow the workaround even when the NOP command did not
+        // return ABORTED, because the repeated 21/04 signature is the stronger indicator that this is the
+        // same translator defect. The SAT layer will still only recover fields it can validate later.
         device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = false; // COUNT is recoverable from offset
         device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken   = true;  // LBA is misaligned/broken
         device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack     = SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG;

@@ -1294,15 +1294,22 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
 
         ret = private_SCSI_Send_CDB(&scsiIoCtx, &senseFields);
 
-        // Post-execution workaround: Handle libata fixed format sense data misalignment bug
-        // ONLY for the specific "Unaligned Write Command" sense code (ASC=21h, ASCQ=04h)
-        // NOP testing discovered that registers are at non-standard offsets in fixed format sense data
-        // Strategy: Scan sense buffer for the expected command COUNT value like we did during NOP discovery
+        // Post-execution workaround: Handle the libata / SATL 21/04 "Unaligned Write Command" response.
+        // NOP discovery showed that, for this one translator bug, the fixed-format sense buffer can contain a
+        // reproducible but non-standard register layout. We do NOT treat the entire buffer as authoritative:
+        // only fields that can be validated against the NOP-derived pattern are recovered here, any fields that
+        // cannot be proven are intentionally left zero, and the caller is left with WARN_INCOMPLETE_RFTRS when
+        // anything remains uncertain.
         if (device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack == SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG &&
             senseFields.validStructure && senseFields.fixedFormat && senseFields.scsiStatusCodes.asc == 0x21 &&
             senseFields.scsiStatusCodes.ascq == 0x04) // Unaligned Write Command
         {
-            // Get the requested COUNT value to search for in the sense data
+            bool           recoveredAny = false;
+            const uint8_t* senseBuffer  = device->drive_info.lastCommandSenseData;
+
+            // The requested COUNT is only used as a discovery token for this workaround.
+            // We do not assume the surrounding bytes are trustworthy unless they match the
+            // NOP-discovered layout and can be validated as the same response family.
             uint8_t requestedCount = ataCommandOptions->tfr.SectorCount;
 
             print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
@@ -1310,38 +1317,89 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                                                    "detected, searching for requested COUNT=0x%02X in sense buffer\n",
                                                    requestedCount);
 
-            if (requestedCount != 0) // Only search if a non-zero COUNT was requested
+            if (senseBuffer != M_NULLPTR)
             {
-                const uint8_t* senseBuffer    = device->drive_info.lastCommandSenseData;
-                uint8_t        extractedCount = 0;
+                // Recover STATUS/ERROR from the fixed-format Command-Specific Information field only when the
+                // bytes match the libata 21/04 pattern that NOP discovered. We intentionally do not trust the
+                // information field itself here because libata may place ATA registers in non-standard locations,
+                // may only return a subset of the taskfile, or may leave the rest of the buffer ambiguous.
+                uint8_t csiB0 = senseBuffer[8];
+                uint8_t csiB1 = senseBuffer[9];
 
-                // Scan sense buffer for the requested COUNT value (similar to NOP test discovery)
-                // Start search from offset 8 (first possible location) to end of sense buffer
-                if (senseBuffer != M_NULLPTR)
+                // Primary observed mapping: status at byte 9, error at byte 8.
+                uint8_t extractedStatus = csiB1;
+                uint8_t extractedError  = csiB0;
+                bool drqAllowed         = (ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO &&
+                                   ataCommandOptions->commandDirection == XFER_DATA_IN);
+
+                // libata 21/04 may include additional status bits beyond READY/ERROR. DRQ is only tolerated for
+                // PIO data-in; other bits are allowed because they may be carried through from the translator's
+                // taskfile snapshot and do not invalidate the recovery by themselves. BUSY remains a hard reject.
+                bool statusLooksValid = ((extractedStatus & ATA_STATUS_BIT_READY) &&
+                                         (extractedStatus & ATA_STATUS_BIT_ERROR) &&
+                                         !(extractedStatus & ATA_STATUS_BIT_BUSY));
+
+                if (statusLooksValid && (drqAllowed || !(extractedStatus & ATA_STATUS_BIT_DATA_REQUEST)) &&
+                    extractedError == ATA_ERROR_BIT_ABORT)
                 {
+                    ataCommandOptions->rtfr.status = extractedStatus;
+                    ataCommandOptions->rtfr.error  = extractedError;
+                    recoveredAny                   = true;
+                    print_tDevice_Verbose_Formatted_String(
+                        device, VERBOSITY_COMMAND_VERBOSE,
+                        "Post-execution: Recovered STATUS=0x%02X and ERROR=0x%02X from CSI bytes [9]/[8]\n",
+                        extractedStatus, extractedError);
+                }
+
+                if (requestedCount != 0) // Only search if a non-zero COUNT was requested
+                {
+                    uint8_t extractedCount      = 0;
+                    int     extractedCountIndex = -1;
+                    uint8_t countMatchCount     = 0;
+
+                    // Strict mode: COUNT is recovered only if there is exactly one match in the sense buffer.
+                    // This avoids copying a misleading byte when the translator returns overlapping or repeated
+                    // values in an ambiguous response. If no unique match exists, we leave COUNT at zero and
+                    // still return the partial result.
                     for (int byteIdx = 8; byteIdx < SPC3_SENSE_LEN; ++byteIdx)
                     {
                         if (senseBuffer[byteIdx] == requestedCount)
                         {
-                            extractedCount = senseBuffer[byteIdx];
-                            print_tDevice_Verbose_Formatted_String(
-                                device, VERBOSITY_COMMAND_VERBOSE,
-                                "Post-execution: Found COUNT 0x%02X at sense buffer offset %d\n", extractedCount,
-                                byteIdx);
-
-                            // Set the extracted count in return task file registers
-                            ataCommandOptions->rtfr.secCnt = extractedCount;
-                            ret                            = WARN_INCOMPLETE_RFTRS;
-                            break;
+                            ++countMatchCount;
+                            extractedCountIndex = byteIdx;
+                            extractedCount      = senseBuffer[byteIdx];
                         }
                     }
 
-                    if (extractedCount == 0)
+                    if (countMatchCount == 1)
+                    {
+                        print_tDevice_Verbose_Formatted_String(
+                            device, VERBOSITY_COMMAND_VERBOSE,
+                            "Post-execution: Found unique COUNT 0x%02X at sense buffer offset %d\n", extractedCount,
+                            extractedCountIndex);
+
+                        // Set the extracted count in return task file registers
+                        ataCommandOptions->rtfr.secCnt = extractedCount;
+                        recoveredAny                   = true;
+                    }
+                    else if (countMatchCount == 0)
                     {
                         print_tDevice_Verbose_Formatted_String(
                             device, VERBOSITY_COMMAND_VERBOSE,
                             "Post-execution: Failed to find COUNT 0x%02X in sense buffer\n", requestedCount);
                     }
+                    else
+                    {
+                        print_tDevice_Verbose_Formatted_String(
+                            device, VERBOSITY_COMMAND_VERBOSE,
+                            "Post-execution: COUNT 0x%02X matched %u locations in sense buffer; rejecting as ambiguous\n",
+                            requestedCount, countMatchCount);
+                    }
+                }
+
+                if (recoveredAny)
+                {
+                    ret = WARN_INCOMPLETE_RFTRS;
                 }
             }
         }
@@ -1641,8 +1699,12 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
             // Check if they are empty because this is a device that may not truly support the check condition bit
             // NOTE: Only checking status and error at this time since those should basically always have something in
             // them when the RTFRs come back.
-            if (ataCommandOptions->rtfr.status == 0 ||
-                ((ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR) && ataCommandOptions->rtfr.error == 0))
+            // Also require the sense buffer itself to be empty (psense[0] == 0): if the device returned actual sense
+            // data, CK_COND IS working — Status=0 in extracted RTFRs just means the SATL places registers in
+            // non-standard positions (e.g. Unaligned Write Bug fixed-format sense), not that CK_COND is broken.
+            if (scsiIoCtx.psense[0] == SCSI_SENSE_NO_SENSE_DATA &&
+                (ataCommandOptions->rtfr.status == 0 ||
+                 ((ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR) && ataCommandOptions->rtfr.error == 0)))
             {
                 M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;
                 if (!device->drive_info.passThroughHacks.hacksSetByReportedID &&
