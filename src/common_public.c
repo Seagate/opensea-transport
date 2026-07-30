@@ -6984,12 +6984,12 @@ bool setup_Passthrough_Hacks_By_ID(tDevice* M_NONNULL device)
 }
 
 // helper functions to make tDevice structure opaque
-OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_Struct_size(void) M_UNSEQUENCED
+M_NODISCARD OPENSEA_TRANSPORT_API M_CONST_FUNC size_t get_Device_Struct_size(void) M_UNSEQUENCED
 {
     return sizeof(tDevice);
 }
 
-OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC uint32_t get_Device_Block_Version(void) M_UNSEQUENCED
+M_NODISCARD OPENSEA_TRANSPORT_API M_CONST_FUNC uint32_t get_Device_Block_Version(void) M_UNSEQUENCED
 {
     return DEVICE_BLOCK_VERSION;
 }
@@ -7034,7 +7034,7 @@ OPENSEA_TRANSPORT_API void set_Device_IO_Minimum_Alignment(tDevice* M_NONNULL de
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC eHandleOpenFlags
+M_NODISCARD OPENSEA_TRANSPORT_API M_PURE_FUNC eHandleOpenFlags
 get_Device_Handle_Open_Flags(const tDevice* M_NONNULL device) M_REPRODUCIBLE
 {
     if (device != M_NULLPTR)
@@ -7054,7 +7054,7 @@ OPENSEA_TRANSPORT_API void set_Device_Handle_Open_Flags(tDevice* M_NONNULL devic
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC const char* M_NULLABLE
+M_NODISCARD OPENSEA_TRANSPORT_API M_PURE_FUNC const char* M_NULLABLE
 get_Device_Handle_Name(const tDevice* M_NONNULL device) M_REPRODUCIBLE
 {
     if (device != M_NULLPTR)
@@ -7101,7 +7101,7 @@ OPENSEA_TRANSPORT_API bool set_Device_Handle_Name(tDevice* M_NONNULL device, con
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API M_NODISCARD const char* M_NULLABLE
+M_NODISCARD OPENSEA_TRANSPORT_API const char* M_NULLABLE
 get_Device_Handle_Friendly_Name(const tDevice* M_NONNULL device)
 {
     if (device != M_NULLPTR)
@@ -7341,7 +7341,7 @@ OPENSEA_TRANSPORT_API int32_t get_Device_MaxLba(uint64_t* M_NONNULL maxLba, cons
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_MaxLba(const tDevice* M_NONNULL device)
+M_NODISCARD OPENSEA_TRANSPORT_API M_PURE_FUNC uint64_t return_Device_MaxLba(const tDevice* M_NONNULL device)
     M_REPRODUCIBLE
 {
     if (device != M_NULLPTR)
@@ -7370,7 +7370,7 @@ OPENSEA_TRANSPORT_API int32_t get_Device_Child_MaxLba(uint64_t* M_NONNULL maxLba
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API M_NODISCARD M_PURE_FUNC uint64_t return_Device_Child_MaxLba(const tDevice* M_NONNULL device)
+M_NODISCARD OPENSEA_TRANSPORT_API M_PURE_FUNC uint64_t return_Device_Child_MaxLba(const tDevice* M_NONNULL device)
     M_REPRODUCIBLE
 {
     if (device != M_NULLPTR && device->drive_info.bridge_info.isValid)
@@ -7418,7 +7418,7 @@ OPENSEA_TRANSPORT_API int32_t get_Device_serialNumber(char* M_NONNULL          d
     return SERIAL_NUM_LEN + 1;
 }
 
-OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_serialNumber_length(void) M_UNSEQUENCED
+M_NODISCARD OPENSEA_TRANSPORT_API M_CONST_FUNC size_t get_Device_serialNumber_length(void) M_UNSEQUENCED
 {
     return SERIAL_NUM_LEN + 1;
 }
@@ -7444,7 +7444,7 @@ OPENSEA_TRANSPORT_API int32_t get_Device_T10_vendor_ident(char* M_NONNULL       
     return T10_VENDOR_ID_LEN + 1;
 }
 
-OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_T10_vendor_ident_length(void) M_UNSEQUENCED
+M_NODISCARD OPENSEA_TRANSPORT_API M_CONST_FUNC size_t get_Device_T10_vendor_ident_length(void) M_UNSEQUENCED
 {
     return T10_VENDOR_ID_LEN + 1;
 }
@@ -7471,7 +7471,7 @@ OPENSEA_TRANSPORT_API int32_t get_Device_product_identification(char* M_NONNULL 
     return MODEL_NUM_LEN + 1;
 }
 
-OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_product_identification_length(void) M_UNSEQUENCED
+M_NODISCARD OPENSEA_TRANSPORT_API M_CONST_FUNC size_t get_Device_product_identification_length(void) M_UNSEQUENCED
 {
     return MODEL_NUM_LEN + 1;
 }
@@ -7497,7 +7497,7 @@ OPENSEA_TRANSPORT_API int32_t get_Device_product_revision(char* M_NONNULL       
     return FW_REV_LEN + 1;
 }
 
-OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_product_revision_length(void) M_UNSEQUENCED
+M_NODISCARD OPENSEA_TRANSPORT_API M_CONST_FUNC size_t get_Device_product_revision_length(void) M_UNSEQUENCED
 {
     return FW_REV_LEN + 1;
 }
@@ -7534,7 +7534,7 @@ OPENSEA_TRANSPORT_API int32_t get_Device_lastCommandSenseData(uint8_t* M_NONNULL
     return SPC3_SENSE_LEN;
 }
 
-OPENSEA_TRANSPORT_API M_NODISCARD M_CONST_FUNC size_t get_Device_lastCommandSenseData_length(void) M_UNSEQUENCED
+M_NODISCARD OPENSEA_TRANSPORT_API M_CONST_FUNC size_t get_Device_lastCommandSenseData_length(void) M_UNSEQUENCED
 {
     return SPC3_SENSE_LEN;
 }
@@ -7576,7 +7576,7 @@ OPENSEA_TRANSPORT_API eVerbosityLevels set_tDevice_Verbosity(tDevice* M_NONNULL 
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API M_NODISCARD eVerbosityLevels get_Device_Verbosity(const tDevice* M_NONNULL device)
+M_NODISCARD OPENSEA_TRANSPORT_API eVerbosityLevels get_Device_Verbosity(const tDevice* M_NONNULL device)
 {
     if (device != M_NULLPTR)
     {
