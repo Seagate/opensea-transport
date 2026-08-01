@@ -2687,6 +2687,34 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity);
 
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device_Strings_For_Display()
+    //
+    //! \brief   Description:  Returns the model, serial number, and firmware revision strings to use for display.
+    //!                        When a drive is behind a USB/SAT bridge, the standard drive info fields hold the bridge's
+    //!                        SCSI identity while the actual drive's identity is stored in the bridge info (child
+    //!                        MN/SN/FW). The child drive identity is preferred when it is available.
+    //!
+    //  Entry:
+    //!   \param[in] device = the device to get the strings for
+    //!   \param[out] modelString = pointer to a const char* to receive the model number string
+    //!   \param[out] serialString = pointer to a const char* to receive the serial number string
+    //!   \param[out] fwString = pointer to a const char* to receive the firmware revision string
+    //!
+    //  Exit:
+    //!   \return void
+    //
+    //-----------------------------------------------------------------------------
+    M_PARAM_RO(1)
+    M_PARAM_RW(2)
+    M_PARAM_RW(3)
+    M_PARAM_RW(4)
+    OPENSEA_TRANSPORT_API void get_Device_Strings_For_Display(const tDevice* M_NONNULL device,
+                                                              const char** M_NONNULL   modelString,
+                                                              const char** M_NONNULL   serialString,
+                                                              const char** M_NONNULL   fwString);
+
 #define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
     typedef struct s_scanDriveInfo
     {
