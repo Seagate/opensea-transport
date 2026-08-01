@@ -3787,7 +3787,10 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
                 safe_free_aligned(&deviceIdentification);
             }
             // One last thing...Need to do a SAT scan...
-            if (checkForSAT)
+            // NOTE: Skip the SAT compliance check for bridges that may have an NVMe drive behind them (e.g. Realtek
+            // RTL9210). SAT ATA identify is not reliable on these adapters and can take a long time to time out, and
+            // the NVMe passthrough discovery below handles these devices correctly.
+            if (checkForSAT && !device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
             {
                 if (SUCCESS != check_SAT_Compliance_And_Set_Drive_Type(device) && checkJMicronNVMe)
                 {
@@ -3818,8 +3821,13 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
                     }
                 }
             }
-            safe_free_aligned(&inq_buf);
-            return ret;
+            if (!device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
+            {
+                safe_free_aligned(&inq_buf);
+                return ret;
+            }
+            // This bridge may have an NVMe drive behind it (e.g. Realtek RTL9210). Do not quit discovery early here so
+            // that the NVMe passthrough discovery below can run and correctly identify the drive in a fast scan.
         }
 
         if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2 && get_Device_InterfaceType(device) != USB_INTERFACE &&
@@ -4251,23 +4259,23 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
         eReturnValues satCheck = FAILURE;
         // if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just
         // issue a SAT identify in here to set things up...might reduce multiple commands later
+        // Skip this for bridges that are known to possibly be emulating an NVMe drive (e.g. Realtek RTL9210) since they
+        // do not reliably support SCSI-ATA passthrough. On some firmware revisions the SAT identify can take a very
+        // long time to fail with an internal adapter error, or never return at all. The NVMe passthrough identify is
+        // attempted below in that case instead.
         if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (get_Device_DriveType(device) != RAID_DRIVE) &&
             (get_Device_DriveType(device) != NVME_DRIVE) && get_Device_MediaType(device) != MEDIA_UNKNOWN &&
-            device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON)
+            device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON &&
+            !device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
         {
             satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
         }
 
-        bool checkRealtekNVMe = false;
-        if (satCheck == SUCCESS && return_Device_Child_MaxLba(device) == 0 &&
-            safe_strlen(device->drive_info.bridge_info.childDriveMN) &&
-            safe_strlen(device->drive_info.bridge_info.childDriveSN) &&
-            safe_strlen(device->drive_info.bridge_info.childDriveFW) &&
-            device->drive_info.passThroughHacks.ataPTHacks
-                .possilbyEmulatedNVMe) // This can be set by the ata_helper in SAT check now, so check it here.
-        {
-            checkRealtekNVMe = true;
-        }
+        // This flag is set for bridges that are known to possibly have an NVMe drive behind them (Realtek RTL9210),
+        // either by reported VID/PID or inquiry data, or by the ata_helper during the SAT check above. Attempt the NVMe
+        // passthrough discovery regardless of the SAT check result since SAT ATA passthrough is not reliable on all of
+        // these adapters.
+        bool checkRealtekNVMe = device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe;
 
         // Because we may find an NVMe over USB device, if we find one of these, perform a little more discovery...
         if ((device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON &&
@@ -4307,9 +4315,9 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
                 }
                 else if (ret == SUCCESS && checkRealtekNVMe)
                 {
+                    set_Device_DriveType(device, NVME_DRIVE);
                     if (device->drive_info.passThroughHacks.passthroughType == NVME_PASSTHROUGH_REALTEK_BASIC)
                     {
-                        set_Device_DriveType(device, NVME_DRIVE);
                         device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure = true;
                         device->drive_info.passThroughHacks.turfValue                           = 34;
                         device->drive_info.passThroughHacks.scsiHacks.readWrite.available       = true;
@@ -4346,6 +4354,12 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
                         // Note: Get features works with a data transfer, but cannot get dword results
                         // TODO: Need to test for firmware update, format, and set features commands
                     }
+                    else
+                    {
+                        // The full 3-phase Realtek passthrough succeeded. Most of the SCSI hacks needed are already in
+                        // place from the inquiry data hacks for this bridge.
+                        device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength = UINT16_MAX;
+                    }
                 }
                 else if (ret != SUCCESS && (checkJMicronNVMe || checkRealtekNVMe))
                 {
@@ -4356,8 +4370,22 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
                         device->drive_info.passThroughHacks.passthroughType = NVME_PASSTHROUGH_REALTEK_BASIC;
                         continue;
                     }
-                    device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
-                    ret = scsiRet; // do not fail here since this should otherwise be treated as a SCSI drive
+                    if (checkRealtekNVMe)
+                    {
+                        // Not an NVMe drive after all, so this is likely a SATA drive behind the bridge. Restore the
+                        // SAT passthrough and fill in the ATA drive info the normal way.
+                        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_SAT;
+                        if (SUCCESS != fill_In_ATA_Drive_Info(device))
+                        {
+                            set_Device_DriveType(device, SCSI_DRIVE);
+                        }
+                    }
+                    else
+                    {
+                        device->drive_info.passThroughHacks.passthroughType = PASSTHROUGH_NONE;
+                    }
+                    // do not fail here since this should otherwise be treated as a SCSI drive
+                    ret = scsiRet;
                 }
                 else if (ret == SUCCESS)
                 {
