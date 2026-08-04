@@ -7195,7 +7195,7 @@ OPENSEA_TRANSPORT_API uint32_t get_Device_BlockSize(const tDevice* M_NONNULL dev
     {
         return device->drive_info.deviceBlockSize;
     }
-    return 0;
+    return 1;
 }
 
 OPENSEA_TRANSPORT_API void set_Device_BlockSize(tDevice* M_NONNULL device, uint32_t blockSize)
@@ -7254,9 +7254,9 @@ OPENSEA_TRANSPORT_API M_PURE_FUNC uint16_t get_Logical_Sectors_Per_Physical_Sect
         {
             return UINT16_C(1); // avoid division by zero
         }
-        return C_CAST(uint16_t, device->drive_info.deviceBlockSize / device->drive_info.devicePhyBlockSize);
+        return C_CAST(uint16_t, device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
     }
-    return 0;
+    return 1;
 }
 
 OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t get_Device_Child_BlockSize(const tDevice* M_NONNULL device) M_REPRODUCIBLE
@@ -7265,7 +7265,7 @@ OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t get_Device_Child_BlockSize(const tDev
     {
         return device->drive_info.bridge_info.childDeviceBlockSize;
     }
-    return 0;
+    return 1;
 }
 
 OPENSEA_TRANSPORT_API void set_Device_Child_BlockSize(tDevice* M_NONNULL device, uint32_t blockSize)
@@ -7324,10 +7324,12 @@ get_Child_Logical_Sectors_Per_Physical_Sector(const tDevice* M_NONNULL device) M
         {
             return UINT16_C(1); // avoid division by zero
         }
-        return C_CAST(uint16_t, device->drive_info.bridge_info.childDeviceBlockSize /
-                                    device->drive_info.bridge_info.childDevicePhyBlockSize);
+        return C_CAST(
+            uint16_t,
+            device->drive_info.bridge_info.childDevicePhyBlockSize / device->drive_info.bridge_info.childDeviceBlockSize
+                                    );
     }
-    return 0;
+    return 1;
 }
 
 OPENSEA_TRANSPORT_API int32_t get_Device_MaxLba(uint64_t* M_NONNULL maxLba, const tDevice* M_NONNULL device)
