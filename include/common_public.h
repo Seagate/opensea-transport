@@ -3405,7 +3405,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \param[in] device = pointer to the device struct.
     //
     //  Exit:
-    //!   \return uint32_t value BlockSize from device struct
+    //!   \return uint32_t value BlockSize from device struct. If device pointer is null, returns 1.
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)

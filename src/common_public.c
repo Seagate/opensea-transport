@@ -7193,7 +7193,7 @@ OPENSEA_TRANSPORT_API uint32_t get_Device_BlockSize(const tDevice* M_NONNULL dev
 {
     if (device != M_NULLPTR)
     {
-        return device->drive_info.deviceBlockSize;
+        return device->drive_info.deviceBlockSize > 0 ? device->drive_info.deviceBlockSize : 1;
     }
     return 1;
 }
