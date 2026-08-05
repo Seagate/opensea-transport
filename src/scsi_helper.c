@@ -916,7 +916,7 @@ static const ascAscqRetDesc ascAscqLookUp[] = {
     {0x74, 0x12, C_CAST(int, FAILURE), "Invalid SA Usage"},
     {0x74, 0x21, C_CAST(int, FAILURE), "Data Encryption Configuration Prevented"},
     {0x74, 0x30, C_CAST(int, NOT_SUPPORTED), "SA Creation Parameter Not Supported"},
-    {0x74, 0x40, C_CAST(int, FAILURE), "Authenticaion Failed"},
+    {0x74, 0x40, C_CAST(int, FAILURE), "Authentication Failed"},
     {0x74, 0x61, C_CAST(int, FAILURE), "External Data Encryption Key Manager Access Error"},
     {0x74, 0x62, C_CAST(int, FAILURE), "External Data Encryption Key Manager Error"},
     {0x74, 0x63, C_CAST(int, FAILURE), "External Data Encryption Key Not Found"},
