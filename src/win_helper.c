@@ -3183,8 +3183,8 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE                  
         getLastError) // This will only happen for overlapped commands. If the drive is opened without the overlapped
                       // flag, everything will work like old synchronous code.-TJE
     {
-        result = GetOverlappedResult(deviceHandle, &overlappedStruct, &returnedLength, TRUE);
-        getLastError = GetLastError();
+        result       = GetOverlappedResult(deviceHandle, &overlappedStruct, &returnedLength, TRUE);
+        getLastError = GetLastError(); // update with the actual completion error, not the original IO_PENDING status
     }
     else if (getLastError != ERROR_SUCCESS)
     {
@@ -5243,7 +5243,7 @@ static eReturnValues open_Win_Handle(const char* M_NONNULL filename, tDevice* M_
                                         M_NULLPTR);
 
         set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
-        
+
         if (device->os_info.fd == INVALID_HANDLE_VALUE)
         {
             // retry if asking for exclusive
@@ -6938,8 +6938,11 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
             ret = OS_PASSTHROUGH_FAILURE;
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent          = M_NULLPTR;
+        if (overlappedStruct.hEvent != M_NULLPTR)
+        {
+            CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent          = M_NULLPTR;
+        }
         scsiIoCtx->returnStatus.senseKey = sptdioEx->scsiPassThroughEX.ScsiStatus;
 
         if (MSFT_BOOL_TRUE(success))
@@ -7195,8 +7198,11 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
             ret = OS_PASSTHROUGH_FAILURE;
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent          = M_NULLPTR;
+        if (overlappedStruct.hEvent != M_NULLPTR)
+        {
+            CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent          = M_NULLPTR;
+        }
         scsiIoCtx->returnStatus.senseKey = sptdio->scsiPassThroughEXDirect.ScsiStatus;
 
         if (MSFT_BOOL_TRUE(success))
@@ -7322,7 +7328,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx*    
         psptd->scsiPassthroughDirect.DataIn = SCSI_IOCTL_DATA_OUT;
         break;
     case XFER_NO_DATA:
-        psptd->scsiPassthroughDirect.DataIn             = UCHAR_C(0);
+        psptd->scsiPassthroughDirect.DataIn             = SCSI_IOCTL_DATA_UNSPECIFIED;
         psptd->scsiPassthroughDirect.DataTransferLength = ULONG_C(0);
         psptd->scsiPassthroughDirect.DataBuffer         = M_NULLPTR;
         break;
@@ -7390,7 +7396,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiI
         psptd->scsiPassthrough.DataIn = SCSI_IOCTL_DATA_OUT;
         break;
     case XFER_NO_DATA:
-        psptd->scsiPassthrough.DataIn             = UCHAR_C(0);
+        psptd->scsiPassthrough.DataIn             = SCSI_IOCTL_DATA_UNSPECIFIED;
         psptd->scsiPassthrough.DataTransferLength = ULONG_C(0);
         break;
         // NOLINTEND(bugprone-branch-clone)
@@ -7664,8 +7670,11 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
             ret = OS_PASSTHROUGH_FAILURE;
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = M_NULLPTR;
+        if (overlappedStruct.hEvent != M_NULLPTR)
+        {
+            CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent = M_NULLPTR;
+        }
         if (MSFT_BOOL_TRUE(success))
         {
             // If the operation completes successfully, the return value is nonzero.
@@ -7819,13 +7828,6 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
     ptrATAPassThroughDirect->AtaFlags           = ATA_FLAGS_DRDY_REQUIRED;
     ptrATAPassThroughDirect->DataTransferLength = p_scsiIoCtx->dataLength;
     ptrATAPassThroughDirect->DataBuffer         = alignedDataPointer;
-#if WINVER >= SEA_WIN32_WINNT_VISTA
-    if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= UINT8_C(1) &&
-        p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48 == UINT8_C(0))
-    {
-        ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
-    }
-#endif // WIN_VISTA
 
     switch (p_scsiIoCtx->direction)
     {
@@ -7839,10 +7841,6 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
     case XFER_NO_DATA:
         ptrATAPassThroughDirect->DataTransferLength = ULONG_C(0);
         ptrATAPassThroughDirect->DataBuffer         = M_NULLPTR;
-#if WINVER >= SEA_WIN32_WINNT_VISTA
-        ptrATAPassThroughDirect->AtaFlags =
-            ptrATAPassThroughDirect->AtaFlags & M_STATIC_CAST(USHORT, ~(ATA_FLAGS_NO_MULTIPLE));
-#endif // WIN_VISTA
        // NOLINTEND(bugprone-branch-clone)
         break;
     default:
@@ -7861,8 +7859,24 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
     case ATA_PROTOCOL_DEV_DIAG:
     case ATA_PROTOCOL_NO_DATA:
     case ATA_PROTOCOL_PACKET:
-    case ATA_PROTOCOL_PIO:
         // these are supported but no flags need to be set
+        break;
+    case ATA_PROTOCOL_PIO:
+    #if WINVER >= SEA_WIN32_WINNT_VISTA
+        switch (p_scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus)
+        {
+        case ATA_READ_MULTIPLE_CMD:
+        case ATA_READ_READ_MULTIPLE_EXT:
+        case ATA_WRITE_MULTIPLE_CMD:
+        case ATA_WRITE_MULTIPLE_EXT:
+        case ATA_WRITE_MULTIPLE_FUA_EXT:
+        case ATA_CFA_WRITE_MULTIPLE_WITHOUT_ERASE:
+            break; // these use multiple-mode by design
+        default:
+            ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
+            break;
+        }
+    #endif // WIN_VISTA
         break;
     case ATA_PROTOCOL_RET_INFO:
         // this doesn't do anything in ATA PassThrough and is only useful for SCSI PassThrough since this is an HBA
@@ -8013,13 +8027,11 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
             }
-            {
-                char* winErrorStr = get_windows_error_str(
-                    M_STATIC_CAST(winsyserror_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device)));
-                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
-                                                       "Windows Error: %s\n", winErrorStr);
-                safe_free(&winErrorStr);
-            }
+            char* winErrorStr = get_windows_error_str(
+                M_STATIC_CAST(winsyserror_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device)));
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                                    "Windows Error: %s\n", winErrorStr);
+            safe_free(&winErrorStr);
         }
         stop_Timer(&commandTimer);
         if (overlappedStruct.hEvent)
@@ -8154,13 +8166,6 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
 
     p_t_ata_pt->ataPTCommand.DataTransferLength = p_scsiIoCtx->dataLength;
     p_t_ata_pt->ataPTCommand.DataBufferOffset   = offsetof(ATADoubleBufferedIO, dataBuffer);
-#if WINVER >= SEA_WIN32_WINNT_VISTA
-    if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= UINT8_C(1) &&
-        p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48 == UINT8_C(0))
-    {
-        p_t_ata_pt->ataPTCommand.AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
-    }
-#endif // WIN_VISTA
 
     switch (p_scsiIoCtx->direction)
     {
@@ -8177,11 +8182,6 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
         // we always allocate at least 1 byte here...so give it something? Or do
         // we set M_NULLPTR? Seems to work as is... - TJE
         // p_t_ata_pt->ataPTCommand.DataBufferOffset   = offsetof(ATADoubleBufferedIO, dataBuffer);
-#if WINVER >= SEA_WIN32_WINNT_VISTA
-        // Turn this bit off in case it was set
-        p_t_ata_pt->ataPTCommand.AtaFlags =
-            p_t_ata_pt->ataPTCommand.AtaFlags & M_STATIC_CAST(USHORT, ~(ATA_FLAGS_NO_MULTIPLE));
-#endif // WIN VISTA
         break;
     default:
         print_tDevice_Verbose_Formatted_String(p_scsiIoCtx->device, VERBOSITY_QUIET, "\nData Direction Unspecified.\n");
@@ -8199,8 +8199,24 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
     case ATA_PROTOCOL_DEV_DIAG:
     case ATA_PROTOCOL_NO_DATA:
     case ATA_PROTOCOL_PACKET:
-    case ATA_PROTOCOL_PIO:
         // these are supported but no flags need to be set
+        break;
+    case ATA_PROTOCOL_PIO:
+#if WINVER >= SEA_WIN32_WINNT_VISTA
+        switch (p_scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus)
+        {
+        case ATA_READ_MULTIPLE_CMD:
+        case ATA_READ_READ_MULTIPLE_EXT:
+        case ATA_WRITE_MULTIPLE_CMD:
+        case ATA_WRITE_MULTIPLE_EXT:
+        case ATA_WRITE_MULTIPLE_FUA_EXT:
+        case ATA_CFA_WRITE_MULTIPLE_WITHOUT_ERASE:
+            break; // these use multiple-mode by design
+        default:
+            p_t_ata_pt->ataPTCommand.AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
+            break;
+        }
+#endif // WIN_VISTA
         break;
     case ATA_PROTOCOL_RET_INFO:
         // this doesn't do anything in ATA PassThrough and is only useful for SCSI PassThrough since this is an HBA
