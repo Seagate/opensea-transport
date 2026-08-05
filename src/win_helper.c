@@ -3184,6 +3184,7 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE                  
                       // flag, everything will work like old synchronous code.-TJE
     {
         result = GetOverlappedResult(deviceHandle, &overlappedStruct, &returnedLength, TRUE);
+        getLastError = GetLastError();
     }
     else if (getLastError != ERROR_SUCCESS)
     {
@@ -5242,7 +5243,7 @@ static eReturnValues open_Win_Handle(const char* M_NONNULL filename, tDevice* M_
                                         M_NULLPTR);
 
         set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
-        ;
+        
         if (device->os_info.fd == INVALID_HANDLE_VALUE)
         {
             // retry if asking for exclusive
