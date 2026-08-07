@@ -4018,7 +4018,7 @@ static M_INLINE void safe_free_firmwareactivate(PSTORAGE_FIRMWARE_ACTIVATE* acti
     safe_free_core(M_REINTERPRET_CAST(void**, activate));
 }
 
-static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
+static eReturnValues win_FW_Activate_IO_SCSI_Miniport(const ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = NOT_SUPPORTED;
     if (scsiIoCtx == M_NULLPTR)
@@ -4693,11 +4693,37 @@ static eReturnValues win_Get_Access_Alignment_Descriptor(HANDLE*                
 //     lbProvisioningDescriptor), sizeof(DEVICE_LB_PROVISIONING_DESCRIPTOR));
 // }
 
-// static eReturnValues win_Get_Power_Property(HANDLE *deviceHandle, PDEVICE_POWER_DESCRIPTOR *powerDescriptor)
-//{
-//     return check_And_Get_Storage_Property(deviceHandle, StorageDevicePowerProperty, C_CAST(void**, powerDescriptor),
-//     sizeof(DEVICE_POWER_DESCRIPTOR));
-// }
+static eReturnValues win_Get_Power_Property(HANDLE *deviceHandle, PDEVICE_POWER_DESCRIPTOR *powerDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDevicePowerProperty, C_CAST(void**, powerDescriptor),
+    sizeof(DEVICE_POWER_DESCRIPTOR));
+}
+
+static eReturnValues win_Enable_Idle_Power(HANDLE *deviceHandle, PSTORAGE_IDLE_POWER idlePower)
+{
+    eReturnValues ret = NOT_SUPPORTED;
+    if (deviceHandle && idlePower)
+    {
+        BOOL                   success      = FALSE;
+        DWORD                  returnedData = DWORD_C(0);
+        success          = DeviceIoControl(deviceHandle, IOCTL_STORAGE_ENABLE_IDLE_POWER, idlePower,
+                                  sizeof(STORAGE_IDLE_POWER), M_NULLPTR, 0,
+                                  &returnedData, M_NULLPTR);
+        if (MSFT_BOOL_FALSE(success))
+        {
+            ret = NOT_SUPPORTED;
+        }
+        else
+        {
+            ret = SUCCESS;
+        }
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
 
 // static eReturnValues win_Get_Copy_Offload(HANDLE *deviceHandle, PDEVICE_COPY_OFFLOAD_DESCRIPTOR
 // *copyOffloadDescriptor)
@@ -5518,6 +5544,20 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             if (is_Windows_8_Or_Higher()) // from opensea-common now to remove versionhelpes.h include
             {
                 device->os_info.srbtype = adapter_desc->SrbType;
+                PDEVICE_POWER_DESCRIPTOR powerDescriptor = M_NULLPTR;
+                if (SUCCESS == win_Get_Power_Property(&device->os_info.fd, &powerDescriptor))
+                {
+                    device->os_info.powerDesc.valid = true;
+                    device->os_info.powerDesc.idleSupported = M_ToBool(powerDescriptor->D3ColdSupported);
+                    device->os_info.powerDesc.wakeSupported = M_ToBool(powerDescriptor->DeviceAttentionSupported);
+                    device->os_info.powerDesc.idleTimeMS    = MSFT_BOOL_TRUE(powerDescriptor->IdlePowerManagementEnabled) ?
+                        C_CAST(uint32_t, powerDescriptor->IdleTimeoutInMS) : 0;
+                }
+                else
+                {
+                    device->os_info.powerDesc.valid = false;
+                }
+                safe_free(M_REINTERPRET_CAST(void**, &powerDescriptor));
             }
             else
 #endif
@@ -15914,5 +15954,44 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(const tDevice* M_NONN
         ret = OS_COMMAND_TIMEOUT;
     }
     print_tDevice_Return_Enum(device, "Windows API Flush", ret);
+    return ret;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNULL *device)
+{
+    eReturnValues ret = NOT_SUPPORTED;
+#    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+    STORAGE_IDLE_POWER idlePower;
+    M_INITIALIZE_STRUCTURE(&idlePower, sizeof(STORAGE_IDLE_POWER));
+    idlePower.Version = 1;
+    idlePower.Size = sizeof(STORAGE_IDLE_POWER);
+    idlePower.D3IdleTimeout = DWORD_MAX; // essentially disabled at 49.7 days
+    ret = win_Enable_Idle_Power(device->os_info.fd, &idlePower);
+#    else
+    M_USE_UNUSED(device);
+#    endif
+    return ret;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice M_NONNULL *device)
+{
+    eReturnValues ret = NOT_SUPPORTED;
+#    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+    STORAGE_IDLE_POWER idlePower;
+    M_INITIALIZE_STRUCTURE(&idlePower, sizeof(STORAGE_IDLE_POWER));
+    idlePower.Version = 1;
+    idlePower.Size = sizeof(STORAGE_IDLE_POWER);
+    if (device->os_info.powerDesc.valid)
+    {
+        idlePower.WakeCapableHint = device->os_info.powerDesc.wakeSupported;
+        idlePower.D3ColdSupported = device->os_info.powerDesc.idleSupported;
+        idlePower.D3IdleTimeout = device->os_info.powerDesc.idleTimeMS;
+    }
+    ret = win_Enable_Idle_Power(device->os_info.fd, &idlePower);
+#    else
+    M_USE_UNUSED(device);
+#    endif
     return ret;
 }

@@ -1583,6 +1583,16 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                            // Windows' C:\Windows\System32, Linux's / & /boot, etc
     } fileSystemInfo;
 
+    typedef struct s_devicePowerDescriptor
+    {
+        bool valid; // Indicates if the power descriptor is valid
+        bool     idleSupported;
+        bool     wakeSupported;
+        bool     reservedBool1;
+        uint32_t idleTimeMS; // Idle time in milliseconds
+        uint8_t  reservedArray[24]; // Not sure if/when we will need to expand this in some capacity...reserving data for now. - TJE
+    } devicePowerDescriptor;
+
 #define OS_HANDLE_NAME_MAX_LENGTH          256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
 #define OS_SECOND_HANDLE_NAME_LENGTH       30
@@ -1813,6 +1823,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         ptrCissDeviceInfo M_NULLABLE cissDeviceData; // This pointer is allocated only when CCISS is supported.
         eHandleOpenFlags             handleFlags;    // keeps track of the flags used when the handle was opened.
         uint8_t                      padd[2];        // padd to multiple of 8 bytes
+        devicePowerDescriptor powerDesc; // Holds the power descriptor information for the device
     } OSDriveInfo;
 
     //! \fn size_t get_Device_IO_Minimum_Alignment(const tDevice* M_NONNULL device)

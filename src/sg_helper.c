@@ -4791,6 +4791,26 @@ OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(const tDev
                                                                             : get_Device_Handle_Name(device));
 }
 
+
+// For USB: read/write /sys/bus/usb/devices/.../power/control and power/autosuspend_delay_ms
+// idleTimeoutMs = UINT32_MAX → write "on" to power/control (prevent autosuspend)
+// Restoring → write "auto" and restore the delay in ms
+// For SATA: return NOT_SUPPORTED (link PM doesn't cause device resets, no action needed)
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
+
+
+
 // This should be at the end of this file to undefine _GNU_SOURCE if this file manually enabled it
 #if !defined(GNU_SOURCE_DEFINED_IN_SG_HELPER)
 #    undef _GNU_SOURCE // NOLINT
