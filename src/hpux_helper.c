@@ -329,7 +329,7 @@ eReturnValues send_SIOC_IO_EXT(ScsiIoCtx* scsiIoCtx)
 }
 #endif // SIOC_IO_EXT
 
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
 #if defined(SIOC_IO_EXT)

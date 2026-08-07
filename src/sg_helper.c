@@ -1510,7 +1510,7 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                             {
                                 if (bsgHandle != M_NULLPTR) // save tertiary handle name as bsg handle
                                 {
-                                    if (snprintf_err_handle(sysFsInfo->tertiaryHandleStr, OS_HANDLE_NAME_MAX_LENGTH,
+                                    if (snprintf_err_handle(sysFsInfo->tertiaryHandleStr, OS_THIRD_HANDLE_NAME_LENGTH,
                                                             "/dev/bsg/%s", bsgHandle) < 0)
                                     {
                                         safe_free(&blockHandle);
@@ -1611,14 +1611,18 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
         {
             if (safe_strlen(sysFsInfo.secondaryHandleStr) > 0) // if we get sd handle
             {
+                DECLARE_ZERO_INIT_ARRAY(char, secondHandleButLongerToAvoidWarnings, OS_HANDLE_NAME_MAX_LENGTH);
                 char* dupHandle = M_NULLPTR;
+                M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(&secondHandleButLongerToAvoidWarnings, OS_HANDLE_NAME_MAX_LENGTH,
+                                                &sysFsInfo.secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH),
+                                          "copying a small buffer to a bigger buffer will not overflow");
                 if (0 != safe_strdup(&dupHandle, sysFsInfo.secondaryHandleStr) || dupHandle == M_NULLPTR)
                 {
-                    set_Device_Name_In_tDevice(device, sysFsInfo.secondaryHandleStr, M_NULLPTR);
+                    set_Device_Name_In_tDevice(device, secondHandleButLongerToAvoidWarnings, M_NULLPTR);
                 }
                 else
                 {
-                    set_Device_Name_In_tDevice(device, sysFsInfo.secondaryHandleStr, basename(dupHandle));
+                    set_Device_Name_In_tDevice(device, secondHandleButLongerToAvoidWarnings, basename(dupHandle));
                 }
                 safe_free(&dupHandle);
             }
@@ -2526,7 +2530,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(const tDev
     return sg_reset(*fdToRescan, SG_SCSI_RESET_HOST);
 }
 
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
 #ifdef _DEBUG

@@ -2805,7 +2805,7 @@ static eReturnValues send_AIX_SATA_Passthrough(ScsiIoCtx* scsiIoCtx)
     return ret;
 }
 
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     // switch based on value stored in os_info to define which passthrough interface to use to issue commands -TJE
     eReturnValues ret = SUCCESS;

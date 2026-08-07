@@ -207,7 +207,7 @@ extern bool validate_Device_Struct(versionBlock);
 M_PARAM_RW(1) eReturnValues get_Windows_SMART_IO_Support(tDevice* M_NONNULL device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* M_NONNULL device, STORAGE_BUS_TYPE busType);
-bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* M_NONNULL scsiIoCtx);
+bool is_Firmware_Download_Command_Compatible_With_Win_API(const ScsiIoCtx* M_NONNULL scsiIoCtx);
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 #endif
@@ -3412,7 +3412,7 @@ bus trace of the sequence.
 
 */
 
-bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
+bool is_Firmware_Download_Command_Compatible_With_Win_API(const ScsiIoCtx* scsiIoCtx)
 {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
     print_str("Checking if FWDL Command is compatible with Win 10 API\n");
@@ -3591,7 +3591,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
     return false;
 }
 
-static bool is_Activate_Command(ScsiIoCtx* scsiIoCtx)
+static bool is_Activate_Command(const ScsiIoCtx* scsiIoCtx)
 {
     bool isActivate = false;
     if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD ||
@@ -4018,7 +4018,7 @@ static M_INLINE void safe_free_firmwareactivate(PSTORAGE_FIRMWARE_ACTIVATE* acti
     safe_free_core(M_REINTERPRET_CAST(void**, activate));
 }
 
-static eReturnValues win_FW_Activate_IO_SCSI_Miniport(const ScsiIoCtx* scsiIoCtx)
+static eReturnValues win_FW_Activate_IO_SCSI_Miniport(ScsiIoCtx* scsiIoCtx)
 {
     eReturnValues ret = NOT_SUPPORTED;
     if (scsiIoCtx == M_NULLPTR)
@@ -7858,7 +7858,7 @@ static eReturnValues send_SCSI_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               p_scsiIoCtx,
+static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(const ScsiIoCtx*               p_scsiIoCtx,
                                                        PATA_PASS_THROUGH_DIRECT ptrATAPassThroughDirect,
                                                        uint8_t*                 alignedDataPointer)
 {
@@ -8197,7 +8197,7 @@ static M_INLINE void safe_free_ata_db_io(ATADoubleBufferedIO** atadbio)
     safe_free_core(M_REINTERPRET_CAST(void**, atadbio));
 }
 
-static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrATADoubleBufferedIO p_t_ata_pt)
+static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(const ScsiIoCtx* p_scsiIoCtx, ptrATADoubleBufferedIO p_t_ata_pt)
 {
     eReturnValues ret = SUCCESS;
 
@@ -8555,7 +8555,7 @@ static M_INLINE void safe_free_ide_db_io(IDEDoubleBufferedIO** idedbio)
     safe_free_core(M_REINTERPRET_CAST(void**, idedbio));
 }
 
-static eReturnValues convert_SCSI_CTX_To_IDE_PT(ScsiIoCtx* p_scsiIoCtx, ptrIDEDoubleBufferedIO p_t_ide_pt)
+static eReturnValues convert_SCSI_CTX_To_IDE_PT(const ScsiIoCtx* p_scsiIoCtx, ptrIDEDoubleBufferedIO p_t_ide_pt)
 {
     eReturnValues ret = SUCCESS;
 
@@ -9424,7 +9424,7 @@ eReturnValues get_Windows_SMART_IO_Support(tDevice* device)
 
 #define INVALID_IOCTL DWORD_C(0xFFFFFFFF)
 // returns which IOCTL code we'll use for the specified command
-static DWORD io_For_SMART_Cmd(ScsiIoCtx* scsiIoCtx)
+static DWORD io_For_SMART_Cmd(const ScsiIoCtx* scsiIoCtx)
 {
     if (scsiIoCtx->pAtaCmdOpts->commandType != ATA_CMD_TYPE_TASKFILE)
     {
@@ -9523,7 +9523,7 @@ static DWORD io_For_SMART_Cmd(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-static bool is_ATA_Cmd_Supported_By_SMART_IO(ScsiIoCtx* scsiIoCtx)
+static bool is_ATA_Cmd_Supported_By_SMART_IO(const ScsiIoCtx* scsiIoCtx)
 {
     if (INVALID_IOCTL != io_For_SMART_Cmd(scsiIoCtx))
     {
@@ -9535,7 +9535,7 @@ static bool is_ATA_Cmd_Supported_By_SMART_IO(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-static eReturnValues convert_SCSI_CTX_To_ATA_SMART_Cmd(ScsiIoCtx* scsiIoCtx, PSENDCMDINPARAMS smartCmd)
+static eReturnValues convert_SCSI_CTX_To_ATA_SMART_Cmd(const ScsiIoCtx* scsiIoCtx, PSENDCMDINPARAMS smartCmd)
 {
     if (!is_ATA_Cmd_Supported_By_SMART_IO(scsiIoCtx))
     {
@@ -11994,7 +11994,7 @@ static eReturnValues win_Basic_SCSI_Translation(ScsiIoCtx* scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "Sending command with send_IO\n");
