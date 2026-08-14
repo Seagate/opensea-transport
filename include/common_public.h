@@ -1270,9 +1270,12 @@ extern "C"
             bool possilbyEmulatedNVMe; // realtek's USB to M.2 adapter can do AHCI or NVMe. Since nothing changes in IDs
                                        // and it emulates ATA identify data, need this to work around how it reports.
                                        // -TJE
-            bool smartEnabled;         // Override check of ATA word 85, bit0 since some USB adapters don't set this.
-            bool retryWithJMicronPT;   // Needed for some JMicron adapters. Newer may support SAT, older support their
-                                       // lagacy passthrough, so this is to retry on these devices.
+            bool knownRealtekUSB; // Set for bridges identified as a Realtek USB to NVMe/SATA adapter (by VID/PID or the
+                                  // ATA path RTL9210 heuristic). Separate from possilbyEmulatedNVMe because branded
+                                  // adapters (e.g. Seagate) also set that flag and still need SAT.
+            bool smartEnabled;    // Override check of ATA word 85, bit0 since some USB adapters don't set this.
+            bool retryWithJMicronPT; // Needed for some JMicron adapters. Newer may support SAT, older support their
+                                     // lagacy passthrough, so this is to retry on these devices.
             bool jmPTDevSet; // for JMicron's passthrough we need to set dev 0 or 1. This gets turned to true once set
             bool nonDataCountBroken;  // Implemented due to Broadcom HBA firmware bug. When issuing a non-data command
                                       // with non-zero count, it zeroes it to the drive. So this creates unexpected

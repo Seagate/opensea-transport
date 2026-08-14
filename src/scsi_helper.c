@@ -3787,10 +3787,10 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
                 safe_free_aligned(&deviceIdentification);
             }
             // One last thing...Need to do a SAT scan...
-            // NOTE: Skip the SAT compliance check for bridges that may have an NVMe drive behind them (e.g. Realtek
+            // NOTE: Skip the SAT compliance check for bridges that are known to be Realtek USB to NVMe adapters (e.g.
             // RTL9210). SAT ATA identify is not reliable on these adapters and can take a long time to time out, and
             // the NVMe passthrough discovery below handles these devices correctly.
-            if (checkForSAT && !device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
+            if (checkForSAT && !device->drive_info.passThroughHacks.ataPTHacks.knownRealtekUSB)
             {
                 if (SUCCESS != check_SAT_Compliance_And_Set_Drive_Type(device) && checkJMicronNVMe)
                 {
@@ -3821,12 +3821,12 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
                     }
                 }
             }
-            if (!device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
+            if (!device->drive_info.passThroughHacks.ataPTHacks.knownRealtekUSB)
             {
                 safe_free_aligned(&inq_buf);
                 return ret;
             }
-            // This bridge may have an NVMe drive behind it (e.g. Realtek RTL9210). Do not quit discovery early here so
+            // This bridge is a known Realtek USB to NVMe adapter (e.g. RTL9210). Do not quit discovery early here so
             // that the NVMe passthrough discovery below can run and correctly identify the drive in a fast scan.
         }
 
@@ -4259,23 +4259,22 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
         eReturnValues satCheck = FAILURE;
         // if we haven't already, check the device for SAT support. Allow this to run on IDE interface since we'll just
         // issue a SAT identify in here to set things up...might reduce multiple commands later
-        // Skip this for bridges that are known to possibly be emulating an NVMe drive (e.g. Realtek RTL9210) since they
-        // do not reliably support SCSI-ATA passthrough. On some firmware revisions the SAT identify can take a very
-        // long time to fail with an internal adapter error, or never return at all. The NVMe passthrough identify is
-        // attempted below in that case instead.
+        // Skip this for bridges that are known to be Realtek USB to NVMe adapters (e.g. RTL9210) since they do not
+        // reliably support SCSI-ATA passthrough. On some firmware revisions the SAT identify can take a very long time
+        // to fail with an internal adapter error, or never return at all. The NVMe passthrough identify is attempted
+        // below in that case instead.
         if (checkForSAT && !satVPDPageRead && !satComplianceChecked && (get_Device_DriveType(device) != RAID_DRIVE) &&
             (get_Device_DriveType(device) != NVME_DRIVE) && get_Device_MediaType(device) != MEDIA_UNKNOWN &&
             device->drive_info.passThroughHacks.passthroughType < NVME_PASSTHROUGH_JMICRON &&
-            !device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe)
+            !device->drive_info.passThroughHacks.ataPTHacks.knownRealtekUSB)
         {
             satCheck = check_SAT_Compliance_And_Set_Drive_Type(device);
         }
 
-        // This flag is set for bridges that are known to possibly have an NVMe drive behind them (Realtek RTL9210),
-        // either by reported VID/PID or inquiry data, or by the ata_helper during the SAT check above. Attempt the NVMe
-        // passthrough discovery regardless of the SAT check result since SAT ATA passthrough is not reliable on all of
-        // these adapters.
-        bool checkRealtekNVMe = device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe;
+        // This is only set for bridges that are known to be Realtek USB to NVMe/SATA adapters (RTL9210), either by
+        // reported VID/PID or by the ata_helper RTL9210 heuristic. Attempt the NVMe passthrough discovery regardless of
+        // the SAT check result since SAT ATA passthrough is not reliable on all of these adapters.
+        bool checkRealtekNVMe = device->drive_info.passThroughHacks.ataPTHacks.knownRealtekUSB;
 
         // Because we may find an NVMe over USB device, if we find one of these, perform a little more discovery...
         if ((device->drive_info.passThroughHacks.passthroughType >= NVME_PASSTHROUGH_JMICRON &&

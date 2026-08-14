@@ -6109,6 +6109,8 @@ static bool set_Realtek_USB_Hacks_By_PID(tDevice* M_NONNULL device)
         device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe =
             true; // no way to tell at this point. Will need to make full determination in the fill_ATA_Info
                   // function
+        device->drive_info.passThroughHacks.ataPTHacks.knownRealtekUSB =
+            true; // this is an actual Realtek bridge, so the Realtek NVMe passthrough discovery is safe to try
         device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands =
             true; // probably not needed, but after what I saw testing this, it can't hurt to set this
         break;
