@@ -1534,17 +1534,20 @@ static void get_Linux_SYS_FS_Info(const char* handle, sysFSLowLevelDeviceInfo* s
                                 }
                             }
 
-                            if (strstr(blockHandle, "sr") || strstr(blockHandle, "scd"))
+                            if (blockHandle != M_NULLPTR)
                             {
-                                sysFsInfo->drive_type = ATAPI_DRIVE;
-                            }
-                            else if (strstr(blockHandle, "st"))
-                            {
-                                sysFsInfo->drive_type = LEGACY_TAPE_DRIVE;
-                            }
-                            else if (strstr(blockHandle, "ses"))
-                            {
-                                // scsi enclosure services
+                                if (strstr(blockHandle, "sr") || strstr(blockHandle, "scd"))
+                                {
+                                    sysFsInfo->drive_type = ATAPI_DRIVE;
+                                }
+                                else if (strstr(blockHandle, "st"))
+                                {
+                                    sysFsInfo->drive_type = LEGACY_TAPE_DRIVE;
+                                }
+                                else if (strstr(blockHandle, "ses"))
+                                {
+                                    // scsi enclosure services
+                                }
                             }
                         }
                         // print_str("Finish handle mapping\n");
@@ -1692,8 +1695,10 @@ static eReturnValues find_Link_In_ClassPath(const char* classPath,
         if (lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode)) /*check if this is a link*/
         {
             DECLARE_ZERO_INIT_ARRAY(char, mapLink, PATH_MAX);
-            if (readlink(temp, mapLink, PATH_MAX) > 0)
+            ssize_t linkLen = readlink(temp, mapLink, PATH_MAX - 1);
+            if (linkLen > 0)
             {
+                mapLink[linkLen] = '\0';
 #if defined(_DEBUG)
                 printf("read link as: %s\n", mapLink);
 #endif
@@ -1712,7 +1717,8 @@ static eReturnValues find_Link_In_ClassPath(const char* classPath,
 #if defined(_DEBUG)
                     printf("found match as: %s\n", mapLink);
 #endif
-                    if (0 != safe_strndup(handleName, basename(classPtr), safe_strlen(classPtr)))
+                    const char* baseName = basename(classPtr);
+                    if (0 != safe_strndup(handleName, baseName, safe_strlen(baseName)))
                     {
                         ret = MEMORY_FAILURE;
                     }
@@ -2179,7 +2185,7 @@ static eReturnValues resolve_Block_Handle_To_Generic_Handle(const char* filename
     safe_free(&blockGenHandle);
 
 #if defined(_DEBUG)
-    printf("%s: filename = %s, genericHandle = %s\n", __FUNCTION__, filename, *genericHandle);
+    printf("%s: filename = %s, genericHandle = %s\n", __FUNCTION__, filename, (genericHandle && *genericHandle) ? *genericHandle : "NULL");
 #endif
 
     return SUCCESS;
