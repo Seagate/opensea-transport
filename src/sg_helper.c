@@ -1722,6 +1722,7 @@ static eReturnValues find_Link_In_ClassPath(const char* classPath,
                     {
                         ret = MEMORY_FAILURE;
                     }
+                    safe_free(&temp);
                     break;
                 }
             }
