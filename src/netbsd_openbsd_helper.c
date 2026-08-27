@@ -436,7 +436,7 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(M_ATTR_UNUSED const t
     return NOT_SUPPORTED;
 }
 
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     switch (scsiIoCtx->device->os_info.passthroughType)
     {
@@ -552,4 +552,16 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(const tD
 {
     M_USE_UNUSED(device);
     return OS_COMMAND_NOT_AVAILABLE;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
 }

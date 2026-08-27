@@ -550,7 +550,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(const tDev
     return sg_reset(device->os_info.fd, SG_SCSI_RESET_HOST);
 }
 
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
 #ifdef _DEBUG
@@ -1701,3 +1701,17 @@ static eReturnValues print_sg_io_driver_status(const tDevice* device, sg_io_hdr_
     {
         return NOT_SUPPORTED;
     }
+
+    M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
+

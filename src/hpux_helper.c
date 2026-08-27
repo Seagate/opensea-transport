@@ -329,7 +329,7 @@ eReturnValues send_SIOC_IO_EXT(ScsiIoCtx* scsiIoCtx)
 }
 #endif // SIOC_IO_EXT
 
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
 #if defined(SIOC_IO_EXT)
@@ -845,3 +845,16 @@ OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNU
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+

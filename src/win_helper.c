@@ -207,7 +207,7 @@ extern bool validate_Device_Struct(versionBlock);
 M_PARAM_RW(1) eReturnValues get_Windows_SMART_IO_Support(tDevice* M_NONNULL device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* M_NONNULL device, STORAGE_BUS_TYPE busType);
-bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* M_NONNULL scsiIoCtx);
+bool is_Firmware_Download_Command_Compatible_With_Win_API(const ScsiIoCtx* M_NONNULL scsiIoCtx);
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 #endif
@@ -3412,7 +3412,7 @@ bus trace of the sequence.
 
 */
 
-bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
+bool is_Firmware_Download_Command_Compatible_With_Win_API(const ScsiIoCtx* scsiIoCtx)
 {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
     print_str("Checking if FWDL Command is compatible with Win 10 API\n");
@@ -3591,7 +3591,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
     return false;
 }
 
-static bool is_Activate_Command(ScsiIoCtx* scsiIoCtx)
+static bool is_Activate_Command(const ScsiIoCtx* scsiIoCtx)
 {
     bool isActivate = false;
     if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD ||
@@ -4693,11 +4693,37 @@ static eReturnValues win_Get_Access_Alignment_Descriptor(HANDLE*                
 //     lbProvisioningDescriptor), sizeof(DEVICE_LB_PROVISIONING_DESCRIPTOR));
 // }
 
-// static eReturnValues win_Get_Power_Property(HANDLE *deviceHandle, PDEVICE_POWER_DESCRIPTOR *powerDescriptor)
-//{
-//     return check_And_Get_Storage_Property(deviceHandle, StorageDevicePowerProperty, C_CAST(void**, powerDescriptor),
-//     sizeof(DEVICE_POWER_DESCRIPTOR));
-// }
+static eReturnValues win_Get_Power_Property(HANDLE *deviceHandle, PDEVICE_POWER_DESCRIPTOR *powerDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDevicePowerProperty, C_CAST(void**, powerDescriptor),
+    sizeof(DEVICE_POWER_DESCRIPTOR));
+}
+
+static eReturnValues win_Enable_Idle_Power(HANDLE *deviceHandle, PSTORAGE_IDLE_POWER idlePower)
+{
+    eReturnValues ret = NOT_SUPPORTED;
+    if (deviceHandle && idlePower)
+    {
+        BOOL                   success      = FALSE;
+        DWORD                  returnedData = DWORD_C(0);
+        success          = DeviceIoControl(deviceHandle, IOCTL_STORAGE_ENABLE_IDLE_POWER, idlePower,
+                                  sizeof(STORAGE_IDLE_POWER), M_NULLPTR, 0,
+                                  &returnedData, M_NULLPTR);
+        if (MSFT_BOOL_FALSE(success))
+        {
+            ret = NOT_SUPPORTED;
+        }
+        else
+        {
+            ret = SUCCESS;
+        }
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
 
 // static eReturnValues win_Get_Copy_Offload(HANDLE *deviceHandle, PDEVICE_COPY_OFFLOAD_DESCRIPTOR
 // *copyOffloadDescriptor)
@@ -5518,6 +5544,20 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             if (is_Windows_8_Or_Higher()) // from opensea-common now to remove versionhelpes.h include
             {
                 device->os_info.srbtype = adapter_desc->SrbType;
+                PDEVICE_POWER_DESCRIPTOR powerDescriptor = M_NULLPTR;
+                if (SUCCESS == win_Get_Power_Property(&device->os_info.fd, &powerDescriptor))
+                {
+                    device->os_info.powerDesc.valid = true;
+                    device->os_info.powerDesc.idleSupported = M_ToBool(powerDescriptor->D3ColdSupported);
+                    device->os_info.powerDesc.wakeSupported = M_ToBool(powerDescriptor->DeviceAttentionSupported);
+                    device->os_info.powerDesc.idleTimeMS    = MSFT_BOOL_TRUE(powerDescriptor->IdlePowerManagementEnabled) ?
+                        C_CAST(uint32_t, powerDescriptor->IdleTimeoutInMS) : 0;
+                }
+                else
+                {
+                    device->os_info.powerDesc.valid = false;
+                }
+                safe_free(M_REINTERPRET_CAST(void**, &powerDescriptor));
             }
             else
 #endif
@@ -7818,7 +7858,7 @@ static eReturnValues send_SCSI_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               p_scsiIoCtx,
+static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(const ScsiIoCtx*               p_scsiIoCtx,
                                                        PATA_PASS_THROUGH_DIRECT ptrATAPassThroughDirect,
                                                        uint8_t*                 alignedDataPointer)
 {
@@ -8157,7 +8197,7 @@ static M_INLINE void safe_free_ata_db_io(ATADoubleBufferedIO** atadbio)
     safe_free_core(M_REINTERPRET_CAST(void**, atadbio));
 }
 
-static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrATADoubleBufferedIO p_t_ata_pt)
+static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(const ScsiIoCtx* p_scsiIoCtx, ptrATADoubleBufferedIO p_t_ata_pt)
 {
     eReturnValues ret = SUCCESS;
 
@@ -8515,7 +8555,7 @@ static M_INLINE void safe_free_ide_db_io(IDEDoubleBufferedIO** idedbio)
     safe_free_core(M_REINTERPRET_CAST(void**, idedbio));
 }
 
-static eReturnValues convert_SCSI_CTX_To_IDE_PT(ScsiIoCtx* p_scsiIoCtx, ptrIDEDoubleBufferedIO p_t_ide_pt)
+static eReturnValues convert_SCSI_CTX_To_IDE_PT(const ScsiIoCtx* p_scsiIoCtx, ptrIDEDoubleBufferedIO p_t_ide_pt)
 {
     eReturnValues ret = SUCCESS;
 
@@ -9384,7 +9424,7 @@ eReturnValues get_Windows_SMART_IO_Support(tDevice* device)
 
 #define INVALID_IOCTL DWORD_C(0xFFFFFFFF)
 // returns which IOCTL code we'll use for the specified command
-static DWORD io_For_SMART_Cmd(ScsiIoCtx* scsiIoCtx)
+static DWORD io_For_SMART_Cmd(const ScsiIoCtx* scsiIoCtx)
 {
     if (scsiIoCtx->pAtaCmdOpts->commandType != ATA_CMD_TYPE_TASKFILE)
     {
@@ -9483,7 +9523,7 @@ static DWORD io_For_SMART_Cmd(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-static bool is_ATA_Cmd_Supported_By_SMART_IO(ScsiIoCtx* scsiIoCtx)
+static bool is_ATA_Cmd_Supported_By_SMART_IO(const ScsiIoCtx* scsiIoCtx)
 {
     if (INVALID_IOCTL != io_For_SMART_Cmd(scsiIoCtx))
     {
@@ -9495,7 +9535,7 @@ static bool is_ATA_Cmd_Supported_By_SMART_IO(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-static eReturnValues convert_SCSI_CTX_To_ATA_SMART_Cmd(ScsiIoCtx* scsiIoCtx, PSENDCMDINPARAMS smartCmd)
+static eReturnValues convert_SCSI_CTX_To_ATA_SMART_Cmd(const ScsiIoCtx* scsiIoCtx, PSENDCMDINPARAMS smartCmd)
 {
     if (!is_ATA_Cmd_Supported_By_SMART_IO(scsiIoCtx))
     {
@@ -11954,7 +11994,7 @@ static eReturnValues win_Basic_SCSI_Translation(ScsiIoCtx* scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "Sending command with send_IO\n");
@@ -15914,5 +15954,44 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(const tDevice* M_NONN
         ret = OS_COMMAND_TIMEOUT;
     }
     print_tDevice_Return_Enum(device, "Windows API Flush", ret);
+    return ret;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNULL *device)
+{
+    eReturnValues ret = NOT_SUPPORTED;
+#    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+    STORAGE_IDLE_POWER idlePower;
+    M_INITIALIZE_STRUCTURE(&idlePower, sizeof(STORAGE_IDLE_POWER));
+    idlePower.Version = 1;
+    idlePower.Size = sizeof(STORAGE_IDLE_POWER);
+    idlePower.D3IdleTimeout = DWORD_MAX; // essentially disabled at 49.7 days
+    ret = win_Enable_Idle_Power(device->os_info.fd, &idlePower);
+#    else
+    M_USE_UNUSED(device);
+#    endif
+    return ret;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice M_NONNULL *device)
+{
+    eReturnValues ret = NOT_SUPPORTED;
+#    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+    STORAGE_IDLE_POWER idlePower;
+    M_INITIALIZE_STRUCTURE(&idlePower, sizeof(STORAGE_IDLE_POWER));
+    idlePower.Version = 1;
+    idlePower.Size = sizeof(STORAGE_IDLE_POWER);
+    if (device->os_info.powerDesc.valid)
+    {
+        idlePower.WakeCapableHint = device->os_info.powerDesc.wakeSupported;
+        idlePower.D3ColdSupported = device->os_info.powerDesc.idleSupported;
+        idlePower.D3IdleTimeout = device->os_info.powerDesc.idleTimeMS;
+    }
+    ret = win_Enable_Idle_Power(device->os_info.fd, &idlePower);
+#    else
+    M_USE_UNUSED(device);
+#    endif
     return ret;
 }

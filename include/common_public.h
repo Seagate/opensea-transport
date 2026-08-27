@@ -1583,6 +1583,16 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                            // Windows' C:\Windows\System32, Linux's / & /boot, etc
     } fileSystemInfo;
 
+    typedef struct s_devicePowerDescriptor
+    {
+        bool valid; // Indicates if the power descriptor is valid
+        bool     idleSupported;
+        bool     wakeSupported;
+        bool     reservedBool1;
+        uint32_t idleTimeMS; // Idle time in milliseconds
+        uint8_t  reservedArray[24]; // Not sure if/when we will need to expand this in some capacity...reserving data for now. - TJE
+    } devicePowerDescriptor;
+
 #define OS_HANDLE_NAME_MAX_LENGTH          256
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
 #define OS_SECOND_HANDLE_NAME_LENGTH       30
@@ -1813,6 +1823,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         ptrCissDeviceInfo M_NULLABLE cissDeviceData; // This pointer is allocated only when CCISS is supported.
         eHandleOpenFlags             handleFlags;    // keeps track of the flags used when the handle was opened.
         uint8_t                      padd[2];        // padd to multiple of 8 bytes
+        devicePowerDescriptor powerDesc; // Holds the power descriptor information for the device
     } OSDriveInfo;
 
     //! \fn size_t get_Device_IO_Minimum_Alignment(const tDevice* M_NONNULL device)
@@ -2669,6 +2680,133 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* M_NONNULL device);
+
+    // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued,
+    // otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Device_Reset(const tDevice *device)
+    //
+    //! \brief   Description:  Attempts a device reset through OS functions available. NOTE: This won't work on every
+    //! device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
+    //!   OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Bus_Reset(const tDevice *device)
+    //
+    //! \brief   Description:  Attempts a bus reset through OS functions available. NOTE: This won't work on every
+    //! device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
+    //!   OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Controller_Reset(const tDevice *device)
+    //
+    //! \brief   Description:  Attempts a controller reset through OS functions available. NOTE: This won't work on
+    //! every device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
+    //!   OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(const tDevice* M_NONNULL device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Lock_Device(const tDevice *device)
+    //
+    //! \brief   Description:  Issues the FSCTL_LOCK_VOLUME ioctl on the open handle to prevent any interuptions during
+    //! a command or sequence of commands.
+    //!                        It is strongly recommended that the unlock is called after this is done to return the
+    //!                        device to a "sharing" mode again.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
+    //!   OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device);
+
+    OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Unlock_Device(const tDevice *device)
+    //
+    //! \brief   Description:  Issues the FSCTL_UNLOCK_VOLUME ioctl on the open handle to restore shared functionality
+    //! on the device.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
+    //!   OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Unlock_Device(const tDevice *device)
+    //
+    //! \brief   Description:  Issues IOCTL_DISK_UPDATE_PROPERTIES to force an update of the known filesystem...or
+    //! attempts to.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, NOT_SUPPORTED = IOCTL not available, or did not work. - TJE
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Update_File_System_Cache(const tDevice* M_NONNULL device);
+
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device);
+
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device);
+
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
+        os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device);
+
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device);
+
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNULL *device);
+
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice M_NONNULL *device);
 
     //-----------------------------------------------------------------------------
     //
