@@ -12895,7 +12895,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
     if (buffer == M_NULLPTR)
     {
 #    if defined(_DEBUG)
-        printf("%s: allocate buffer failed, exit", __FUNCTION__);
+        printf("%s: allocate buffer failed, exit\n", __FUNCTION__);
 #    endif
         return MEMORY_FAILURE;
     }
@@ -12925,7 +12925,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
     // Send request down.
     //
 #    if defined(_DEBUG)
-    printf("%s Drive Path = %s", __FUNCTION__, get_Device_Handle_Name(nvmeIoCtx->device));
+    printf("%s Drive Path = %s\n", __FUNCTION__, get_Device_Handle_Name(nvmeIoCtx->device));
 #    endif
     DECLARE_SEATIMER(commandTimer);
     start_Timer(&commandTimer);
@@ -12958,8 +12958,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
 
         protocolData = &protocolDataDescr->ProtocolSpecificData;
 
-        if ((protocolData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA)) ||
-            (protocolData->ProtocolDataLength < nvmeIoCtx->dataSize))
+        if (protocolData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA))
         {
 #    if defined(_DEBUG)
             printf("%s: Error Feature - ProtocolData Offset/Length not valid\n", __FUNCTION__);
