@@ -4208,7 +4208,49 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported   = true;
         device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR   = true;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 130560;
+        if (device->drive_info.adapter_info.revisionValid && device->drive_info.adapter_info.revision >= 0x4203) {
+            device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 524288;
+        } else {
+            device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+        }
+        break;
+    case 0x20B0:
+    case 0x20B1:
+    case 0x20AE:
+    case 0x20AF:
+    case 0x2092: // Firecuda X Vault
+        passthroughHacksSet                                                       = true;
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 14;
+        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages               = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
+        // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 524288;
+        break;
+    case 0x20AD: // Firecuda Forge in USB mode
+        passthroughHacksSet                                                       = true;
+        device->drive_info.passThroughHacks.passthroughType                       = NVME_PASSTHROUGH_ASMEDIA;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 34;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noModePages                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = false;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = false;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
         break;
     case 0x2100: // FreeAgent Go
         passthroughHacksSet                                                       = true;
