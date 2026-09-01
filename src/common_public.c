@@ -2227,7 +2227,7 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
                     {
                         // zeroes at the beginning. Strip them off
                         if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
-                                              safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN) &&
+                                              safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN) ||
                             0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
                                              safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN))
                         {
@@ -2241,7 +2241,7 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
                     else if (strncmp(zeroes, (*sn), 4) == 0)
                     {
                         // zeroes at the beginning. Strip them off
-                        if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4) &&
+                        if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4) ||
                             0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
                                              safe_strlen((*sn)) - 4))
                         {
@@ -2256,7 +2256,7 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
                     {
                         // after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from
                         // the end.
-                        if (0 != safe_memcpy((*sn), snlen, currentSerialNumber, M_Min(SERIAL_NUM_LEN, snlen)) &&
+                        if (0 != safe_memcpy((*sn), snlen, currentSerialNumber, M_Min(SERIAL_NUM_LEN, snlen)) ||
                             0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
                                              safe_strlen(currentSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN))
                         {
@@ -2273,7 +2273,7 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
         else if (strncmp(zeroes, (*sn), 4) == 0)
         {
             // 4 zeroes at the beginning. Strip them off
-            if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4) &&
+            if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4) ||
                 0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
                                  safe_strlen((*sn)) - 4))
             {
