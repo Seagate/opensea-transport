@@ -2170,10 +2170,11 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
         if (strncmp(zeroes, *sn, SEAGATE_SERIAL_NUMBER_LEN) == 0)
         {
             // 8 zeroes at the beginning. Strip them off
+            size_t serialNumberLength = safe_strlen(*sn);
             if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
-                                  safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN) &&
+                             serialNumberLength - SEAGATE_SERIAL_NUMBER_LEN) ||
                 0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                                 safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN))
+                            serialNumberLength - SEAGATE_SERIAL_NUMBER_LEN))
             {
                 perror("safe_memmove or safe_memset failure in seagate_External_SN_Cleanup when stripping zeroes from "
                        "beginning of SN");
