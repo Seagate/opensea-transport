@@ -251,7 +251,8 @@ M_PARAM_RW(1) eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
         M_INITIALIZE_STRUCTURE(realtekPayload, REALTEK_NVME_CMD_PAYLOAD_LEN);
         ret = build_Realtek_NVMe_CDB_And_Payload(realtekCDB, &realtekCDBDir, realtekPayload,
                                                  REALTEK_NVME_COMPLETION_PAYLOAD_LEN, REALTEK_PHASE_COMPLETION, nvmCmd);
-        if (SUCCESS == scsi_Send_Cdb(nvmCmd->device, realtekCDB, REALTEK_NVME_CDB_SIZE, realtekPayload,
+        if (SUCCESS == ret &&
+            SUCCESS == scsi_Send_Cdb(nvmCmd->device, realtekCDB, REALTEK_NVME_CDB_SIZE, realtekPayload,
                                      REALTEK_NVME_COMPLETION_PAYLOAD_LEN, realtekCDBDir, NULL, 0, 15))
         {
             nvmCmd->commandCompletionData.dw0Valid = true;
@@ -270,7 +271,9 @@ M_PARAM_RW(1) eReturnValues send_Realtek_NVMe_Cmd(nvmeCmdCtx* M_NONNULL nvmCmd)
                 M_BytesTo4ByteValue(realtekPayload[15], realtekPayload[14], realtekPayload[13], realtekPayload[12]);
         }
     }
-    return ret;
+    // Return the result of the data transfer phase. The completion phase read is only used to fill in the NVMe
+    // completion DWords for debugging and must not mask the actual command result.
+    return sendRet;
 }
 
 // cmds supported:
