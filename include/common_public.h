@@ -1058,12 +1058,12 @@ extern "C"
                                                   // as SAT allows since testing shows that even other sense codes still
                                                   // put the registers where SAT specifies
         SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, // libata / SATL quirk for ASC/ASCQ 21/04 ("Unaligned Write
-                             // Command"). Some translators return a fixed-format sense block
-                             // where ATA task-file bytes are only partially recoverable and may
-                             // be placed in non-standard locations. This mode means the caller
-                             // may recover whatever fields can be validated by NOP discovery,
-                             // must treat unrecovered fields as zero, and should prefer
-                             // WARN_INCOMPLETE_* when the response is only partially reliable.
+                                                  // Command"). Some translators return a fixed-format sense block
+                                                  // where ATA task-file bytes are only partially recoverable and may
+                                                  // be placed in non-standard locations. This mode means the caller
+                                                  // may recover whatever fields can be validated by NOP discovery,
+                                                  // must treat unrecovered fields as zero, and should prefer
+                                                  // WARN_INCOMPLETE_* when the response is only partially reliable.
         SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER, // Some SATLs (e.g., PMCS) return LBA bytes in Command
                                                                   // Specific Information with swapped byte order
     } eSATFixedFormatSenseHack;
@@ -1541,7 +1541,7 @@ extern "C"
     // forward declare csmi info to avoid including csmi_helper.h
     typedef struct s_csmiDeviceInfo csmiDeviceInfo, *ptrCsmiDeviceInfo;
 
-    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo * M_NULLABLE * M_NULLABLE csmidevinfo)
+    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo* M_NULLABLE* M_NULLABLE csmidevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, csmidevinfo));
     }
@@ -1549,7 +1549,7 @@ extern "C"
     // forward declare cciss device
     typedef struct s_cissDeviceInfo cissDeviceInfo, *ptrCissDeviceInfo;
 
-    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo * M_NULLABLE * M_NULLABLE cissdevinfo)
+    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo* M_NULLABLE* M_NULLABLE cissdevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, cissdevinfo));
     }
@@ -1585,12 +1585,13 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     typedef struct s_devicePowerDescriptor
     {
-        bool valid; // Indicates if the power descriptor is valid
+        bool     valid; // Indicates if the power descriptor is valid
         bool     idleSupported;
         bool     wakeSupported;
         bool     reservedBool1;
-        uint32_t idleTimeMS; // Idle time in milliseconds
-        uint8_t  reservedArray[24]; // Not sure if/when we will need to expand this in some capacity...reserving data for now. - TJE
+        uint32_t idleTimeMS;       // Idle time in milliseconds
+        uint8_t reservedArray[24]; // Not sure if/when we will need to expand this in some capacity...reserving data for
+                                   // now. - TJE
     } devicePowerDescriptor;
 
 #define OS_HANDLE_NAME_MAX_LENGTH          256
@@ -1823,7 +1824,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         ptrCissDeviceInfo M_NULLABLE cissDeviceData; // This pointer is allocated only when CCISS is supported.
         eHandleOpenFlags             handleFlags;    // keeps track of the flags used when the handle was opened.
         uint8_t                      padd[2];        // padd to multiple of 8 bytes
-        devicePowerDescriptor powerDesc; // Holds the power descriptor information for the device
+        devicePowerDescriptor        powerDesc;      // Holds the power descriptor information for the device
     } OSDriveInfo;
 
     //! \fn size_t get_Device_IO_Minimum_Alignment(const tDevice* M_NONNULL device)
@@ -2803,10 +2804,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNULL *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNULL* device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice M_NONNULL *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice M_NONNULL* device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2857,7 +2858,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int        flags,
                                                                     eVerbosityLevels    scanVerbosity,
                                                                     uint32_t* M_NONNULL numberOfDevices,
-                                                                    scanDriveInfo * M_NONNULL * M_NULLABLE deviceList);
+                                                                    scanDriveInfo* M_NONNULL* M_NULLABLE deviceList);
 
     //-----------------------------------------------------------------------------
     //

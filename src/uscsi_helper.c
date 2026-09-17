@@ -141,14 +141,14 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
     if ((device->os_info.fd >= 0) && (ret == SUCCESS))
     {
         DECLARE_ZERO_INIT_ARRAY(char, tempFriendlyNameBuf, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
-        char *tempFriendlyName = tempFriendlyNameBuf;
+        char* tempFriendlyName = tempFriendlyNameBuf;
         // set the friendly name
         set_Device_Name(deviceHandle, tempFriendlyName, OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH);
 
         set_Device_Name_In_tDevice(device, deviceHandle, tempFriendlyName);
 
         DECLARE_ZERO_INIT_ARRAY(char, tempSecondNameBuf, OS_SECOND_HANDLE_NAME_LENGTH);
-        char *tempSecondName = tempSecondNameBuf;
+        char* tempSecondName = tempSecondNameBuf;
 
         // set the block handle
         if (0 > snprintf_err_handle(tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s", tempFriendlyName))
@@ -770,16 +770,13 @@ OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(const tDev
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
-	return NOT_SUPPORTED;
+    return NOT_SUPPORTED;
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
-	return NOT_SUPPORTED;
+    return NOT_SUPPORTED;
 }
-
-
-

@@ -48,4 +48,3 @@
 #else
 #    error "Unknown OS. Need to specify helper.h to use\n"
 #endif
-

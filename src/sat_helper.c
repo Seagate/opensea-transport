@@ -1329,15 +1329,15 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                 // Primary observed mapping: status at byte 9, error at byte 8.
                 uint8_t extractedStatus = csiB1;
                 uint8_t extractedError  = csiB0;
-                bool drqAllowed         = (ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO &&
+                bool    drqAllowed      = (ataCommandOptions->commadProtocol == ATA_PROTOCOL_PIO &&
                                    ataCommandOptions->commandDirection == XFER_DATA_IN);
 
                 // libata 21/04 may include additional status bits beyond READY/ERROR. DRQ is only tolerated for
                 // PIO data-in; other bits are allowed because they may be carried through from the translator's
                 // taskfile snapshot and do not invalidate the recovery by themselves. BUSY remains a hard reject.
-                bool statusLooksValid = ((extractedStatus & ATA_STATUS_BIT_READY) &&
-                                         (extractedStatus & ATA_STATUS_BIT_ERROR) &&
-                                         !(extractedStatus & ATA_STATUS_BIT_BUSY));
+                bool statusLooksValid =
+                    ((extractedStatus & ATA_STATUS_BIT_READY) && (extractedStatus & ATA_STATUS_BIT_ERROR) &&
+                     !(extractedStatus & ATA_STATUS_BIT_BUSY));
 
                 if (statusLooksValid && (drqAllowed || !(extractedStatus & ATA_STATUS_BIT_DATA_REQUEST)) &&
                     extractedError == ATA_ERROR_BIT_ABORT)
@@ -1390,10 +1390,10 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                     }
                     else
                     {
-                        print_tDevice_Verbose_Formatted_String(
-                            device, VERBOSITY_COMMAND_VERBOSE,
-                            "Post-execution: COUNT 0x%02X matched %u locations in sense buffer; rejecting as ambiguous\n",
-                            requestedCount, countMatchCount);
+                        print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                               "Post-execution: COUNT 0x%02X matched %u locations in "
+                                                               "sense buffer; rejecting as ambiguous\n",
+                                                               requestedCount, countMatchCount);
                     }
                 }
 

@@ -799,6 +799,14 @@ extern "C"
                                             // data....this shouldn't be used when reading this page from a SAS device.
     } eScsiLogPageLengths;
 
+    typedef enum eScsiLogPageFmtAndLink
+    {
+        LP_FMT_AND_LINK_BOUNDED_DATA_COUNTER              = 0x00,
+        LP_FMT_AND_LINK_ASCII_FORMAT_LIST                 = 0x01,
+        LP_FMT_AND_LINK_BOUNDED_OR_UNBOUNDED_DATA_COUNTER = 0x02,
+        LP_FMT_AND_LINK_BINARY_FORMAT_LIST                = 0x03
+    } eScsiLogPageFmtAndLink;
+
 //! \def SCSI_FORMAT_STATUS_LOG_PAGE_MAX_LENGTH
 //! \brief Conservative maximum buffer size for the FORMAT STATUS log page (0x08).
 //!        Derivation: LOG_PAGE_HEADER_LENGTH (4)

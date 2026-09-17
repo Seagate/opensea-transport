@@ -27,7 +27,6 @@ extern "C"
                // Anything with this value will round up to infinite in UEFI...where a timeout this long may as well be
                // infinite
 
-
 #if defined(__cplusplus)
 }
 #endif

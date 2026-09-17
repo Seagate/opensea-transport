@@ -1786,8 +1786,8 @@ OPENSEA_TRANSPORT_API bool read_ATA_String(uint8_t* M_NONNULL ptrRawATAStr,
                 outstr[striter] = M_STATIC_CAST(char, ptrRawATAStr[striter + SIZE_T_C(1)]);
             }
         }
-        outstr[outstrLen - SIZE_T_C(1)] = '\0';
-        success                         = true;
+        null_Terminate_String(outstr, outstrLen);
+        success = true;
     }
 
     return success;
@@ -2098,7 +2098,7 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
     // sense code across all NOP probes. We use that repeated signature to arm the
     // unaligned-write workaround even when the NOP command itself does not return ABORTED.
     uint8_t unalignedWriteResponses = 0;
-    int     confidenceScore      = 0; // Track confidence in results (higher = more confident)
+    int     confidenceScore         = 0; // Track confidence in results (higher = more confident)
 
     // Print diagnostic info about SAT translator (helpful for debugging VPD issues)
     print_tDevice_Verbose_Formatted_String(
@@ -2134,8 +2134,8 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
 
         senseDataFields nopSenseFields;
         get_Sense_Data_Fields(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN, &nopSenseFields);
-        if (nopSenseFields.validStructure && nopSenseFields.fixedFormat &&
-            nopSenseFields.scsiStatusCodes.asc == 0x21 && nopSenseFields.scsiStatusCodes.ascq == 0x04)
+        if (nopSenseFields.validStructure && nopSenseFields.fixedFormat && nopSenseFields.scsiStatusCodes.asc == 0x21 &&
+            nopSenseFields.scsiStatusCodes.ascq == 0x04)
         {
             ++unalignedWriteResponses;
         }
