@@ -26,6 +26,7 @@
 #include "common_public.h"
 #include "netbsd_openbsd_helper.h"
 #include "nix_mounts.h"
+#include "nvme_helper_func.h"
 #include "posix_common_lowlevel.h"
 
 #include <dirent.h>
