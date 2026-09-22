@@ -1593,10 +1593,12 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         uint8_t  reservedArray[24]; // Not sure if/when we will need to expand this in some capacity...reserving data for now. - TJE
     } devicePowerDescriptor;
 
+#define OS_COMMON_HANDLE_NAME_LEN (30)
+
 #define OS_HANDLE_NAME_MAX_LENGTH          256
-#define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
-#define OS_SECOND_HANDLE_NAME_LENGTH       30
-#define OS_THIRD_HANDLE_NAME_LENGTH        30
+#define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH OS_COMMON_HANDLE_NAME_LEN
+#define OS_SECOND_HANDLE_NAME_LENGTH       OS_COMMON_HANDLE_NAME_LEN
+#define OS_THIRD_HANDLE_NAME_LENGTH        OS_COMMON_HANDLE_NAME_LEN
     // \struct typedef struct s_OSDriveInfo
     typedef struct s_OSDriveInfo
     {
@@ -1892,7 +1894,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     typedef eReturnValues (*issue_io_func)(void* M_NONNULL);
 
-#define DEVICE_BLOCK_VERSION (12)
+#define DEVICE_BLOCK_VERSION (13)
 
     // verification for compatibility checking
     typedef struct s_versionBlock
