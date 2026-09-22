@@ -28,6 +28,7 @@
 #include "nix_mounts.h"
 #include "nvme_helper_func.h"
 #include "posix_common_lowlevel.h"
+#include "scsi_helper_func.h"
 
 #include <dirent.h>
 #include <fcntl.h>
