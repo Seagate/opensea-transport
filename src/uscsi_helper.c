@@ -154,7 +154,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
         // set the block handle
         if (0 > snprintf_err_handle(tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s", tempFriendlyName))
         {
-            print_tDevice_Verbose_Formatted_String(device, "Error creating second handle name for device %s\n", deviceHandle);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Error creating second handle name for device %s\n", deviceHandle);
         }
 
         set_Second_Device_Name_In_tDevice(device, tempSecondName, tempFriendlyName);
