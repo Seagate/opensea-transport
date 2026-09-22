@@ -15957,7 +15957,7 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(const tDevice* M_NONN
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNULL *device)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = NOT_SUPPORTED;
 #    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
@@ -15974,7 +15974,7 @@ OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNUL
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice M_NONNULL *device)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = NOT_SUPPORTED;
 #    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8

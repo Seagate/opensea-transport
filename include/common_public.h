@@ -87,7 +87,7 @@ extern "C"
 #define MODEL_NUM_LEN              (40)
 #define FW_REV_LEN                 (8)
 #define T10_VENDOR_ID_LEN          (8)
-#define DEFAULT_COMMAND_TIMEOUT    (15) // Seconds
+#define DEFAULT_COMMAND_TIMEOUT    (30) // Seconds
 
     // Forward declare tDevice.
     typedef struct s_tDevice tDevice;
@@ -2803,10 +2803,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNULL *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice M_NONNULL *device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
