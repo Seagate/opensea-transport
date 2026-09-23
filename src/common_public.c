@@ -1296,6 +1296,35 @@ OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLev
     safe_free(C_CAST(void**, &scanDeviceList));
 }
 
+// When a drive is behind a USB/SAT bridge, the standard drive info fields hold the bridge's SCSI identity while the
+// actual drive's identity is stored in the bridge info (child MN/SN/FW). This returns the identity strings for
+// display purposes, preferring the child drive identity when it is available.
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+M_PARAM_RW(3)
+M_PARAM_RW(4)
+OPENSEA_TRANSPORT_API void get_Device_Strings_For_Display(const tDevice* M_NONNULL device,
+                                                          const char** M_NONNULL   modelString,
+                                                          const char** M_NONNULL   serialString,
+                                                          const char** M_NONNULL   fwString)
+{
+    *modelString  = device->drive_info.product_identification;
+    *serialString = device->drive_info.serialNumber;
+    *fwString     = device->drive_info.product_revision;
+    if (device->drive_info.bridge_info.isValid && device->drive_info.bridge_info.childDriveMN[0] != '\0')
+    {
+        *modelString = device->drive_info.bridge_info.childDriveMN;
+        if (device->drive_info.bridge_info.childDriveSN[0] != '\0')
+        {
+            *serialString = device->drive_info.bridge_info.childDriveSN;
+        }
+        if (device->drive_info.bridge_info.childDriveFW[0] != '\0')
+        {
+            *fwString = device->drive_info.bridge_info.childDriveFW;
+        }
+    }
+}
+
 M_PARAM_RW(3)
 M_PARAM_RW(4)
 OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int        flags,
@@ -1465,9 +1494,18 @@ OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int    
                         }
 #endif
 
+                        // When a drive is behind a USB/SAT bridge, the standard drive info fields hold the bridge's
+                        // SCSI identity while the actual drive's identity is stored in the bridge info (child
+                        // MN/SN/FW). Prefer the child drive identity when it is available so the scan shows the real
+                        // drive.
+                        const char* modelString  = M_NULLPTR;
+                        const char* serialString = M_NULLPTR;
+                        const char* fwString     = M_NULLPTR;
+                        get_Device_Strings_For_Display(&deviceList[devIter], &modelString, &serialString, &fwString);
+
                         // model number
                         if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].modelNumber, MODEL_NUM_LEN + 1,
-                                             deviceList[devIter].drive_info.product_identification))
+                                             modelString))
                             M_UNLIKELY
                             {
                                 perror("Error coping drive data for scan output");
@@ -1475,7 +1513,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int    
 
                         // serial number
                         if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1,
-                                             deviceList[devIter].drive_info.serialNumber))
+                                             serialString))
                             M_UNLIKELY
                             {
                                 perror("Error coping drive data for scan output");
@@ -1496,7 +1534,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int    
 
                         // firmware version
                         if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].firmwareVersion, FW_REV_LEN + 1,
-                                             deviceList[devIter].drive_info.product_revision))
+                                             fwString))
                             M_UNLIKELY
                             {
                                 perror("Error coping drive data for scan output");
@@ -6114,6 +6152,8 @@ static bool set_Realtek_USB_Hacks_By_PID(tDevice* M_NONNULL device)
         device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe =
             true; // no way to tell at this point. Will need to make full determination in the fill_ATA_Info
                   // function
+        device->drive_info.passThroughHacks.ataPTHacks.knownRealtekUSB =
+            true; // this is an actual Realtek bridge, so the Realtek NVMe passthrough discovery is safe to try
         device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands =
             true; // probably not needed, but after what I saw testing this, it can't hurt to set this
         break;

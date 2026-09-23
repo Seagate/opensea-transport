@@ -70,6 +70,14 @@ M_PARAM_RW(1) eReturnValues fill_In_NVMe_Device_Info(tDevice* device)
 {
     eReturnValues ret = UNKNOWN;
 
+    // USB bridges generally do not report a namespace ID, so namespace-specific commands (e.g. Identify Namespace)
+    // would be sent with an NSID of 0 and fail with Invalid Namespace or Format. NVMe namespaces are 1-based, so
+    // default to namespace 1 for these devices.
+    if (device->drive_info.namespaceID == 0)
+    {
+        device->drive_info.namespaceID = 1;
+    }
+
     // set some pointers to where we want to fill in information...we're doing this so that on USB, we can store some
     // info about the child drive, without disrupting the standard drive_info that has already been filled in by the
     // fill_SCSI_Info function
