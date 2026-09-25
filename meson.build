@@ -17,6 +17,7 @@ c = meson.get_compiler('c')
 
 warning_flags = []
 linker_flags = []  #additional linker flags to add per-compiler for hardening.
+ssp_support_dep = []  #Solaris/illumos SSP support library, propagated to consumers of this library
 
 if c.get_id().contains('gcc') or c.get_id().contains('clang')
     #TODO: Add -Wcast-align=strict and fix these issues to help ensure better portability
@@ -163,10 +164,36 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
                 args: ['-fstack-protector'],
             )
         endif
-        if ssp_strong_ok
-            warning_flags += '-fstack-protector-strong'
-        elif ssp_regular_ok
-            warning_flags += '-fstack-protector'
+        if ssp_strong_ok or ssp_regular_ok
+            #On Solaris/illumos the SSP glue symbols (__stack_chk*) are only
+            #resolved through the platform SSP support library and that only
+            #reaches a ninja link line as an explicit library dependency, so
+            #SSP is enabled only when the platform ships it.
+            #ssp_support_dep propagates it to consumers of this library.
+            ssp_available = true
+            if target_machine.system() == 'sunos'
+                #illumos (OmniOS, Tribblix, OpenIndiana) ships libssp_ns.a,
+                #classic Oracle Solaris ships libssp.a
+                ssp_available = false
+                ssp_ns_dep = c.find_library('ssp_ns', required: false)
+                if ssp_ns_dep.found()
+                    ssp_support_dep = [ssp_ns_dep]
+                    ssp_available = true
+                else
+                    ssp_dep = c.find_library('ssp', required: false)
+                    if ssp_dep.found()
+                        ssp_support_dep = [ssp_dep]
+                        ssp_available = true
+                    endif
+                endif
+            endif
+            if ssp_available
+                if ssp_strong_ok
+                    warning_flags += '-fstack-protector-strong'
+                else
+                    warning_flags += '-fstack-protector'
+                endif
+            endif
         endif
     endif
 
@@ -521,6 +548,6 @@ opensea_transport_lib = library(
 opensea_transport_dep = declare_dependency(
     link_with: opensea_transport_lib,
     compile_args: global_cpp_args + dep_c_args,
-    dependencies: os_deps,
+    dependencies: [os_deps, ssp_support_dep],
     include_directories: incdir,
 )
