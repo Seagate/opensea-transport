@@ -1303,10 +1303,10 @@ M_PARAM_RO(1)
 M_PARAM_RW(2)
 M_PARAM_RW(3)
 M_PARAM_RW(4)
-OPENSEA_TRANSPORT_API void get_Device_Strings_For_Display(const tDevice* M_NONNULL device,
-                                                          const char** M_NONNULL   modelString,
-                                                          const char** M_NONNULL   serialString,
-                                                          const char** M_NONNULL   fwString)
+OPENSEA_TRANSPORT_API void get_Device_Strings_For_Display(const tDevice* M_NONNULL         device,
+                                                          const char* M_NONNULL* M_NONNULL modelString,
+                                                          const char* M_NONNULL* M_NONNULL serialString,
+                                                          const char* M_NONNULL* M_NONNULL fwString)
 {
     *modelString  = device->drive_info.product_identification;
     *serialString = device->drive_info.serialNumber;
@@ -2210,9 +2210,9 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
             // 8 zeroes at the beginning. Strip them off
             size_t serialNumberLength = safe_strlen(*sn);
             if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
-                             serialNumberLength - SEAGATE_SERIAL_NUMBER_LEN) ||
+                                  serialNumberLength - SEAGATE_SERIAL_NUMBER_LEN) ||
                 0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                            serialNumberLength - SEAGATE_SERIAL_NUMBER_LEN))
+                                 serialNumberLength - SEAGATE_SERIAL_NUMBER_LEN))
             {
                 perror("safe_memmove or safe_memset failure in seagate_External_SN_Cleanup when stripping zeroes from "
                        "beginning of SN");
@@ -4246,9 +4246,12 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported   = true;
         device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR   = true;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-        if (device->drive_info.adapter_info.revisionValid && device->drive_info.adapter_info.revision >= 0x4203) {
+        if (device->drive_info.adapter_info.revisionValid && device->drive_info.adapter_info.revision >= 0x4203)
+        {
             device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 524288;
-        } else {
+        }
+        else
+        {
             device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
         }
         break;
@@ -7407,10 +7410,8 @@ get_Child_Logical_Sectors_Per_Physical_Sector(const tDevice* M_NONNULL device) M
         {
             return UINT16_C(1); // avoid division by zero
         }
-        return C_CAST(
-            uint16_t,
-            device->drive_info.bridge_info.childDevicePhyBlockSize / device->drive_info.bridge_info.childDeviceBlockSize
-                                    );
+        return C_CAST(uint16_t, device->drive_info.bridge_info.childDevicePhyBlockSize /
+                                    device->drive_info.bridge_info.childDeviceBlockSize);
     }
     return 1;
 }
