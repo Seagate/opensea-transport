@@ -9916,7 +9916,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(M_ATTR_UNU
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (get_Device_Handle_Open_Flags(device) == HANDLE_FLAGS_DEFAULT &&
@@ -15958,7 +15958,7 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(const tDevice* M_NONN
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNULL* device)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = NOT_SUPPORTED;
 #if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
@@ -15975,7 +15975,7 @@ OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNUL
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice M_NONNULL* device)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = NOT_SUPPORTED;
 #if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8

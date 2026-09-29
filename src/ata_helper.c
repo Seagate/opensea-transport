@@ -3242,6 +3242,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
             print_tDevice_Verbose_String(device, VERBOSITY_DEFAULT,
                                          "         this may cause adverse behavior and require --forceSCSI\n");
             device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe = true;
+            device->drive_info.passThroughHacks.ataPTHacks.knownRealtekUSB      = true;
         }
 
         if (get_Device_InterfaceType(device) == SCSI_INTERFACE)

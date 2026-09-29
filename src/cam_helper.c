@@ -2244,7 +2244,7 @@ eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
     return NOT_SUPPORTED;
 }
 
-OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* M_NONNULL device)
 {
     return SUCCESS;
 }

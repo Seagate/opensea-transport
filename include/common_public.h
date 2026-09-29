@@ -87,7 +87,7 @@ extern "C"
 #define MODEL_NUM_LEN              (40)
 #define FW_REV_LEN                 (8)
 #define T10_VENDOR_ID_LEN          (8)
-#define DEFAULT_COMMAND_TIMEOUT    (15) // Seconds
+#define DEFAULT_COMMAND_TIMEOUT    (30) // Seconds
 
     // Forward declare tDevice.
     typedef struct s_tDevice tDevice;
@@ -1270,9 +1270,12 @@ extern "C"
             bool possilbyEmulatedNVMe; // realtek's USB to M.2 adapter can do AHCI or NVMe. Since nothing changes in IDs
                                        // and it emulates ATA identify data, need this to work around how it reports.
                                        // -TJE
-            bool smartEnabled;         // Override check of ATA word 85, bit0 since some USB adapters don't set this.
-            bool retryWithJMicronPT;   // Needed for some JMicron adapters. Newer may support SAT, older support their
-                                       // lagacy passthrough, so this is to retry on these devices.
+            bool knownRealtekUSB; // Set for bridges identified as a Realtek USB to NVMe/SATA adapter (by VID/PID or the
+                                  // ATA path RTL9210 heuristic). Separate from possilbyEmulatedNVMe because branded
+                                  // adapters (e.g. Seagate) also set that flag and still need SAT.
+            bool smartEnabled;    // Override check of ATA word 85, bit0 since some USB adapters don't set this.
+            bool retryWithJMicronPT; // Needed for some JMicron adapters. Newer may support SAT, older support their
+                                     // lagacy passthrough, so this is to retry on these devices.
             bool jmPTDevSet; // for JMicron's passthrough we need to set dev 0 or 1. This gets turned to true once set
             bool nonDataCountBroken;  // Implemented due to Broadcom HBA firmware bug. When issuing a non-data command
                                       // with non-zero count, it zeroes it to the drive. So this creates unexpected
@@ -1594,10 +1597,12 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                                    // now. - TJE
     } devicePowerDescriptor;
 
+#define OS_COMMON_HANDLE_NAME_LEN          (30)
+
 #define OS_HANDLE_NAME_MAX_LENGTH          256
-#define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
-#define OS_SECOND_HANDLE_NAME_LENGTH       30
-#define OS_THIRD_HANDLE_NAME_LENGTH        30
+#define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH OS_COMMON_HANDLE_NAME_LEN
+#define OS_SECOND_HANDLE_NAME_LENGTH       OS_COMMON_HANDLE_NAME_LEN
+#define OS_THIRD_HANDLE_NAME_LENGTH        OS_COMMON_HANDLE_NAME_LEN
     // \struct typedef struct s_OSDriveInfo
     typedef struct s_OSDriveInfo
     {
@@ -1893,7 +1898,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     typedef eReturnValues (*issue_io_func)(void* M_NONNULL);
 
-#define DEVICE_BLOCK_VERSION (12)
+#define DEVICE_BLOCK_VERSION (13)
 
     // verification for compatibility checking
     typedef struct s_versionBlock
@@ -2804,10 +2809,10 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice M_NONNULL* device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
-    OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice M_NONNULL* device);
+    OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice* M_NONNULL device);
 
     //-----------------------------------------------------------------------------
     //
@@ -2825,6 +2830,34 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device_Strings_For_Display()
+    //
+    //! \brief   Description:  Returns the model, serial number, and firmware revision strings to use for display.
+    //!                        When a drive is behind a USB/SAT bridge, the standard drive info fields hold the bridge's
+    //!                        SCSI identity while the actual drive's identity is stored in the bridge info (child
+    //!                        MN/SN/FW). The child drive identity is preferred when it is available.
+    //!
+    //  Entry:
+    //!   \param[in] device = the device to get the strings for
+    //!   \param[out] modelString = pointer to a const char* to receive the model number string
+    //!   \param[out] serialString = pointer to a const char* to receive the serial number string
+    //!   \param[out] fwString = pointer to a const char* to receive the firmware revision string
+    //!
+    //  Exit:
+    //!   \return void
+    //
+    //-----------------------------------------------------------------------------
+    M_PARAM_RO(1)
+    M_PARAM_RW(2)
+    M_PARAM_RW(3)
+    M_PARAM_RW(4)
+    OPENSEA_TRANSPORT_API void get_Device_Strings_For_Display(const tDevice* M_NONNULL         device,
+                                                              const char* M_NONNULL* M_NONNULL modelString,
+                                                              const char* M_NONNULL* M_NONNULL serialString,
+                                                              const char* M_NONNULL* M_NONNULL fwString);
 
 #define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
     typedef struct s_scanDriveInfo
