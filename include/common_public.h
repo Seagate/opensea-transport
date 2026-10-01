@@ -879,10 +879,10 @@ extern "C"
         char driverVersionString[MAX_DRIVER_VER_STR]; // raw, unparsed string in case parsing into below values goes
                                                       // wrong due to variability in how this is reported between linux
                                                       // drivers.-TJE
-        bool     majorVerValid;
-        bool     minorVerValid;
-        bool     revisionVerValid;
-        bool     buildVerValid;
+        bool majorVerValid;
+        bool minorVerValid;
+        bool revisionVerValid;
+        bool buildVerValid;
         uint8_t  reserved[4];
         uint32_t driverMajorVersion;
         uint32_t driverMinorVersion;
@@ -923,10 +923,10 @@ extern "C"
         ATA_PASSTHROUGH_UNKNOWN = 99, // final value to be used by ATA passthrough types
         // NVMe stuff defined here. All NVMe stuff should be 100 or higher with the exception of the default system
         // passthrough
-        NVME_PASSTHROUGH_SYSTEM = 0, // This is for NVMe devices to use the system passthrough. This is the default
-                                     // since this is most NVMe devices.
-        NVME_PASSTHROUGH_JMICRON       = 100,
-        NVME_PASSTHROUGH_ASMEDIA       = 101, // ASMedia packet command, which is capable of passing any command
+        NVME_PASSTHROUGH_SYSTEM  = 0, // This is for NVMe devices to use the system passthrough. This is the default
+                                      // since this is most NVMe devices.
+        NVME_PASSTHROUGH_JMICRON = 100,
+        NVME_PASSTHROUGH_ASMEDIA = 101,       // ASMedia packet command, which is capable of passing any command
         NVME_PASSTHROUGH_ASMEDIA_BASIC = 102, // ASMedia command that is capable of only select commands. Must be after
                                               // full passthrough that way when trying one passthrough after another it
                                               // can properly find full capabilities before basic capabilities.
@@ -976,10 +976,10 @@ extern "C"
                                                // removed a long time ago, but can affect just about any pata device.
                                                // This helps change when to set them as they are not needed on SATA (or
                                                // shouldn't be)
-        bool    dcoDMASupported;               // DCO identify and DCO set DMA commands are supported.
-        bool    hpaSecurityExtDMASupported;    // HPA security extension DMA commands are supported.
-        bool    sanitizeOverwriteDefinitiveEndingPattern;
-        bool    nopSupported; // NOP supported bit in identify is set.
+        bool dcoDMASupported;                  // DCO identify and DCO set DMA commands are supported.
+        bool hpaSecurityExtDMASupported;       // HPA security extension DMA commands are supported.
+        bool sanitizeOverwriteDefinitiveEndingPattern;
+        bool nopSupported;   // NOP supported bit in identify is set.
         uint8_t reserved[3]; // reserved padding to keep 8 byte aligned structure for any necessary flags in the future.
     } ataOptions;
 
@@ -1026,7 +1026,7 @@ extern "C"
                                         // the software SAT layer. false = fixed format, true = descriptor format
         bool dataSetManagementXLSupported; // Needed to help the translator know when this command is supported so it
                                            // can be used.
-        bool          zeroExtSupported;
+        bool zeroExtSupported;
         uint8_t       rtfrIndex;
         ataReturnTFRs ataPassthroughResults[16];
         // Other flags that would simplify the software SAT code:
@@ -1181,14 +1181,14 @@ extern "C"
             uint8_t attemptedVPDs;
             uint8_t successfulVPDs; // counter for number of times a VPD page read correctly. Can be used for automatic
                                     // setting of hacks.
-            bool cmdDTchecked;   // SPC cmdDT to check for commands supported. Old and replaced by report supported op
-                                 // codes. This is here so it can be checked in a function and stored while running
-            bool cmdDTSupported; // If above bool is true, then this holds if cmdDT is supported and can be used to
-                                 // check if commands are supported or not. Really only for old drives -TJE
-            bool     noCompareLogicalBlocks; // when set, the verify with bytecheck = 1 is not supported
-            uint32_t maxTransferLength;      // Maximum SCSI command transfer length in bytes. Mostly here for USB where
-                                             // translations aren't accurate or don't show this properly.
-            int8_t readBufferCmdSize;        // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
+            bool    cmdDTchecked; // SPC cmdDT to check for commands supported. Old and replaced by report supported op
+                                  // codes. This is here so it can be checked in a function and stored while running
+            bool    cmdDTSupported; // If above bool is true, then this holds if cmdDT is supported and can be used to
+                                    // check if commands are supported or not. Really only for old drives -TJE
+            bool    noCompareLogicalBlocks; // when set, the verify with bytecheck = 1 is not supported
+            uint32_t maxTransferLength;     // Maximum SCSI command transfer length in bytes. Mostly here for USB where
+                                            // translations aren't accurate or don't show this properly.
+            int8_t   readBufferCmdSize;     // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
             bool noSATVPDPage; // when this is set, the SAT VPD is not available and should not be read, skipping ahead
                                // to instead directly trying a passthrough command
             int8_t syncCacheCmdSize;      // 0 = not set, <0 = not supported, 10 = 10B version, 16 = 16B version
@@ -1393,7 +1393,7 @@ extern "C"
         uint8_t lastCommandSenseData[SPC3_SENSE_LEN]; // This holds the sense data for the last command to be sent to
                                                       // the device. This is not necessarily the last function called as
                                                       // functions may send multiple commands to the device.
-        bool dpoFUAvalid;
+        bool    dpoFUAvalid;
         bool dpoFUA; // for use in cmds.h read/write functions. May be useful elsewhere too. This is not initialized by
                      // fill drive info at this time. It is populated when calling read_LBA or write_LBA.
         uint8_t padd5[2];
@@ -1412,8 +1412,8 @@ extern "C"
         ataOptions  ata_Options;
         uint64_t    lastCommandTimeNanoSeconds; // The time the last command took in nanoseconds
         softwareSATFlags
-            softSATFlags; // This is used by the software SAT translation layer. DO NOT Update this directly. This
-                          // should only be updated by the lower layers of opensea-transport.
+                 softSATFlags; // This is used by the software SAT translation layer. DO NOT Update this directly. This
+                               // should only be updated by the lower layers of opensea-transport.
         uint32_t defaultTimeoutSeconds; // If this is not set (set to zero), a default value of 15 seconds will be used.
         uint8_t  padd6[4];
         union
@@ -1544,7 +1544,7 @@ extern "C"
     // forward declare csmi info to avoid including csmi_helper.h
     typedef struct s_csmiDeviceInfo csmiDeviceInfo, *ptrCsmiDeviceInfo;
 
-    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo* M_NULLABLE* M_NULLABLE csmidevinfo)
+    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo * M_NULLABLE * M_NULLABLE csmidevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, csmidevinfo));
     }
@@ -1552,7 +1552,7 @@ extern "C"
     // forward declare cciss device
     typedef struct s_cissDeviceInfo cissDeviceInfo, *ptrCissDeviceInfo;
 
-    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo* M_NULLABLE* M_NULLABLE cissdevinfo)
+    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo * M_NULLABLE * M_NULLABLE cissdevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, cissdevinfo));
     }
@@ -1603,13 +1603,31 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 #define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH OS_COMMON_HANDLE_NAME_LEN
 #define OS_SECOND_HANDLE_NAME_LENGTH       OS_COMMON_HANDLE_NAME_LEN
 #define OS_THIRD_HANDLE_NAME_LENGTH        OS_COMMON_HANDLE_NAME_LEN
+
+#if defined(__linux__) && !defined(VMK_CROSS_COMP)
+    //! \enum eLinuxHandleType
+    //! \brief Enum representing different Linux handle types.
+    //!
+    //! This enum defines various Linux handle types supported by the application.
+    M_DECLARE_ENUM(eLinuxHandleType,
+                   /*!< Unknown Linux handle type. */
+                   LINUX_HANDLE_TYPE_UNKNOWN,
+                   /*!< SCSI generic (sg) handle type. */
+                   LINUX_HANDLE_TYPE_SG,
+                   /*!< Block SCSI generic (bsg) handle type. */
+                   LINUX_HANDLE_TYPE_BSG,
+                   /*!< Block (sd) handle type. */
+                   LINUX_HANDLE_TYPE_SD,
+                   /*!< Add more Linux handle types here as we add support for them in our libraries. */
+    );
+#endif
     // \struct typedef struct s_OSDriveInfo
     typedef struct s_OSDriveInfo
     {
-        char name[OS_HANDLE_NAME_MAX_LENGTH];                  // handle name (string)
-        char friendlyName[OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH]; // Handle name in a shorter/more friendly format.
-                                                               // Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
-        eOSType  osType;                                       // useful for lower layers to do OS specific things
+        char     name[OS_HANDLE_NAME_MAX_LENGTH];                  // handle name (string)
+        char     friendlyName[OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH]; // Handle name in a shorter/more friendly format.
+                                                                   // Example: name=\\.\PHYSICALDRIVE0 friendlyName=PD0
+        eOSType  osType;                                           // useful for lower layers to do OS specific things
         uint16_t minimumAlignment; // This is a power of 2 value representing the byte alignment required. 0 - no
                                    // requirement, 1 - single byte alignment, 2 - word, 4 - dword, 8 - qword, 16 -
                                    // 128bit aligned
@@ -1655,7 +1673,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     int                 fd;
     struct nvme_handle* nvmeFd;
 #    else
-    int fd; // primary handle
+    int              fd; // primary handle
+    eLinuxHandleType fdType;
 #    endif
     bool scsiAddressValid; // will be true if the SCSI address is a valid address
     struct
@@ -1683,10 +1702,12 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     int                 fd2;
     struct nvme_handle* nvmeFd2;
 #    else
-    bool fd2Opened; // Ex: fd = sg/bsg handle opened, fd2 = sd handle opened.
-    int  fd2;       // second handle. Ex: fd = sg/bsg handle opened, fd2 = sd handle opened.
-    bool fd3Opened; // Ex: fd = bsg handle opened, fd3 = sg handle opened.
-    int  fd3;       // third handle. Ex: fd = bsg handle opened, fd3 = sg handle opened.
+    bool             fd2Opened; // Ex: fd = sg/bsg handle opened, fd2 = sd handle opened.
+    int              fd2;       // second handle. Ex: fd = sg/bsg handle opened, fd2 = sd handle opened.
+    eLinuxHandleType fd2Type;   // handle type for the second handle (fd2)
+    bool             fd3Opened; // Ex: fd = bsg handle opened, fd3 = sg handle opened.
+    int              fd3;       // third handle. Ex: fd = bsg handle opened, fd3 = sg handle opened.
+    eLinuxHandleType fd3Type;   // handle type for the third handle (fd3)
 #    endif
     struct
     {
@@ -1704,8 +1725,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     HANDLE M_NONNULL  fd;
     HANDLE M_NULLABLE scsiSRBHandle; // To support for SCSI SRB IOCTLs (miniport) that use this same handle type
                                      // (\\.\SCSI<pathId>:)
-    SCSI_ADDRESS  scsi_addr;
-    uint32_t      os_drive_number;
+    SCSI_ADDRESS      scsi_addr;
+    uint32_t          os_drive_number;
     int           srbtype; // this will be used to filter when a controller supports the new SCSI PassThrough EX IOCTLs
     unsigned long alignmentMask; // save the alignment mask. This may be needed on some controllers....not currently
                                  // used but SHOULD be added later for the SCSI IOCTL DIRECT EX
@@ -1762,8 +1783,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     uint32_t volumeBitField; // This is a bitfield that is stored to prevent rereading, mounting, waking all systems on
                              // the system. Since we read this up front, this will be stored so taht each partition on a
                              // device can be unmouted later if necessary. - TJE
-    uint8_t adapterDescBusType; // bus type reported in adapter descriptor
-    uint8_t deviceDescBusType;  // bus type reported in the device descriptor
+    uint8_t  adapterDescBusType; // bus type reported in adapter descriptor
+    uint8_t  deviceDescBusType;  // bus type reported in the device descriptor
 // TODO: Store the device path! This may occasionally be useful to have. Longest one will probably be no more that
 // MAX_DEVICE_ID_LEN characters. (This is defined as 200) padding to keep same size as other OSs. This is to keep things
 // similar across OSs. Variable sizes based on 32 vs 64bit since handle is a void*
@@ -2329,8 +2350,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         USB_Vendor_Initio                             = 0x13FD,
         USB_Vendor_Kingston = 0x13FE, // Some online databases show patriot memory, and one also shows Phison. Most
                                       // recognize this as Kingston.
-        USB_Vendor_JMicron          = 0x152D,
-        USB_Vendor_ASMedia          = 0x174C,
+        USB_Vendor_JMicron  = 0x152D,
+        USB_Vendor_ASMedia  = 0x174C,
         USB_Vendor_4G_Systems_GmbH  = 0x1955,
         USB_Vendor_SeagateBranded   = 0x1A2A,
         USB_Vendor_Symwave          = 0x1CA1,
@@ -2891,7 +2912,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int        flags,
                                                                     eVerbosityLevels    scanVerbosity,
                                                                     uint32_t* M_NONNULL numberOfDevices,
-                                                                    scanDriveInfo* M_NONNULL* M_NULLABLE deviceList);
+                                                                    scanDriveInfo * M_NONNULL * M_NULLABLE deviceList);
 
     //-----------------------------------------------------------------------------
     //

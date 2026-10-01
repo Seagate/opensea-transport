@@ -270,7 +270,7 @@ static bool is_Block_SCSI_Generic_Handle(const char* handle)
     return isBlockGenericDevice;
 }
 
-static bool is_NVMe_Handle(char* handle)
+static bool is_NVMe_Handle(const char* handle)
 {
     bool isNvmeDevice = false;
     if (handle && safe_strlen(handle))
@@ -287,10 +287,10 @@ typedef struct s_sysFSLowLevelDeviceInfo
 {
     eSCSIPeripheralDeviceType scsiDevType; // in Linux this will be reading the "type" file to get this. If it is not
                                            // available, will retry with "inquiry" data file's first byte
-    eDriveType     drive_type;
-    eInterfaceType interface_type;
-    adapterInfo    adapter_info;
-    driverInfo     driver_info;
+    eDriveType                drive_type;
+    eInterfaceType            interface_type;
+    adapterInfo               adapter_info;
+    driverInfo                driver_info;
     struct
     {
         uint8_t host;    // AKA SCSI adapter #
@@ -1617,8 +1617,8 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
                 DECLARE_ZERO_INIT_ARRAY(char, secondHandleButLongerToAvoidWarnings, OS_HANDLE_NAME_MAX_LENGTH);
                 char* dupHandle = M_NULLPTR;
                 M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(&secondHandleButLongerToAvoidWarnings, OS_HANDLE_NAME_MAX_LENGTH,
-                                                &sysFsInfo.secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH),
-                                          "copying a small buffer to a bigger buffer will not overflow");
+                                                     &sysFsInfo.secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH),
+                                         "copying a small buffer to a bigger buffer will not overflow");
                 if (0 != safe_strdup(&dupHandle, sysFsInfo.secondaryHandleStr) || dupHandle == M_NULLPTR)
                 {
                     set_Device_Name_In_tDevice(device, secondHandleButLongerToAvoidWarnings, M_NULLPTR);
@@ -2030,6 +2030,7 @@ static eReturnValues open_fd2(tDevice* M_NONNULL device)
         if (device->os_info.fd2 > 0)
         {
             device->os_info.fd2Opened = true;
+            device->os_info.fd2Type   = LINUX_HANDLE_TYPE_SD;
         }
         else
         {
@@ -2080,6 +2081,7 @@ static eReturnValues open_fd3(tDevice* M_NONNULL device)
         if (device->os_info.fd3 > 0)
         {
             device->os_info.fd3Opened = true;
+            device->os_info.fd3Type   = LINUX_HANDLE_TYPE_SG;
         }
         else
         {
@@ -2089,107 +2091,229 @@ static eReturnValues open_fd3(tDevice* M_NONNULL device)
     return ret;
 }
 #define LIN_MAX_HANDLE_LENGTH 30
-static eReturnValues resolve_Block_Handle_To_Generic_Handle(const char* filename, char** genericHandle)
+static eReturnValues resolve_Incoming_To_Block_Generic_Handle(const char* M_NONNULL incomingHandle, char** outputHandle)
 {
-    char*         genHandle      = M_NULLPTR;
-    char*         blockHandle    = M_NULLPTR;
-    char*         blockGenHandle = M_NULLPTR;
-    eReturnValues mapResult      = map_Block_To_Generic_Handle(filename, &genHandle, &blockHandle, &blockGenHandle);
+#if defined(_DEBUG)
+    printf("resolve_Incoming_To_Block_Generic_Handle incomingHandle = %s\n", incomingHandle);
+#endif
 
-    if (mapResult == SUCCESS)
+    eReturnValues ret = SUCCESS;
+
+    // copy incoming handle name into generic first
+    *outputHandle = M_REINTERPRET_CAST(char*, safe_calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
+    if (snprintf_err_handle(*outputHandle, LIN_MAX_HANDLE_LENGTH, "%s", incomingHandle) < 0)
     {
-        if (genHandle != M_NULLPTR)
-        {
-#if defined(_DEBUG)
-            printf("genHandle = %s\t", genHandle);
-#endif
-        }
-        if (blockHandle != M_NULLPTR)
-        {
-#if defined(_DEBUG)
-            printf("blockHandle = %s\t", blockHandle);
-#endif
-        }
-        if (blockGenHandle != M_NULLPTR)
-        {
-#if defined(_DEBUG)
-            printf("blockGenericHandle = %s", blockGenHandle);
-#endif
-        }
-#if defined(_DEBUG)
-        printf("\n");
-#endif
-        // copy incoming handle name into generic first
-        *genericHandle = M_REINTERPRET_CAST(char*, safe_calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
-        if (snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "%s", filename) < 0)
-        {
-            perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
-            safe_free(genericHandle);
-            safe_free(&genHandle);
-            safe_free(&blockHandle);
-            safe_free(&blockGenHandle);
-            return MEMORY_FAILURE;
-        }
-
-        if ((blockGenHandle != M_NULLPTR))
-        {
-            if (snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "/dev/bsg/%s", blockGenHandle) < 0)
-            {
-                perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
-                safe_free(genericHandle);
-                safe_free(&genHandle);
-                safe_free(&blockHandle);
-                safe_free(&blockGenHandle);
-                return MEMORY_FAILURE;
-            }
-        }
-        else if (genHandle != M_NULLPTR)
-        {
-            if (snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", genHandle) < 0)
-            {
-                perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
-                safe_free(genericHandle);
-                safe_free(&genHandle);
-                safe_free(&blockHandle);
-                safe_free(&blockGenHandle);
-                return MEMORY_FAILURE;
-            }
-        }
-        else if (blockHandle != M_NULLPTR)
-        {
-            if (snprintf_err_handle(*genericHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", blockHandle) < 0)
-            {
-                perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
-                safe_free(genericHandle);
-                safe_free(&genHandle);
-                safe_free(&blockHandle);
-                safe_free(&blockGenHandle);
-                return MEMORY_FAILURE;
-            }
-        }
+        perror("Failure setting generic handle name in resolve_Incoming_To_Block_Generic_Handle");
+        safe_free(outputHandle);
+        return MEMORY_FAILURE;
     }
-    else // If we can't map, let still try anyway.
+
+    if (!is_Block_SCSI_Generic_Handle(incomingHandle))
     {
-        // We couldn't map the sg, bsg and sd handles, but still moving forward assuming the user will provide correct
-        // device handle
-        if (0 != safe_strdup(genericHandle, filename))
-        {
-            perror("Failure setting generic handle name in resolve_Block_Handle_To_Generic_Handle");
-            safe_free(&genHandle);
-            safe_free(&blockHandle);
-            safe_free(&blockGenHandle);
-            return MEMORY_FAILURE;
-        }
-    }
-    safe_free(&genHandle);
-    safe_free(&blockHandle);
-    safe_free(&blockGenHandle);
+        char* genHandle      = M_NULLPTR;
+        char* blockHandle    = M_NULLPTR;
+        char* blockGenHandle = M_NULLPTR;
 
+        ret = map_Block_To_Generic_Handle(incomingHandle, &genHandle, &blockHandle, &blockGenHandle);
+
+        if (ret == SUCCESS)
+        {
+            if (genHandle != M_NULLPTR)
+            {
 #if defined(_DEBUG)
-    printf("%s: filename = %s, genericHandle = %s\n", __FUNCTION__, filename, (genericHandle && *genericHandle) ? *genericHandle : "NULL");
+                printf("genHandle = %s\t", genHandle);
+#endif
+            }
+            if (blockHandle != M_NULLPTR)
+            {
+#if defined(_DEBUG)
+                printf("blockHandle = %s\t", blockHandle);
+#endif
+            }
+            if (blockGenHandle != M_NULLPTR)
+            {
+#if defined(_DEBUG)
+                printf("blockGenericHandle = %s", blockGenHandle);
+#endif
+            }
+#if defined(_DEBUG)
+            printf("\n");
 #endif
 
-    return SUCCESS;
+            if ((blockGenHandle != M_NULLPTR))
+            {
+                if (snprintf_err_handle(*outputHandle, LIN_MAX_HANDLE_LENGTH, "/dev/bsg/%s", blockGenHandle) < 0)
+                {
+                    perror("Failure setting generic handle name in resolve_Incoming_To_Block_Generic_Handle");
+                    safe_free(outputHandle);
+                    safe_free(&genHandle);
+                    safe_free(&blockHandle);
+                    safe_free(&blockGenHandle);
+                    return MEMORY_FAILURE;
+                }
+            }
+        }
+
+        safe_free(&genHandle);
+        safe_free(&blockHandle);
+        safe_free(&blockGenHandle);
+    }
+
+#if defined(_DEBUG)
+    printf("%s: incomingHandle = %s, outputHandle = %s\n", __FUNCTION__, incomingHandle, *outputHandle);
+#endif
+
+    return ret;
+}
+
+static eReturnValues resolve_Incoming_To_Generic_Handle(const char* M_NONNULL incomingHandle, char** outputHandle)
+{
+#if defined(_DEBUG)
+    printf("resolve_Incoming_To_Generic_Handle incomingHandle = %s\n", incomingHandle);
+#endif
+
+    eReturnValues ret = SUCCESS;
+
+    // copy incoming handle name into generic first
+    *outputHandle = M_REINTERPRET_CAST(char*, safe_calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
+    if (snprintf_err_handle(*outputHandle, LIN_MAX_HANDLE_LENGTH, "%s", incomingHandle) < 0)
+    {
+        perror("Failure setting generic handle name in resolve_Incoming_To_Generic_Handle");
+        safe_free(outputHandle);
+        return MEMORY_FAILURE;
+    }
+
+    if (!is_SCSI_Generic_Handle(incomingHandle))
+    {
+        char* genHandle      = M_NULLPTR;
+        char* blockHandle    = M_NULLPTR;
+        char* blockGenHandle = M_NULLPTR;
+
+        ret = map_Block_To_Generic_Handle(incomingHandle, &genHandle, &blockHandle, &blockGenHandle);
+
+        if (ret == SUCCESS)
+        {
+            if (genHandle != M_NULLPTR)
+            {
+#if defined(_DEBUG)
+                printf("genHandle = %s\t", genHandle);
+#endif
+            }
+            if (blockHandle != M_NULLPTR)
+            {
+#if defined(_DEBUG)
+                printf("blockHandle = %s\t", blockHandle);
+#endif
+            }
+            if (blockGenHandle != M_NULLPTR)
+            {
+#if defined(_DEBUG)
+                printf("blockGenericHandle = %s", blockGenHandle);
+#endif
+            }
+#if defined(_DEBUG)
+            printf("\n");
+#endif
+
+            if ((genHandle != M_NULLPTR))
+            {
+                if (snprintf_err_handle(*outputHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", genHandle) < 0)
+                {
+                    perror("Failure setting generic handle name in resolve_Incoming_To_Generic_Handle");
+                    safe_free(outputHandle);
+                    safe_free(&genHandle);
+                    safe_free(&blockHandle);
+                    safe_free(&blockGenHandle);
+                    return MEMORY_FAILURE;
+                }
+            }
+        }
+
+        safe_free(&genHandle);
+        safe_free(&blockHandle);
+        safe_free(&blockGenHandle);
+    }
+
+#if defined(_DEBUG)
+    printf("%s: incomingHandle = %s, outputHandle = %s\n", __FUNCTION__, incomingHandle, *outputHandle);
+#endif
+
+    return ret;
+}
+
+static eReturnValues resolve_Incoming_To_Block_Handle(const char* M_NONNULL incomingHandle, char** outputHandle)
+{
+#if defined(_DEBUG)
+    printf("resolve_Incoming_To_Block_Handle incomingHandle = %s\n", incomingHandle);
+#endif
+
+    eReturnValues ret = SUCCESS;
+
+    // copy incoming handle name into generic first
+    *outputHandle = M_REINTERPRET_CAST(char*, safe_calloc(LIN_MAX_HANDLE_LENGTH, sizeof(char)));
+    if (snprintf_err_handle(*outputHandle, LIN_MAX_HANDLE_LENGTH, "%s", incomingHandle) < 0)
+    {
+        perror("Failure setting generic handle name in resolve_Incoming_To_Block_Handle");
+        safe_free(outputHandle);
+        return MEMORY_FAILURE;
+    }
+
+    if (!is_Block_Device_Handle(incomingHandle))
+    {
+        char* genHandle      = M_NULLPTR;
+        char* blockHandle    = M_NULLPTR;
+        char* blockGenHandle = M_NULLPTR;
+
+        ret = map_Block_To_Generic_Handle(incomingHandle, &genHandle, &blockHandle, &blockGenHandle);
+
+        if (ret == SUCCESS)
+        {
+            if (genHandle != M_NULLPTR)
+            {
+#if defined(_DEBUG)
+                printf("genHandle = %s\t", genHandle);
+#endif
+            }
+            if (blockHandle != M_NULLPTR)
+            {
+#if defined(_DEBUG)
+                printf("blockHandle = %s\t", blockHandle);
+#endif
+            }
+            if (blockGenHandle != M_NULLPTR)
+            {
+#if defined(_DEBUG)
+                printf("blockGenericHandle = %s", blockGenHandle);
+#endif
+            }
+#if defined(_DEBUG)
+            printf("\n");
+#endif
+
+            if ((blockHandle != M_NULLPTR))
+            {
+                if (snprintf_err_handle(*outputHandle, LIN_MAX_HANDLE_LENGTH, "/dev/%s", blockHandle) < 0)
+                {
+                    perror("Failure setting generic handle name in resolve_Incoming_To_Block_Handle");
+                    safe_free(outputHandle);
+                    safe_free(&genHandle);
+                    safe_free(&blockHandle);
+                    safe_free(&blockGenHandle);
+                    return MEMORY_FAILURE;
+                }
+            }
+        }
+
+        safe_free(&genHandle);
+        safe_free(&blockHandle);
+        safe_free(&blockGenHandle);
+    }
+
+#if defined(_DEBUG)
+    printf("%s: incomingHandle = %s, outputHandle = %s\n", __FUNCTION__, incomingHandle, *outputHandle);
+#endif
+
+    return ret;
 }
 
 static eReturnValues linux_Get_NVMe_Device(tDevice* M_NONNULL device, const char* deviceHandle)
@@ -2226,7 +2350,7 @@ static eReturnValues linux_Get_NVMe_Device(tDevice* M_NONNULL device, const char
 #endif     // DISABLE_NVME_PASSTHROUGH
 }
 
-static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char* genericHandle, const char* fileName)
+static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char* deviceHandle)
 {
     int k = 0;
 #if defined(_DEBUG)
@@ -2244,7 +2368,7 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
         device->os_info.scsiAddress.channel = C_CAST(uint8_t, hctlInfo.channel);
         device->os_info.scsiAddress.target  = C_CAST(uint8_t, hctlInfo.scsi_id);
         device->os_info.scsiAddress.lun     = C_CAST(uint8_t, hctlInfo.lun);
-        device->drive_info.namespaceID      = device->os_info.scsiAddress.lun +
+        device->drive_info.namespaceID = device->os_info.scsiAddress.lun +
                                          UINT32_C(1); // Doing this to help with USB to NVMe adapters. Luns start at
                                                       // zero, whereas namespaces start with 1, hence the plus 1.
         // also reported are per lun and per device Q-depth which might be nice to store.
@@ -2260,7 +2384,7 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
     // From http://tldp.org/HOWTO/SCSI-Generic-HOWTO/pexample.html
     if ((ioctl(device->os_info.fd, SG_GET_VERSION_NUM, &k) < 0) || (k < 30000))
     {
-        if (is_Block_SCSI_Generic_Handle(genericHandle))
+        if (device->os_info.fdType == LINUX_HANDLE_TYPE_BSG)
         {
             // SG_GET_VERSION_NUM ioctl is not supported on /dev/bsg/* handles
             // (they only exist on kernel 4.18+, where SGv4 is guaranteed available).
@@ -2269,10 +2393,10 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
         }
         else
         {
-            printf("%s: SG_GET_VERSION_NUM on %s (opened as %s) failed version=%d\n", __FUNCTION__, fileName,
-                   genericHandle, k);
+            printf("%s: SG_GET_VERSION_NUM on %s failed version=%d\n", __FUNCTION__, deviceHandle, k);
             perror("SG_GET_VERSION_NUM");
             close(device->os_info.fd);
+            device->os_info.fdType = LINUX_HANDLE_TYPE_UNKNOWN;
             return FAILURE;
         }
     }
@@ -2296,7 +2420,7 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
 #if defined(_DEBUG)
     print_str("Setting interface, drive type, secondary handles\n");
 #endif
-    set_Device_Fields_From_Handle(fileName, device);
+    set_Device_Fields_From_Handle(deviceHandle, device);
     setup_Passthrough_Hacks_By_ID(device);
 
 #if defined(_DEBUG)
@@ -2313,36 +2437,35 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
     return SUCCESS;
 }
 
-M_NONNULL_PARAM_LIST(1, 2)
-M_NULL_TERM_STRING(1)
-M_PARAM_RO(1)
-M_PARAM_RW(2)
-static eReturnValues get_Lin_Device(const char* filename, tDevice* M_NONNULL device)
+static bool is_Terminal_Handle_Type(eLinuxHandleType handleType)
 {
-    char*         deviceHandle  = M_NULLPTR;
-    char*         genericHandle = M_NULLPTR;
-    eReturnValues ret           = SUCCESS;
+    return handleType == LINUX_HANDLE_TYPE_SD;
+}
+
+typedef eReturnValues (*resolve_fn)(const char* M_NONNULL incomingHandle, char** outputHandle);
+
+typedef struct LinuxOpenCandidate
+{
+    resolve_fn       resolver;
+    eLinuxHandleType handleType;
+} LinuxOpenCandidate;
+
+static const LinuxOpenCandidate candidates[] = {
+    {resolve_Incoming_To_Block_Generic_Handle, LINUX_HANDLE_TYPE_BSG},
+    {resolve_Incoming_To_Generic_Handle, LINUX_HANDLE_TYPE_SG},
+    {resolve_Incoming_To_Block_Handle, LINUX_HANDLE_TYPE_SD},
+    {M_NULLPTR, 0},
+};
+
+static eReturnValues try_Open_Handles(const char* M_NONNULL handleName,
+                                      tDevice* M_NONNULL    device,
+                                      eLinuxHandleType      handleType)
+{
 #if defined(_DEBUG)
-    printf("%s: Getting device for %s\n", __FUNCTION__, filename);
+    printf("try_Open_Handles handleName = %s\n", handleName);
 #endif
 
-    ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
-    if (ret != SUCCESS)
-    {
-        free_Posix_Resolved_Filename(&deviceHandle);
-        return ret;
-    }
-
-    ret = resolve_Block_Handle_To_Generic_Handle(deviceHandle, &genericHandle);
-    if (ret != SUCCESS)
-    {
-        free_Posix_Resolved_Filename(&deviceHandle);
-        safe_free(&genericHandle);
-        return ret;
-    }
-    // no longer need this handle since we now have what we want in genericHandle
-    free_Posix_Resolved_Filename(&deviceHandle);
-
+    eReturnValues     ret         = SUCCESS;
     ePosixHandleFlags handleFlags = POSIX_HANDLE_FLAGS_DEFAULT;
     if (device->dFlags & HANDLE_REQUIRE_EXCLUSIVE_ACCESS)
     {
@@ -2353,21 +2476,101 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* M_NONNULL dev
         handleFlags = POSIX_HANDLE_FLAGS_REQUEST_EXCLUSIVE;
     }
 
-    ret = posix_Get_Device_Handle(genericHandle, &device->os_info.fd, &handleFlags, 0);
-    if (ret != SUCCESS)
+    ret = posix_Get_Device_Handle(handleName, &device->os_info.fd, &handleFlags, 0);
+    if (ret == SUCCESS)
     {
-        safe_free(&genericHandle);
-        return ret;
+        device->os_info.fdType = handleType;
+        if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
+        {
+            set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
+        }
+        else
+        {
+            set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
+        }
     }
 
-    if (handleFlags == POSIX_HANDLE_FLAGS_DEFAULT)
+#if defined(_DEBUG)
+    printf("try_Open_Handles ret = %d\n", ret);
+#endif
+
+    return ret;
+}
+
+static eReturnValues try_Open_Device_Candidates(const char* M_NONNULL deviceHandle, tDevice* M_NONNULL device)
+{
+#if defined(_DEBUG)
+    printf("try_Open_Device_Candidates deviceHandle = %s\n", deviceHandle);
+#endif
+
+    eReturnValues ret = FAILURE;
+    if (deviceHandle == M_NULLPTR)
     {
-        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_DEFAULT);
+        return BAD_PARAMETER;
     }
-    else
+
+    for (size_t i = 0; candidates[i].resolver != M_NULLPTR; ++i)
     {
-        set_Device_Handle_Open_Flags(device, HANDLE_FLAGS_EXCLUSIVE);
+        char* openingHandle = M_NULLPTR;
+
+        ret = candidates[i].resolver(deviceHandle, &openingHandle);
+
+        if (ret != SUCCESS && !is_Terminal_Handle_Type(candidates[i].handleType))
+        {
+            // free the handle
+            safe_free(&openingHandle);
+
+            continue;
+        }
+        else if (ret == SUCCESS)
+        {
+            ret = try_Open_Handles(openingHandle, device, candidates[i].handleType);
+
+            if (ret == PERMISSION_DENIED && !is_Terminal_Handle_Type(candidates[i].handleType))
+            {
+                // free the handle
+                safe_free(&openingHandle);
+
+                // if get the PERMISSION_DENIED error, we continue trying other candidates
+                continue;
+            }
+            else
+            {
+                // free the handle
+                safe_free(&openingHandle);
+
+                // either we are able to get the device open successfully or we have encountered other error
+                //  in both cases we break out of the loop
+                break;
+            }
+        }
+
+        safe_free(&openingHandle);
     }
+
+#if defined(_DEBUG)
+    printf("try_Open_Device_Candidates ret = %d\n", ret);
+#endif
+
+    return ret;
+}
+
+M_NONNULL_PARAM_LIST(1, 2)
+M_NULL_TERM_STRING(2)
+M_PARAM_RO(2)
+M_PARAM_RW(1)
+static eReturnValues set_Drive_Details_With_Handle(tDevice* M_NONNULL device, const char* M_NONNULL deviceHandle)
+{
+#if defined(_DEBUG)
+    printf("set_Drive_Details_With_Handle deviceHandle = %s\n", deviceHandle);
+#endif
+
+    if (device->os_info.fd < 0)
+    {
+        return UNKNOWN;
+    }
+
+    eReturnValues ret = SUCCESS;
 
     // set the OS Type
     device->os_info.osType = OS_LINUX;
@@ -2380,36 +2583,32 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* M_NONNULL dev
         set_Device_DriveType(device, SCSI_DRIVE);
         set_Device_InterfaceType(device, SCSI_INTERFACE);
         set_Device_MediaType(device, MEDIA_HDD);
-        set_Device_Fields_From_Handle(filename, device);
+        set_Device_Fields_From_Handle(deviceHandle, device);
         setup_Passthrough_Hacks_By_ID(device);
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondHandleValid
                                                                        ? device->os_info.secondName
                                                                        : get_Device_Handle_Name(device));
-        safe_free(&genericHandle);
         return ret;
     }
 
     // Add support for other flags.
-    if ((device->os_info.fd >= 0) && (ret == SUCCESS))
+    if (is_NVMe_Handle(deviceHandle))
     {
-        if (is_NVMe_Handle(genericHandle))
-        {
-            ret = linux_Get_NVMe_Device(device, genericHandle);
-        }
-        else // not an NVMe handle
-        {
-            ret = linux_Get_SCSI_Device(device, genericHandle, filename);
-        }
-        if (ret == SUCCESS)
-        {
-            set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondHandleValid
-                                                                           ? device->os_info.secondName
-                                                                           : get_Device_Handle_Name(device));
-
-            ret = fill_Drive_Info_Data(device);
-        }
+        ret = linux_Get_NVMe_Device(device, deviceHandle);
     }
-    safe_free(&genericHandle);
+    else // not an NVMe handle
+    {
+        ret = linux_Get_SCSI_Device(device, deviceHandle);
+    }
+
+    if (ret == SUCCESS)
+    {
+        set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondHandleValid
+                                                                       ? device->os_info.secondName
+                                                                       : get_Device_Handle_Name(device));
+
+        ret = fill_Drive_Info_Data(device);
+    }
 
 #if defined(_DEBUG)
     print_str("\nsg helper\n");
@@ -2417,6 +2616,40 @@ static eReturnValues get_Lin_Device(const char* filename, tDevice* M_NONNULL dev
     printf("Interface type: %d\n", get_Device_InterfaceType(device));
     printf("Media type: %d\n", get_Device_MediaType(device));
 #endif
+
+#if defined(_DEBUG)
+    printf("set_Drive_Details_With_Handle ret = %d, deviceHandle = %s\n", ret, deviceHandle);
+#endif
+
+    return ret;
+}
+
+M_NONNULL_PARAM_LIST(1, 2)
+M_NULL_TERM_STRING(1)
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+static eReturnValues get_Lin_Device(const char* filename, tDevice* M_NONNULL device)
+{
+    char*         deviceHandle = M_NULLPTR;
+    eReturnValues ret          = SUCCESS;
+#if defined(_DEBUG)
+    printf("%s: Getting device for %s\n", __FUNCTION__, filename);
+#endif
+
+    ret = posix_Resolve_Filename_Link(filename, &deviceHandle);
+    if (ret != SUCCESS)
+    {
+        free_Posix_Resolved_Filename(&deviceHandle);
+        return ret;
+    }
+
+    ret = try_Open_Device_Candidates(deviceHandle, device);
+    if (ret == SUCCESS)
+    {
+        ret = set_Drive_Details_With_Handle(device, filename);
+    }
+
+    free_Posix_Resolved_Filename(&deviceHandle);
     return ret;
 }
 
@@ -3459,13 +3692,12 @@ static eReturnValues send_sg_io_v3(ScsiIoCtx* M_NONNULL scsiIoCtx)
 eReturnValues send_sg_io(ScsiIoCtx* scsiIoCtx)
 {
 #if defined(SEA_BSG_IOCTL_H)
-    if (scsiIoCtx->device->os_info.thirdHandleValid &&
-        is_Block_SCSI_Generic_Handle(scsiIoCtx->device->os_info.thirdName))
+    if (scsiIoCtx->device->os_info.fdType == LINUX_HANDLE_TYPE_BSG)
     {
         // BSG always use v4 version
         return send_sg_io_v4(scsiIoCtx);
     }
-    else if (is_SCSI_Generic_Handle(scsiIoCtx->device->os_info.name) &&
+    else if (scsiIoCtx->device->os_info.fdType == LINUX_HANDLE_TYPE_SG &&
              scsiIoCtx->device->os_info.sgDriverVersion.driverVersionValid &&
              scsiIoCtx->device->os_info.sgDriverVersion.majorVersion >= 4)
     {
@@ -4035,7 +4267,8 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
             {
                 if (close(dev->os_info.fd2) == 0)
                 {
-                    dev->os_info.fd2 = -1;
+                    dev->os_info.fd2     = -1;
+                    dev->os_info.fd2Type = LINUX_HANDLE_TYPE_UNKNOWN;
                 }
             }
 
@@ -4044,7 +4277,8 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* dev)
             {
                 if (close(dev->os_info.fd3) == 0)
                 {
-                    dev->os_info.fd3 = -1;
+                    dev->os_info.fd3     = -1;
+                    dev->os_info.fd3Type = LINUX_HANDLE_TYPE_UNKNOWN;
                 }
             }
         }
@@ -4203,10 +4437,10 @@ M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx)
             passThroughCmd->metadata = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->cmd.nvmCmd.metadata));
             passThroughCmd->addr     = C_CAST(uint64_t, C_CAST(uintptr_t, nvmeIoCtx->ptrData));
             passThroughCmd->metadata_len =
-                M_DoubleWord0(nvmeIoCtx->cmd.nvmCmd.prp2);  // guessing here since I don't really know - TJE
-            passThroughCmd->data_len = nvmeIoCtx->dataSize; // Or do I use the other PRP2 data? Not sure - TJE
-                                                            // //M_DWord1(nvmeIoCtx->cmd.nvmCmd.prp2);//guessing here
-                                                            // since I don't really know - TJE
+                M_DoubleWord0(nvmeIoCtx->cmd.nvmCmd.prp2);    // guessing here since I don't really know - TJE
+            passThroughCmd->data_len   = nvmeIoCtx->dataSize; // Or do I use the other PRP2 data? Not sure - TJE
+                                                              // //M_DWord1(nvmeIoCtx->cmd.nvmCmd.prp2);//guessing here
+                                                              // since I don't really know - TJE
             passThroughCmd->cdw10      = nvmeIoCtx->cmd.nvmCmd.cdw10;
             passThroughCmd->cdw11      = nvmeIoCtx->cmd.nvmCmd.cdw11;
             passThroughCmd->cdw12      = nvmeIoCtx->cmd.nvmCmd.cdw12;
@@ -4668,6 +4902,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(tDevice* M_NO
             {
                 close(device->os_info.fd2);
                 device->os_info.fd2Opened = false;
+                device->os_info.fd2Type   = LINUX_HANDLE_TYPE_UNKNOWN;
             }
             device->dFlags |= HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
             open_fd2(device);
@@ -4679,6 +4914,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(tDevice* M_NO
             {
                 close(device->os_info.fd3);
                 device->os_info.fd3Opened = false;
+                device->os_info.fd3Type   = LINUX_HANDLE_TYPE_UNKNOWN;
             }
             device->dFlags |= HANDLE_RECOMMEND_EXCLUSIVE_ACCESS;
             open_fd3(device);
@@ -4802,25 +5038,21 @@ OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(const tDev
                                                                             : get_Device_Handle_Name(device));
 }
 
-
 // For USB: read/write /sys/bus/usb/devices/.../power/control and power/autosuspend_delay_ms
 // idleTimeoutMs = UINT32_MAX → write "on" to power/control (prevent autosuspend)
 // Restoring → write "auto" and restore the delay in ms
 // For SATA: return NOT_SUPPORTED (link PM doesn't cause device resets, no action needed)
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
-	return NOT_SUPPORTED;
+    return NOT_SUPPORTED;
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
-	return NOT_SUPPORTED;
+    return NOT_SUPPORTED;
 }
-
-
-
 
 // This should be at the end of this file to undefine _GNU_SOURCE if this file manually enabled it
 #if !defined(GNU_SOURCE_DEFINED_IN_SG_HELPER)
