@@ -26,6 +26,7 @@
 #include "ata_helper_func.h"
 #include "cmds.h"
 #include "nix_mounts.h"
+#include "nvme_helper_func.h"
 #include "posix_common_lowlevel.h"
 #include "scsi_helper_func.h"
 #include "usb_hacks.h"
@@ -153,7 +154,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
         // set the block handle
         if (0 > snprintf_err_handle(tempSecondName, OS_SECOND_HANDLE_NAME_LENGTH, "/dev/dsk/%s", tempFriendlyName))
         {
-            print_tDevice_Verbose_String(device, "Error creating second handle name for device %s\n", deviceHandle);
+            print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_NAMES, "Error creating second handle name for device %s\n", deviceHandle);
         }
 
         set_Second_Device_Name_In_tDevice(device, tempSecondName, tempFriendlyName);
@@ -220,7 +221,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(M_ATTR_UNU
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
     switch (get_Device_InterfaceType(scsiIoCtx->device))
@@ -671,7 +672,7 @@ M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(M_ATTR_UNUSED const tDevice*
     return NOT_SUPPORTED;
 }
 
-OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* M_NONNULL device)
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
@@ -768,3 +769,18 @@ OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(const tDev
     return unmount_Partitions_From_Device(device->os_info.secondHandleValid ? device->os_info.secondName
                                                                             : get_Device_Handle_Name(device));
 }
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
+
+

@@ -1296,6 +1296,35 @@ OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLev
     safe_free(C_CAST(void**, &scanDeviceList));
 }
 
+// When a drive is behind a USB/SAT bridge, the standard drive info fields hold the bridge's SCSI identity while the
+// actual drive's identity is stored in the bridge info (child MN/SN/FW). This returns the identity strings for
+// display purposes, preferring the child drive identity when it is available.
+M_PARAM_RO(1)
+M_PARAM_RW(2)
+M_PARAM_RW(3)
+M_PARAM_RW(4)
+OPENSEA_TRANSPORT_API void get_Device_Strings_For_Display(const tDevice* M_NONNULL         device,
+                                                          const char* M_NONNULL* M_NONNULL modelString,
+                                                          const char* M_NONNULL* M_NONNULL serialString,
+                                                          const char* M_NONNULL* M_NONNULL fwString)
+{
+    *modelString  = device->drive_info.product_identification;
+    *serialString = device->drive_info.serialNumber;
+    *fwString     = device->drive_info.product_revision;
+    if (device->drive_info.bridge_info.isValid && device->drive_info.bridge_info.childDriveMN[0] != '\0')
+    {
+        *modelString = device->drive_info.bridge_info.childDriveMN;
+        if (device->drive_info.bridge_info.childDriveSN[0] != '\0')
+        {
+            *serialString = device->drive_info.bridge_info.childDriveSN;
+        }
+        if (device->drive_info.bridge_info.childDriveFW[0] != '\0')
+        {
+            *fwString = device->drive_info.bridge_info.childDriveFW;
+        }
+    }
+}
+
 M_PARAM_RW(3)
 M_PARAM_RW(4)
 OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int        flags,
@@ -1465,9 +1494,18 @@ OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int    
                         }
 #endif
 
+                        // When a drive is behind a USB/SAT bridge, the standard drive info fields hold the bridge's
+                        // SCSI identity while the actual drive's identity is stored in the bridge info (child
+                        // MN/SN/FW). Prefer the child drive identity when it is available so the scan shows the real
+                        // drive.
+                        const char* modelString  = M_NULLPTR;
+                        const char* serialString = M_NULLPTR;
+                        const char* fwString     = M_NULLPTR;
+                        get_Device_Strings_For_Display(&deviceList[devIter], &modelString, &serialString, &fwString);
+
                         // model number
                         if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].modelNumber, MODEL_NUM_LEN + 1,
-                                             deviceList[devIter].drive_info.product_identification))
+                                             modelString))
                             M_UNLIKELY
                             {
                                 perror("Error coping drive data for scan output");
@@ -1475,7 +1513,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int    
 
                         // serial number
                         if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].serialNumber, SERIAL_NUM_LEN + 1,
-                                             deviceList[devIter].drive_info.serialNumber))
+                                             serialString))
                             M_UNLIKELY
                             {
                                 perror("Error coping drive data for scan output");
@@ -1496,7 +1534,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int    
 
                         // firmware version
                         if (0 != safe_strcpy((*scanDeviceList)[deviceCountToBeShown].firmwareVersion, FW_REV_LEN + 1,
-                                             deviceList[devIter].drive_info.product_revision))
+                                             fwString))
                             M_UNLIKELY
                             {
                                 perror("Error coping drive data for scan output");
@@ -2170,10 +2208,11 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
         if (strncmp(zeroes, *sn, SEAGATE_SERIAL_NUMBER_LEN) == 0)
         {
             // 8 zeroes at the beginning. Strip them off
+            size_t serialNumberLength = safe_strlen(*sn);
             if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
-                                  safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN) &&
+                                  serialNumberLength - SEAGATE_SERIAL_NUMBER_LEN) ||
                 0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
-                                 safe_strlen(*sn) - SEAGATE_SERIAL_NUMBER_LEN))
+                                 serialNumberLength - SEAGATE_SERIAL_NUMBER_LEN))
             {
                 perror("safe_memmove or safe_memset failure in seagate_External_SN_Cleanup when stripping zeroes from "
                        "beginning of SN");
@@ -2226,7 +2265,7 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
                     {
                         // zeroes at the beginning. Strip them off
                         if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[SEAGATE_SERIAL_NUMBER_LEN],
-                                              safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN) &&
+                                              safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN) ||
                             0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
                                              safe_strlen((*sn)) - SEAGATE_SERIAL_NUMBER_LEN))
                         {
@@ -2240,7 +2279,7 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
                     else if (strncmp(zeroes, (*sn), 4) == 0)
                     {
                         // zeroes at the beginning. Strip them off
-                        if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4) &&
+                        if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4) ||
                             0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
                                              safe_strlen((*sn)) - 4))
                         {
@@ -2255,7 +2294,7 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
                     {
                         // after string reverse, the SN still wasn't right, so go back to stripping off the zeroes from
                         // the end.
-                        if (0 != safe_memcpy((*sn), snlen, currentSerialNumber, M_Min(SERIAL_NUM_LEN, snlen)) &&
+                        if (0 != safe_memcpy((*sn), snlen, currentSerialNumber, M_Min(SERIAL_NUM_LEN, snlen)) ||
                             0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
                                              safe_strlen(currentSerialNumber) - SEAGATE_SERIAL_NUMBER_LEN))
                         {
@@ -2272,7 +2311,7 @@ OPENSEA_TRANSPORT_API void seagate_External_SN_Cleanup(char** M_NONNULL sn, size
         else if (strncmp(zeroes, (*sn), 4) == 0)
         {
             // 4 zeroes at the beginning. Strip them off
-            if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4) &&
+            if (0 != safe_memmove(&(*sn)[0], snlen, &(*sn)[4], safe_strlen((*sn)) - 4) ||
                 0 != safe_memset(&(*sn)[SEAGATE_SERIAL_NUMBER_LEN], snlen - SEAGATE_SERIAL_NUMBER_LEN, 0,
                                  safe_strlen((*sn)) - 4))
             {
@@ -4207,7 +4246,52 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported   = true;
         device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR   = true;
         device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
-        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 130560;
+        if (device->drive_info.adapter_info.revisionValid && device->drive_info.adapter_info.revision >= 0x4203)
+        {
+            device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 524288;
+        }
+        else
+        {
+            device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = 130560;
+        }
+        break;
+    case 0x20B0:
+    case 0x20B1:
+    case 0x20AE:
+    case 0x20AF:
+    case 0x2092: // Firecuda X Vault
+        passthroughHacksSet                                                       = true;
+        device->drive_info.passThroughHacks.passthroughType                       = ATA_PASSTHROUGH_SAT;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 14;
+        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages               = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
+        // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR   = true;
+        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = true;
+        device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength             = 524288;
+        break;
+    case 0x20AD: // Firecuda Forge in USB mode
+        passthroughHacksSet                                                       = true;
+        device->drive_info.passThroughHacks.passthroughType                       = NVME_PASSTHROUGH_ASMEDIA;
+        device->drive_info.passThroughHacks.testUnitReadyAfterAnyCommandFailure   = true;
+        device->drive_info.passThroughHacks.turfValue                             = 34;
+        device->drive_info.passThroughHacks.scsiHacks.noLogPages                  = true;
+        device->drive_info.passThroughHacks.scsiHacks.noModePages                 = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = false;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = false;
+        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
+        device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+        device->drive_info.passThroughHacks.scsiHacks.maxTransferLength           = 524288;
         break;
     case 0x2100: // FreeAgent Go
         passthroughHacksSet                                                       = true;
@@ -6071,6 +6155,8 @@ static bool set_Realtek_USB_Hacks_By_PID(tDevice* M_NONNULL device)
         device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe =
             true; // no way to tell at this point. Will need to make full determination in the fill_ATA_Info
                   // function
+        device->drive_info.passThroughHacks.ataPTHacks.knownRealtekUSB =
+            true; // this is an actual Realtek bridge, so the Realtek NVMe passthrough discovery is safe to try
         device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands =
             true; // probably not needed, but after what I saw testing this, it can't hurt to set this
         break;
@@ -7193,9 +7279,9 @@ OPENSEA_TRANSPORT_API uint32_t get_Device_BlockSize(const tDevice* M_NONNULL dev
 {
     if (device != M_NULLPTR)
     {
-        return device->drive_info.deviceBlockSize;
+        return device->drive_info.deviceBlockSize > 0 ? device->drive_info.deviceBlockSize : 1;
     }
-    return 0;
+    return 1;
 }
 
 OPENSEA_TRANSPORT_API void set_Device_BlockSize(tDevice* M_NONNULL device, uint32_t blockSize)
@@ -7254,9 +7340,9 @@ OPENSEA_TRANSPORT_API M_PURE_FUNC uint16_t get_Logical_Sectors_Per_Physical_Sect
         {
             return UINT16_C(1); // avoid division by zero
         }
-        return C_CAST(uint16_t, device->drive_info.deviceBlockSize / device->drive_info.devicePhyBlockSize);
+        return C_CAST(uint16_t, device->drive_info.devicePhyBlockSize / device->drive_info.deviceBlockSize);
     }
-    return 0;
+    return 1;
 }
 
 OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t get_Device_Child_BlockSize(const tDevice* M_NONNULL device) M_REPRODUCIBLE
@@ -7265,7 +7351,7 @@ OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t get_Device_Child_BlockSize(const tDev
     {
         return device->drive_info.bridge_info.childDeviceBlockSize;
     }
-    return 0;
+    return 1;
 }
 
 OPENSEA_TRANSPORT_API void set_Device_Child_BlockSize(tDevice* M_NONNULL device, uint32_t blockSize)
@@ -7324,10 +7410,10 @@ get_Child_Logical_Sectors_Per_Physical_Sector(const tDevice* M_NONNULL device) M
         {
             return UINT16_C(1); // avoid division by zero
         }
-        return C_CAST(uint16_t, device->drive_info.bridge_info.childDeviceBlockSize /
-                                    device->drive_info.bridge_info.childDevicePhyBlockSize);
+        return C_CAST(uint16_t, device->drive_info.bridge_info.childDevicePhyBlockSize /
+                                    device->drive_info.bridge_info.childDeviceBlockSize);
     }
-    return 0;
+    return 1;
 }
 
 OPENSEA_TRANSPORT_API int32_t get_Device_MaxLba(uint64_t* M_NONNULL maxLba, const tDevice* M_NONNULL device)

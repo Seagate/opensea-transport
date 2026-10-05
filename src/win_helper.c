@@ -207,7 +207,7 @@ extern bool validate_Device_Struct(versionBlock);
 M_PARAM_RW(1) eReturnValues get_Windows_SMART_IO_Support(tDevice* M_NONNULL device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* M_NONNULL device, STORAGE_BUS_TYPE busType);
-bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* M_NONNULL scsiIoCtx);
+bool is_Firmware_Download_Command_Compatible_With_Win_API(const ScsiIoCtx* M_NONNULL scsiIoCtx);
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 #endif
@@ -3183,7 +3183,8 @@ static eReturnValues send_Win_Firmware_Miniport_Command(HANDLE                  
         getLastError) // This will only happen for overlapped commands. If the drive is opened without the overlapped
                       // flag, everything will work like old synchronous code.-TJE
     {
-        result = GetOverlappedResult(deviceHandle, &overlappedStruct, &returnedLength, TRUE);
+        result       = GetOverlappedResult(deviceHandle, &overlappedStruct, &returnedLength, TRUE);
+        getLastError = GetLastError(); // update with the actual completion error, not the original IO_PENDING status
     }
     else if (getLastError != ERROR_SUCCESS)
     {
@@ -3411,7 +3412,7 @@ bus trace of the sequence.
 
 */
 
-bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
+bool is_Firmware_Download_Command_Compatible_With_Win_API(const ScsiIoCtx* scsiIoCtx)
 {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
     print_str("Checking if FWDL Command is compatible with Win 10 API\n");
@@ -3590,7 +3591,7 @@ bool is_Firmware_Download_Command_Compatible_With_Win_API(ScsiIoCtx* scsiIoCtx)
     return false;
 }
 
-static bool is_Activate_Command(ScsiIoCtx* scsiIoCtx)
+static bool is_Activate_Command(const ScsiIoCtx* scsiIoCtx)
 {
     bool isActivate = false;
     if (scsiIoCtx->pAtaCmdOpts && (scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus == ATA_DOWNLOAD_MICROCODE_CMD ||
@@ -4692,11 +4693,37 @@ static eReturnValues win_Get_Access_Alignment_Descriptor(HANDLE*                
 //     lbProvisioningDescriptor), sizeof(DEVICE_LB_PROVISIONING_DESCRIPTOR));
 // }
 
-// static eReturnValues win_Get_Power_Property(HANDLE *deviceHandle, PDEVICE_POWER_DESCRIPTOR *powerDescriptor)
-//{
-//     return check_And_Get_Storage_Property(deviceHandle, StorageDevicePowerProperty, C_CAST(void**, powerDescriptor),
-//     sizeof(DEVICE_POWER_DESCRIPTOR));
-// }
+static eReturnValues win_Get_Power_Property(HANDLE *deviceHandle, PDEVICE_POWER_DESCRIPTOR *powerDescriptor)
+{
+    return check_And_Get_Storage_Property(deviceHandle, StorageDevicePowerProperty, C_CAST(void**, powerDescriptor),
+    sizeof(DEVICE_POWER_DESCRIPTOR));
+}
+
+static eReturnValues win_Enable_Idle_Power(HANDLE *deviceHandle, PSTORAGE_IDLE_POWER idlePower)
+{
+    eReturnValues ret = NOT_SUPPORTED;
+    if (deviceHandle && idlePower)
+    {
+        BOOL                   success      = FALSE;
+        DWORD                  returnedData = DWORD_C(0);
+        success          = DeviceIoControl(deviceHandle, IOCTL_STORAGE_ENABLE_IDLE_POWER, idlePower,
+                                  sizeof(STORAGE_IDLE_POWER), M_NULLPTR, 0,
+                                  &returnedData, M_NULLPTR);
+        if (MSFT_BOOL_FALSE(success))
+        {
+            ret = NOT_SUPPORTED;
+        }
+        else
+        {
+            ret = SUCCESS;
+        }
+    }
+    else
+    {
+        ret = BAD_PARAMETER;
+    }
+    return ret;
+}
 
 // static eReturnValues win_Get_Copy_Offload(HANDLE *deviceHandle, PDEVICE_COPY_OFFLOAD_DESCRIPTOR
 // *copyOffloadDescriptor)
@@ -5242,7 +5269,7 @@ static eReturnValues open_Win_Handle(const char* M_NONNULL filename, tDevice* M_
                                         M_NULLPTR);
 
         set_Device_Last_Error(M_CONST_CAST(tDevice*, device), GetLastError());
-        ;
+
         if (device->os_info.fd == INVALID_HANDLE_VALUE)
         {
             // retry if asking for exclusive
@@ -5517,6 +5544,20 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
             if (is_Windows_8_Or_Higher()) // from opensea-common now to remove versionhelpes.h include
             {
                 device->os_info.srbtype = adapter_desc->SrbType;
+                PDEVICE_POWER_DESCRIPTOR powerDescriptor = M_NULLPTR;
+                if (SUCCESS == win_Get_Power_Property(&device->os_info.fd, &powerDescriptor))
+                {
+                    device->os_info.powerDesc.valid = true;
+                    device->os_info.powerDesc.idleSupported = M_ToBool(powerDescriptor->D3ColdSupported);
+                    device->os_info.powerDesc.wakeSupported = M_ToBool(powerDescriptor->DeviceAttentionSupported);
+                    device->os_info.powerDesc.idleTimeMS    = MSFT_BOOL_TRUE(powerDescriptor->IdlePowerManagementEnabled) ?
+                        C_CAST(uint32_t, powerDescriptor->IdleTimeoutInMS) : 0;
+                }
+                else
+                {
+                    device->os_info.powerDesc.valid = false;
+                }
+                safe_free(M_REINTERPRET_CAST(void**, &powerDescriptor));
             }
             else
 #endif
@@ -6937,8 +6978,11 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
             ret = OS_PASSTHROUGH_FAILURE;
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent          = M_NULLPTR;
+        if (overlappedStruct.hEvent != M_NULLPTR)
+        {
+            CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent          = M_NULLPTR;
+        }
         scsiIoCtx->returnStatus.senseKey = sptdioEx->scsiPassThroughEX.ScsiStatus;
 
         if (MSFT_BOOL_TRUE(success))
@@ -7194,8 +7238,11 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
             ret = OS_PASSTHROUGH_FAILURE;
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent          = M_NULLPTR;
+        if (overlappedStruct.hEvent != M_NULLPTR)
+        {
+            CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent          = M_NULLPTR;
+        }
         scsiIoCtx->returnStatus.senseKey = sptdio->scsiPassThroughEXDirect.ScsiStatus;
 
         if (MSFT_BOOL_TRUE(success))
@@ -7321,7 +7368,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Direct(ScsiIoCtx*    
         psptd->scsiPassthroughDirect.DataIn = SCSI_IOCTL_DATA_OUT;
         break;
     case XFER_NO_DATA:
-        psptd->scsiPassthroughDirect.DataIn             = UCHAR_C(0);
+        psptd->scsiPassthroughDirect.DataIn             = SCSI_IOCTL_DATA_UNSPECIFIED;
         psptd->scsiPassthroughDirect.DataTransferLength = ULONG_C(0);
         psptd->scsiPassthroughDirect.DataBuffer         = M_NULLPTR;
         break;
@@ -7389,7 +7436,7 @@ static eReturnValues convert_SCSI_CTX_To_SCSI_Pass_Through_Double_Buffered(ScsiI
         psptd->scsiPassthrough.DataIn = SCSI_IOCTL_DATA_OUT;
         break;
     case XFER_NO_DATA:
-        psptd->scsiPassthrough.DataIn             = UCHAR_C(0);
+        psptd->scsiPassthrough.DataIn             = SCSI_IOCTL_DATA_UNSPECIFIED;
         psptd->scsiPassthrough.DataTransferLength = ULONG_C(0);
         break;
         // NOLINTEND(bugprone-branch-clone)
@@ -7663,8 +7710,11 @@ static eReturnValues send_SCSI_Pass_Through_Direct(ScsiIoCtx* scsiIoCtx)
             ret = OS_PASSTHROUGH_FAILURE;
         }
         stop_Timer(&commandTimer);
-        CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
-        overlappedStruct.hEvent = M_NULLPTR;
+        if (overlappedStruct.hEvent != M_NULLPTR)
+        {
+            CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
+            overlappedStruct.hEvent = M_NULLPTR;
+        }
         if (MSFT_BOOL_TRUE(success))
         {
             // If the operation completes successfully, the return value is nonzero.
@@ -7808,7 +7858,7 @@ static eReturnValues send_SCSI_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               p_scsiIoCtx,
+static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(const ScsiIoCtx*               p_scsiIoCtx,
                                                        PATA_PASS_THROUGH_DIRECT ptrATAPassThroughDirect,
                                                        uint8_t*                 alignedDataPointer)
 {
@@ -7818,13 +7868,6 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
     ptrATAPassThroughDirect->AtaFlags           = ATA_FLAGS_DRDY_REQUIRED;
     ptrATAPassThroughDirect->DataTransferLength = p_scsiIoCtx->dataLength;
     ptrATAPassThroughDirect->DataBuffer         = alignedDataPointer;
-#if WINVER >= SEA_WIN32_WINNT_VISTA
-    if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= UINT8_C(1) &&
-        p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48 == UINT8_C(0))
-    {
-        ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
-    }
-#endif // WIN_VISTA
 
     switch (p_scsiIoCtx->direction)
     {
@@ -7838,10 +7881,6 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
     case XFER_NO_DATA:
         ptrATAPassThroughDirect->DataTransferLength = ULONG_C(0);
         ptrATAPassThroughDirect->DataBuffer         = M_NULLPTR;
-#if WINVER >= SEA_WIN32_WINNT_VISTA
-        ptrATAPassThroughDirect->AtaFlags =
-            ptrATAPassThroughDirect->AtaFlags & M_STATIC_CAST(USHORT, ~(ATA_FLAGS_NO_MULTIPLE));
-#endif // WIN_VISTA
        // NOLINTEND(bugprone-branch-clone)
         break;
     default:
@@ -7860,8 +7899,24 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(ScsiIoCtx*               
     case ATA_PROTOCOL_DEV_DIAG:
     case ATA_PROTOCOL_NO_DATA:
     case ATA_PROTOCOL_PACKET:
-    case ATA_PROTOCOL_PIO:
         // these are supported but no flags need to be set
+        break;
+    case ATA_PROTOCOL_PIO:
+    #if WINVER >= SEA_WIN32_WINNT_VISTA
+        switch (p_scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus)
+        {
+        case ATA_READ_MULTIPLE_CMD:
+        case ATA_READ_READ_MULTIPLE_EXT:
+        case ATA_WRITE_MULTIPLE_CMD:
+        case ATA_WRITE_MULTIPLE_EXT:
+        case ATA_WRITE_MULTIPLE_FUA_EXT:
+        case ATA_CFA_WRITE_MULTIPLE_WITHOUT_ERASE:
+            break; // these use multiple-mode by design
+        default:
+            ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
+            break;
+        }
+    #endif // WIN_VISTA
         break;
     case ATA_PROTOCOL_RET_INFO:
         // this doesn't do anything in ATA PassThrough and is only useful for SCSI PassThrough since this is an HBA
@@ -8012,13 +8067,11 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
             }
-            {
-                char* winErrorStr = get_windows_error_str(
-                    M_STATIC_CAST(winsyserror_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device)));
-                print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
-                                                       "Windows Error: %s\n", winErrorStr);
-                safe_free(&winErrorStr);
-            }
+            char* winErrorStr = get_windows_error_str(
+                M_STATIC_CAST(winsyserror_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device)));
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
+                                                    "Windows Error: %s\n", winErrorStr);
+            safe_free(&winErrorStr);
         }
         stop_Timer(&commandTimer);
         if (overlappedStruct.hEvent)
@@ -8144,7 +8197,7 @@ static M_INLINE void safe_free_ata_db_io(ATADoubleBufferedIO** atadbio)
     safe_free_core(M_REINTERPRET_CAST(void**, atadbio));
 }
 
-static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrATADoubleBufferedIO p_t_ata_pt)
+static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(const ScsiIoCtx* p_scsiIoCtx, ptrATADoubleBufferedIO p_t_ata_pt)
 {
     eReturnValues ret = SUCCESS;
 
@@ -8153,13 +8206,6 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
 
     p_t_ata_pt->ataPTCommand.DataTransferLength = p_scsiIoCtx->dataLength;
     p_t_ata_pt->ataPTCommand.DataBufferOffset   = offsetof(ATADoubleBufferedIO, dataBuffer);
-#if WINVER >= SEA_WIN32_WINNT_VISTA
-    if (p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount <= UINT8_C(1) &&
-        p_scsiIoCtx->pAtaCmdOpts->tfr.SectorCount48 == UINT8_C(0))
-    {
-        p_t_ata_pt->ataPTCommand.AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
-    }
-#endif // WIN_VISTA
 
     switch (p_scsiIoCtx->direction)
     {
@@ -8176,11 +8222,6 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
         // we always allocate at least 1 byte here...so give it something? Or do
         // we set M_NULLPTR? Seems to work as is... - TJE
         // p_t_ata_pt->ataPTCommand.DataBufferOffset   = offsetof(ATADoubleBufferedIO, dataBuffer);
-#if WINVER >= SEA_WIN32_WINNT_VISTA
-        // Turn this bit off in case it was set
-        p_t_ata_pt->ataPTCommand.AtaFlags =
-            p_t_ata_pt->ataPTCommand.AtaFlags & M_STATIC_CAST(USHORT, ~(ATA_FLAGS_NO_MULTIPLE));
-#endif // WIN VISTA
         break;
     default:
         print_tDevice_Verbose_Formatted_String(p_scsiIoCtx->device, VERBOSITY_QUIET, "\nData Direction Unspecified.\n");
@@ -8198,8 +8239,24 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Ex(ScsiIoCtx* p_scsiIoCtx, ptrAT
     case ATA_PROTOCOL_DEV_DIAG:
     case ATA_PROTOCOL_NO_DATA:
     case ATA_PROTOCOL_PACKET:
-    case ATA_PROTOCOL_PIO:
         // these are supported but no flags need to be set
+        break;
+    case ATA_PROTOCOL_PIO:
+#if WINVER >= SEA_WIN32_WINNT_VISTA
+        switch (p_scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus)
+        {
+        case ATA_READ_MULTIPLE_CMD:
+        case ATA_READ_READ_MULTIPLE_EXT:
+        case ATA_WRITE_MULTIPLE_CMD:
+        case ATA_WRITE_MULTIPLE_EXT:
+        case ATA_WRITE_MULTIPLE_FUA_EXT:
+        case ATA_CFA_WRITE_MULTIPLE_WITHOUT_ERASE:
+            break; // these use multiple-mode by design
+        default:
+            p_t_ata_pt->ataPTCommand.AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
+            break;
+        }
+#endif // WIN_VISTA
         break;
     case ATA_PROTOCOL_RET_INFO:
         // this doesn't do anything in ATA PassThrough and is only useful for SCSI PassThrough since this is an HBA
@@ -8498,7 +8555,7 @@ static M_INLINE void safe_free_ide_db_io(IDEDoubleBufferedIO** idedbio)
     safe_free_core(M_REINTERPRET_CAST(void**, idedbio));
 }
 
-static eReturnValues convert_SCSI_CTX_To_IDE_PT(ScsiIoCtx* p_scsiIoCtx, ptrIDEDoubleBufferedIO p_t_ide_pt)
+static eReturnValues convert_SCSI_CTX_To_IDE_PT(const ScsiIoCtx* p_scsiIoCtx, ptrIDEDoubleBufferedIO p_t_ide_pt)
 {
     eReturnValues ret = SUCCESS;
 
@@ -9367,7 +9424,7 @@ eReturnValues get_Windows_SMART_IO_Support(tDevice* device)
 
 #define INVALID_IOCTL DWORD_C(0xFFFFFFFF)
 // returns which IOCTL code we'll use for the specified command
-static DWORD io_For_SMART_Cmd(ScsiIoCtx* scsiIoCtx)
+static DWORD io_For_SMART_Cmd(const ScsiIoCtx* scsiIoCtx)
 {
     if (scsiIoCtx->pAtaCmdOpts->commandType != ATA_CMD_TYPE_TASKFILE)
     {
@@ -9466,7 +9523,7 @@ static DWORD io_For_SMART_Cmd(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-static bool is_ATA_Cmd_Supported_By_SMART_IO(ScsiIoCtx* scsiIoCtx)
+static bool is_ATA_Cmd_Supported_By_SMART_IO(const ScsiIoCtx* scsiIoCtx)
 {
     if (INVALID_IOCTL != io_For_SMART_Cmd(scsiIoCtx))
     {
@@ -9478,7 +9535,7 @@ static bool is_ATA_Cmd_Supported_By_SMART_IO(ScsiIoCtx* scsiIoCtx)
     }
 }
 
-static eReturnValues convert_SCSI_CTX_To_ATA_SMART_Cmd(ScsiIoCtx* scsiIoCtx, PSENDCMDINPARAMS smartCmd)
+static eReturnValues convert_SCSI_CTX_To_ATA_SMART_Cmd(const ScsiIoCtx* scsiIoCtx, PSENDCMDINPARAMS smartCmd)
 {
     if (!is_ATA_Cmd_Supported_By_SMART_IO(scsiIoCtx))
     {
@@ -9858,7 +9915,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(M_ATTR_UNU
     return OS_COMMAND_NOT_AVAILABLE;
 }
 
-OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
     if (get_Device_Handle_Open_Flags(device) == HANDLE_FLAGS_DEFAULT &&
@@ -11937,7 +11994,7 @@ static eReturnValues win_Basic_SCSI_Translation(ScsiIoCtx* scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = OS_PASSTHROUGH_FAILURE;
     print_tDevice_Verbose_String(scsiIoCtx->device, VERBOSITY_BUFFERS, "Sending command with send_IO\n");
@@ -12838,7 +12895,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
     if (buffer == M_NULLPTR)
     {
 #    if defined(_DEBUG)
-        printf("%s: allocate buffer failed, exit", __FUNCTION__);
+        printf("%s: allocate buffer failed, exit\n", __FUNCTION__);
 #    endif
         return MEMORY_FAILURE;
     }
@@ -12868,7 +12925,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
     // Send request down.
     //
 #    if defined(_DEBUG)
-    printf("%s Drive Path = %s", __FUNCTION__, get_Device_Handle_Name(nvmeIoCtx->device));
+    printf("%s Drive Path = %s\n", __FUNCTION__, get_Device_Handle_Name(nvmeIoCtx->device));
 #    endif
     DECLARE_SEATIMER(commandTimer);
     start_Timer(&commandTimer);
@@ -12901,8 +12958,7 @@ static eReturnValues send_Win_NVMe_Get_Features_Cmd(nvmeCmdCtx* nvmeIoCtx)
 
         protocolData = &protocolDataDescr->ProtocolSpecificData;
 
-        if ((protocolData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA)) ||
-            (protocolData->ProtocolDataLength < nvmeIoCtx->dataSize))
+        if (protocolData->ProtocolDataOffset < sizeof(STORAGE_PROTOCOL_SPECIFIC_DATA))
         {
 #    if defined(_DEBUG)
             printf("%s: Error Feature - ProtocolData Offset/Length not valid\n", __FUNCTION__);
@@ -15897,5 +15953,44 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues os_Flush(const tDevice* M_NONN
         ret = OS_COMMAND_TIMEOUT;
     }
     print_tDevice_Return_Enum(device, "Windows API Flush", ret);
+    return ret;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice* M_NONNULL device)
+{
+    eReturnValues ret = NOT_SUPPORTED;
+#    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+    STORAGE_IDLE_POWER idlePower;
+    M_INITIALIZE_STRUCTURE(&idlePower, sizeof(STORAGE_IDLE_POWER));
+    idlePower.Version = 1;
+    idlePower.Size = sizeof(STORAGE_IDLE_POWER);
+    idlePower.D3IdleTimeout = DWORD_MAX; // essentially disabled at 49.7 days
+    ret = win_Enable_Idle_Power(device->os_info.fd, &idlePower);
+#    else
+    M_USE_UNUSED(device);
+#    endif
+    return ret;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice* M_NONNULL device)
+{
+    eReturnValues ret = NOT_SUPPORTED;
+#    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+    STORAGE_IDLE_POWER idlePower;
+    M_INITIALIZE_STRUCTURE(&idlePower, sizeof(STORAGE_IDLE_POWER));
+    idlePower.Version = 1;
+    idlePower.Size = sizeof(STORAGE_IDLE_POWER);
+    if (device->os_info.powerDesc.valid)
+    {
+        idlePower.WakeCapableHint = device->os_info.powerDesc.wakeSupported;
+        idlePower.D3ColdSupported = device->os_info.powerDesc.idleSupported;
+        idlePower.D3IdleTimeout = device->os_info.powerDesc.idleTimeMS;
+    }
+    ret = win_Enable_Idle_Power(device->os_info.fd, &idlePower);
+#    else
+    M_USE_UNUSED(device);
+#    endif
     return ret;
 }

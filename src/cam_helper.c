@@ -1253,7 +1253,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues send_Scsi_Cam_IO(ScsiIoCtx* M_
     return ret;
 }
 
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = FAILURE;
     // printf("%s -->\n",__FUNCTION__);
@@ -2244,7 +2244,7 @@ eReturnValues pci_Read_Bar_Reg(M_ATTR_UNUSED const tDevice* M_NONNULL device,
     return NOT_SUPPORTED;
 }
 
-OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* M_NONNULL device)
 {
     return SUCCESS;
 }
@@ -2301,3 +2301,16 @@ OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(const tDev
 {
     return unmount_Partitions_From_Device(get_Device_Handle_Name(device));
 }
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+

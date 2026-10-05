@@ -87,7 +87,7 @@ extern "C"
 #define MODEL_NUM_LEN              (40)
 #define FW_REV_LEN                 (8)
 #define T10_VENDOR_ID_LEN          (8)
-#define DEFAULT_COMMAND_TIMEOUT    (15) // Seconds
+#define DEFAULT_COMMAND_TIMEOUT    (30) // Seconds
 
     // Forward declare tDevice.
     typedef struct s_tDevice tDevice;
@@ -1058,12 +1058,12 @@ extern "C"
                                                   // as SAT allows since testing shows that even other sense codes still
                                                   // put the registers where SAT specifies
         SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, // libata / SATL quirk for ASC/ASCQ 21/04 ("Unaligned Write
-                             // Command"). Some translators return a fixed-format sense block
-                             // where ATA task-file bytes are only partially recoverable and may
-                             // be placed in non-standard locations. This mode means the caller
-                             // may recover whatever fields can be validated by NOP discovery,
-                             // must treat unrecovered fields as zero, and should prefer
-                             // WARN_INCOMPLETE_* when the response is only partially reliable.
+                                                  // Command"). Some translators return a fixed-format sense block
+                                                  // where ATA task-file bytes are only partially recoverable and may
+                                                  // be placed in non-standard locations. This mode means the caller
+                                                  // may recover whatever fields can be validated by NOP discovery,
+                                                  // must treat unrecovered fields as zero, and should prefer
+                                                  // WARN_INCOMPLETE_* when the response is only partially reliable.
         SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER, // Some SATLs (e.g., PMCS) return LBA bytes in Command
                                                                   // Specific Information with swapped byte order
     } eSATFixedFormatSenseHack;
@@ -1270,9 +1270,12 @@ extern "C"
             bool possilbyEmulatedNVMe; // realtek's USB to M.2 adapter can do AHCI or NVMe. Since nothing changes in IDs
                                        // and it emulates ATA identify data, need this to work around how it reports.
                                        // -TJE
-            bool smartEnabled;         // Override check of ATA word 85, bit0 since some USB adapters don't set this.
-            bool retryWithJMicronPT;   // Needed for some JMicron adapters. Newer may support SAT, older support their
-                                       // lagacy passthrough, so this is to retry on these devices.
+            bool knownRealtekUSB; // Set for bridges identified as a Realtek USB to NVMe/SATA adapter (by VID/PID or the
+                                  // ATA path RTL9210 heuristic). Separate from possilbyEmulatedNVMe because branded
+                                  // adapters (e.g. Seagate) also set that flag and still need SAT.
+            bool smartEnabled;    // Override check of ATA word 85, bit0 since some USB adapters don't set this.
+            bool retryWithJMicronPT; // Needed for some JMicron adapters. Newer may support SAT, older support their
+                                     // lagacy passthrough, so this is to retry on these devices.
             bool jmPTDevSet; // for JMicron's passthrough we need to set dev 0 or 1. This gets turned to true once set
             bool nonDataCountBroken;  // Implemented due to Broadcom HBA firmware bug. When issuing a non-data command
                                       // with non-zero count, it zeroes it to the drive. So this creates unexpected
@@ -1541,7 +1544,7 @@ extern "C"
     // forward declare csmi info to avoid including csmi_helper.h
     typedef struct s_csmiDeviceInfo csmiDeviceInfo, *ptrCsmiDeviceInfo;
 
-    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo * M_NULLABLE * M_NULLABLE csmidevinfo)
+    static M_INLINE void safe_free_csmi_dev_info(csmiDeviceInfo* M_NULLABLE* M_NULLABLE csmidevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, csmidevinfo));
     }
@@ -1549,7 +1552,7 @@ extern "C"
     // forward declare cciss device
     typedef struct s_cissDeviceInfo cissDeviceInfo, *ptrCissDeviceInfo;
 
-    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo * M_NULLABLE * M_NULLABLE cissdevinfo)
+    static M_INLINE void safe_free_ciss_dev_info(cissDeviceInfo* M_NULLABLE* M_NULLABLE cissdevinfo)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, cissdevinfo));
     }
@@ -1583,10 +1586,23 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
                            // Windows' C:\Windows\System32, Linux's / & /boot, etc
     } fileSystemInfo;
 
+    typedef struct s_devicePowerDescriptor
+    {
+        bool     valid; // Indicates if the power descriptor is valid
+        bool     idleSupported;
+        bool     wakeSupported;
+        bool     reservedBool1;
+        uint32_t idleTimeMS;       // Idle time in milliseconds
+        uint8_t reservedArray[24]; // Not sure if/when we will need to expand this in some capacity...reserving data for
+                                   // now. - TJE
+    } devicePowerDescriptor;
+
+#define OS_COMMON_HANDLE_NAME_LEN          (30)
+
 #define OS_HANDLE_NAME_MAX_LENGTH          256
-#define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH 24
-#define OS_SECOND_HANDLE_NAME_LENGTH       30
-#define OS_THIRD_HANDLE_NAME_LENGTH        30
+#define OS_HANDLE_FRIENDLY_NAME_MAX_LENGTH OS_COMMON_HANDLE_NAME_LEN
+#define OS_SECOND_HANDLE_NAME_LENGTH       OS_COMMON_HANDLE_NAME_LEN
+#define OS_THIRD_HANDLE_NAME_LENGTH        OS_COMMON_HANDLE_NAME_LEN
     // \struct typedef struct s_OSDriveInfo
     typedef struct s_OSDriveInfo
     {
@@ -1813,6 +1829,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         ptrCissDeviceInfo M_NULLABLE cissDeviceData; // This pointer is allocated only when CCISS is supported.
         eHandleOpenFlags             handleFlags;    // keeps track of the flags used when the handle was opened.
         uint8_t                      padd[2];        // padd to multiple of 8 bytes
+        devicePowerDescriptor        powerDesc;      // Holds the power descriptor information for the device
     } OSDriveInfo;
 
     //! \fn size_t get_Device_IO_Minimum_Alignment(const tDevice* M_NONNULL device)
@@ -1881,7 +1898,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     typedef eReturnValues (*issue_io_func)(void* M_NONNULL);
 
-#define DEVICE_BLOCK_VERSION (12)
+#define DEVICE_BLOCK_VERSION (13)
 
     // verification for compatibility checking
     typedef struct s_versionBlock
@@ -2670,6 +2687,133 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //-----------------------------------------------------------------------------
     M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues close_Device(tDevice* M_NONNULL device);
 
+    // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued,
+    // otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
+    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Device_Reset(const tDevice *device)
+    //
+    //! \brief   Description:  Attempts a device reset through OS functions available. NOTE: This won't work on every
+    //! device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
+    //!   OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Bus_Reset(const tDevice *device)
+    //
+    //! \brief   Description:  Attempts a bus reset through OS functions available. NOTE: This won't work on every
+    //! device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
+    //!   OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Controller_Reset(const tDevice *device)
+    //
+    //! \brief   Description:  Attempts a controller reset through OS functions available. NOTE: This won't work on
+    //! every device
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
+    //!   OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(const tDevice* M_NONNULL device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Lock_Device(const tDevice *device)
+    //
+    //! \brief   Description:  Issues the FSCTL_LOCK_VOLUME ioctl on the open handle to prevent any interuptions during
+    //! a command or sequence of commands.
+    //!                        It is strongly recommended that the unlock is called after this is done to return the
+    //!                        device to a "sharing" mode again.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
+    //!   OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device);
+
+    OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Unlock_Device(const tDevice *device)
+    //
+    //! \brief   Description:  Issues the FSCTL_UNLOCK_VOLUME ioctl on the open handle to restore shared functionality
+    //! on the device.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
+    //!   OS_COMMAND_BLOCKED = failed to perform the reset
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  os_Unlock_Device(const tDevice *device)
+    //
+    //! \brief   Description:  Issues IOCTL_DISK_UPDATE_PROPERTIES to force an update of the known filesystem...or
+    //! attempts to.
+    //
+    //  Entry:
+    //!   \param[in]  device = pointer to device context!
+    //!
+    //  Exit:
+    //!   \return SUCCESS = pass, NOT_SUPPORTED = IOCTL not available, or did not work. - TJE
+    //
+    //-----------------------------------------------------------------------------
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Update_File_System_Cache(const tDevice* M_NONNULL device);
+
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device);
+
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device);
+
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
+        os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device);
+
+    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device);
+
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice* M_NONNULL device);
+
+    M_PARAM_RO(1)
+    OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice* M_NONNULL device);
+
     //-----------------------------------------------------------------------------
     //
     //  scan_And_Print_Devs()
@@ -2686,6 +2830,34 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //
     //-----------------------------------------------------------------------------
     OPENSEA_TRANSPORT_API void scan_And_Print_Devs(unsigned int flags, eVerbosityLevels scanVerbosity);
+
+    //-----------------------------------------------------------------------------
+    //
+    //  get_Device_Strings_For_Display()
+    //
+    //! \brief   Description:  Returns the model, serial number, and firmware revision strings to use for display.
+    //!                        When a drive is behind a USB/SAT bridge, the standard drive info fields hold the bridge's
+    //!                        SCSI identity while the actual drive's identity is stored in the bridge info (child
+    //!                        MN/SN/FW). The child drive identity is preferred when it is available.
+    //!
+    //  Entry:
+    //!   \param[in] device = the device to get the strings for
+    //!   \param[out] modelString = pointer to a const char* to receive the model number string
+    //!   \param[out] serialString = pointer to a const char* to receive the serial number string
+    //!   \param[out] fwString = pointer to a const char* to receive the firmware revision string
+    //!
+    //  Exit:
+    //!   \return void
+    //
+    //-----------------------------------------------------------------------------
+    M_PARAM_RO(1)
+    M_PARAM_RW(2)
+    M_PARAM_RW(3)
+    M_PARAM_RW(4)
+    OPENSEA_TRANSPORT_API void get_Device_Strings_For_Display(const tDevice* M_NONNULL         device,
+                                                              const char* M_NONNULL* M_NONNULL modelString,
+                                                              const char* M_NONNULL* M_NONNULL serialString,
+                                                              const char* M_NONNULL* M_NONNULL fwString);
 
 #define SCAN_DISPLAY_HANDLE_STRING_LENGTH 256
     typedef struct s_scanDriveInfo
@@ -2719,7 +2891,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int        flags,
                                                                     eVerbosityLevels    scanVerbosity,
                                                                     uint32_t* M_NONNULL numberOfDevices,
-                                                                    scanDriveInfo * M_NONNULL * M_NULLABLE deviceList);
+                                                                    scanDriveInfo* M_NONNULL* M_NULLABLE deviceList);
 
     //-----------------------------------------------------------------------------
     //
@@ -3405,7 +3577,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //!   \param[in] device = pointer to the device struct.
     //
     //  Exit:
-    //!   \return uint32_t value BlockSize from device struct
+    //!   \return uint32_t value BlockSize from device struct. If device pointer is null, returns 1.
     //
     //-----------------------------------------------------------------------------
     M_PARAM_RO(1)

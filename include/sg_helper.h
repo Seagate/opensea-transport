@@ -39,10 +39,6 @@ extern "C"
     // NOTE: SG also supports an infinite timeout, but that is checked in a separate function
 #define SG_MAX_CMD_TIMEOUT_SECONDS 4294967
 
-    // If this returns true, a timeout can be sent with INFINITE_TIMEOUT_VALUE definition and it will be issued,
-    // otherwise you must try MAX_CMD_TIMEOUT_SECONDS instead
-    OPENSEA_TRANSPORT_API bool os_Is_Infinite_Timeout_Supported(void);
-
     // SG Driver status's since they are not available through standard includes we're using
 
 #ifndef OPENSEA_SG_ERR_DRIVER_MASK
@@ -168,96 +164,9 @@ extern "C"
     // \param scsiIoCtx
     M_PARAM_RW(1) eReturnValues send_sg_io(ScsiIoCtx* M_NONNULL scsiIoCtx);
 
-    // \fn send_IO(scsiIoCtx * scsiIoCtx)
-    // \brief Function to send IO to the device.
-    // \param scsiIoCtx
-    M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  os_Device_Reset(const tDevice *device)
-    //
-    //! \brief   Description:  Attempts a device reset through OS functions available. NOTE: This won't work on every
-    //! device
-    //
-    //  Entry:
-    //!   \param[in]  device = pointer to device context!
-    //!
-    //!
-    //  Exit:
-    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
-    //!   OS_COMMAND_BLOCKED = failed to perform the reset
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Device_Reset(const tDevice* M_NONNULL device);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  os_Bus_Reset(const tDevice *device)
-    //
-    //! \brief   Description:  Attempts a bus reset through OS functions available. NOTE: This won't work on every
-    //! device
-    //
-    //  Entry:
-    //!   \param[in]  device = pointer to device context!
-    //!
-    //!
-    //  Exit:
-    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
-    //!   OS_COMMAND_BLOCKED = failed to perform the reset
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Bus_Reset(const tDevice* M_NONNULL device);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  os_Controller_Reset(const tDevice *device)
-    //
-    //! \brief   Description:  Attempts a controller reset through OS functions available. NOTE: This won't work on
-    //! every device
-    //
-    //  Entry:
-    //!   \param[in]  device = pointer to device context!
-    //!
-    //!
-    //  Exit:
-    //!   \return SUCCESS = pass, OS_COMMAND_NOT_AVAILABLE = not support in this OS or driver of the device,
-    //!   OS_COMMAND_BLOCKED = failed to perform the reset
-    //
-    //-----------------------------------------------------------------------------
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Controller_Reset(const tDevice* M_NONNULL device);
-
-    //-----------------------------------------------------------------------------
-    //
-    //  pci_Read_Bar_Reg()
-    //
-    //! \brief   Description:  Function to Read PCI Bar register
-    //
-    //  Entry:
-    //!   \param[in]  device = pointer to device context!
-    //!   \param[out] pData =  pointer to data that need to be filled.
-    //!                        this needs to be at least the size of a page
-    //!                        e.g. getPageSize() in Linux
-    //!   \param[out] dataSize =  size of the data
-    //!
-    //!
-    //  Exit:
-    //!   \return SUCCESS = pass, !SUCCESS = something when wrong
-    //
-    //-----------------------------------------------------------------------------
-    M_PARAM_RO(1)
-    M_PARAM_WO_SIZE(2, 3)
-    eReturnValues pci_Read_Bar_Reg(const tDevice* M_NONNULL device, uint8_t* M_NONNULL pData, uint32_t dataSize);
-
-    M_PARAM_RW(1) eReturnValues send_NVMe_IO(nvmeCmdCtx* M_NONNULL nvmeIoCtx);
-
     // to be used with a deep scan???
     // eReturnValues nvme_Namespace_Rescan(int fd);//rescans a controller for namespaces. This must be a file descriptor
     // without a namespace. EX: /dev/nvme0 and NOT /dev/nvme0n1
-
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Reset(const tDevice* M_NONNULL device);
-
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_nvme_Subsystem_Reset(const tDevice* M_NONNULL device);
 
     M_PARAM_RO(1)
     M_PARAM_WO(2)
@@ -267,17 +176,6 @@ extern "C"
                                               char* M_NONNULL* M_NULLABLE genericHandle,
                                               char* M_NONNULL* M_NULLABLE blockHandle,
                                               char* M_NONNULL* M_NULLABLE blockGenericHandle);
-
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Lock_Device(const tDevice* M_NONNULL device);
-
-    OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(tDevice* M_NONNULL device);
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unlock_Device(const tDevice* M_NONNULL device);
-
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Update_File_System_Cache(const tDevice* M_NONNULL device);
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues
-        os_Unmount_File_Systems_On_Device(const tDevice* M_NONNULL device);
-
-    OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Erase_Boot_Sectors(const tDevice* M_NONNULL device);
 
 #if defined(__cplusplus)
 }

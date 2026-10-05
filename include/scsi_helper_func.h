@@ -21,6 +21,8 @@ extern "C"
 {
 #endif
 
+    M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx);
+
     // This is a private function that is used by the send CDB function below in order to contain printing debug output
     // in one location instead of multiple so that the ATA layer can also call this. Do not use this directly to send a
     // CDB. Use the scsi_Send_Cdb function instead.

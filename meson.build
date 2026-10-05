@@ -1,11 +1,23 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2021-2026 Seagate Technology LLC and/or its Affiliates, All Rights Reserved
-project('opensea-transport', 'c', license: 'MPL-2.0', version: '10.3.0', meson_version: '>=0.50.0', default_options: ['warning_level=2', 'default_library=static', 'c_winlibs=kernel32,user32,gdi32,winspool,shell32,ole32,oleaut32,uuid,comdlg32,advapi32,cfgmgr32'])
+project(
+    'opensea-transport',
+    'c',
+    license: 'MPL-2.0',
+    version: '10.3.0',
+    meson_version: '>=0.56.0',
+    default_options: [
+        'warning_level=2',
+        'default_library=static',
+        'c_winlibs=kernel32,user32,gdi32,winspool,shell32,ole32,oleaut32,uuid,comdlg32,advapi32,cfgmgr32',
+    ],
+)
 
 c = meson.get_compiler('c')
 
 warning_flags = []
 linker_flags = []  #additional linker flags to add per-compiler for hardening.
+ssp_support_dep = []  #Solaris/illumos SSP support library, propagated to consumers of this library
 
 if c.get_id().contains('gcc') or c.get_id().contains('clang')
     #TODO: Add -Wcast-align=strict and fix these issues to help ensure better portability
@@ -88,7 +100,7 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         '-Wcalloc-transposed-args',
         '-Werror=alloca',  # Do not allow use of the alloca function
         '-Wstring-compare',  # Helps detect when strcmp is used when the programmer likely meant to use strncmp
-        '-Wfortify-source' # Clang specific (at least for now) but enables additional diagnostics.
+        '-Wfortify-source',  # Clang specific (at least for now) but enables additional diagnostics.
     ]
 
     if get_option('cc-suggest-attribute')
@@ -111,27 +123,116 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         warning_flags += '-Wsign-conversion'
     endif
 
-    if target_machine.system() != 'sunos'
-        warning_flags += '-fstack-protector-strong'
-    else
-        #Illumos will support this, but solaris will not due to library differences in the systems
-        if meson.version().version_compare('>=1.2.0')
-            if target_machine.kernel() == 'illumos'
-                warning_flags += '-fstack-protector-strong'
+    # ssp option: 'auto' (default) and 'enabled' both run the automatic
+    # probing below; 'disabled' skips the whole block and builds SSP-free.
+    if get_option('ssp').auto() or get_option('ssp').enabled()
+        # Check if -fstack-protector-strong links or not - some systems support
+        # the argument but are unable to link with it. Fall back to plain
+        # -fstack-protector when strong is unavailable.
+        # GCC's optimize attribute forces canary codegen on the probe function so
+        # the check does not depend on the compiler's per-function protection
+        # heuristics deciding that a small test function is not worth protecting.
+        stack_protector_test_code = '''
+        #if defined(__GNUC__) && !defined(__clang__)
+        __attribute__((noinline, optimize("-fstack-protector-all")))
+        #else
+        __attribute__((noinline))
+        #endif
+        int ssp_probe(void)
+        {
+            volatile char buf[8];
+            buf[0] = 1;
+            buf[7] = 2;
+            return buf[0] + buf[7];
+        }
+        int main(void) { return ssp_probe(); }
+    '''
+        # A link check rather than a compile: on some toolchains the SSP glue
+        # symbols (__stack_chk_fail[_local], __stack_chk_guard) are only
+        # provided by a static archive and must already resolve at link time
+        # (see golang/go#58385).
+        ssp_strong_ok = c.links(
+            stack_protector_test_code,
+            name: 'stack-protector-strong link support',
+            args: ['-fstack-protector-strong'],
+        )
+        ssp_regular_ok = false
+        if not ssp_strong_ok
+            ssp_regular_ok = c.links(
+                stack_protector_test_code,
+                name: 'stack-protector link support',
+                args: ['-fstack-protector'],
+            )
+        endif
+        if ssp_strong_ok or ssp_regular_ok
+            #On Solaris/illumos the SSP glue symbols (__stack_chk*) are only
+            #resolved through the platform SSP support library and that only
+            #reaches a ninja link line as an explicit library dependency, so
+            #SSP is enabled only when the platform ships it.
+            #ssp_support_dep propagates it to consumers of this library.
+            ssp_available = true
+            if target_machine.system() == 'sunos'
+                #illumos (OmniOS, Tribblix, OpenIndiana) ships libssp_ns.a,
+                #classic Oracle Solaris ships libssp.a
+                ssp_available = false
+                ssp_ns_dep = c.find_library('ssp_ns', required: false)
+                if ssp_ns_dep.found()
+                    ssp_support_dep = [ssp_ns_dep]
+                    ssp_available = true
+                else
+                    ssp_dep = c.find_library('ssp', required: false)
+                    if ssp_dep.found()
+                        ssp_support_dep = [ssp_dep]
+                        ssp_available = true
+                    endif
+                endif
             endif
-        else
-            # TODO: Backup method to detect illumos vs solaris
+            if ssp_available
+                if ssp_strong_ok
+                    warning_flags += '-fstack-protector-strong'
+                else
+                    warning_flags += '-fstack-protector'
+                endif
+            endif
         endif
     endif
 
-    if c.get_id().contains('gcc') and target_machine.system() == 'windows'
-        #According to the link below, this is not needed in Windows...it also causes a bug in some versions of GCC for Windows.
-        #https://gcc.gnu.org/bugzilla/show_bug.cgi?id=90458
-        #NOTE: While this appears to be fixed for versions 11 and 12, the current CI is failing on this with
-        #      version 12.2. If we want to or need to enable this, it should be done based on which versions we
-        #      know have been patched for this. -TJE
-    else
-        warning_flags += '-fstack-clash-protection'
+    # Check if -fstack-clash-protection works or not. Some GCC for Windows
+    # versions (see
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=90458) accept the flag
+    # and even link it, but the generated code crashes at runtime, so the
+    # probe is also run when possible.
+    # The large local buffer forces the stack probing code path the buggy
+    # versions break.
+    stack_clash_test_code = '''
+        __attribute__((noinline)) int clash_probe(void)
+        {
+            volatile char buf[65536];
+            buf[0] = 1;
+            return buf[0];
+        }
+        int main(void) { return clash_probe() - 1; }
+    '''
+    if c.links(
+        stack_clash_test_code,
+        name: 'stack-clash-protection link support',
+        args: ['-fstack-clash-protection'],
+    )
+        if meson.can_run_host_binaries()
+            stack_clash_result = c.run(
+                stack_clash_test_code,
+                name: 'stack-clash-protection run support',
+                args: [
+                    '-fstack-clash-protection',
+                ],
+            )
+            if stack_clash_result.returncode() == 0
+                warning_flags += '-fstack-clash-protection'
+            endif
+        else
+            #Host binaries cannot be executed in this environment - keep the flag, the link check passed
+            warning_flags += '-fstack-clash-protection'
+        endif
     endif
 
     if target_machine.cpu_family() == 'ppc64'
@@ -236,11 +337,11 @@ elif c.get_id().contains('msvc')
     # MSVC defaults to old MSVC C compatibility which is mostly C89 with some newer C99/C11-ish support
     # Since we support older meson versions, we deal with this causing a warning over using the default_options to
     # set the C standard for the project.
-    if  c.has_argument('/std:clatest')
+    if c.has_argument('/std:clatest')
         warning_flags += '/std:clatest'
-    elif  c.has_argument('/std:c17')
+    elif c.has_argument('/std:c17')
         warning_flags += '/std:c17'
-    elif  c.has_argument('/std:c11')
+    elif c.has_argument('/std:c11')
         warning_flags += '/std:c11'
     endif
 
@@ -425,7 +526,9 @@ elif defaultlib == 'shared'
     build_c_args += ['-DEXPORT_OPENSEA_TRANSPORT']
     dep_c_args += ['-DIMPORT_OPENSEA_TRANSPORT']
 else
-    error('Invalid default_library option value for this project. Please set shared or static, but not both: ' + defaultlib)
+    error(
+        'Invalid default_library option value for this project. Please set shared or static, but not both: ' + defaultlib,
+    )
 endif
 
 opensea_common = subproject('opensea-common')
@@ -433,14 +536,18 @@ opensea_common_dep = opensea_common.get_variable('opensea_common_dep')
 
 incdir = include_directories('include', 'include/vendor')
 
-opensea_transport_lib = library('opensea-transport',
+opensea_transport_lib = library(
+    'opensea-transport',
     src_files,
-    c_args : global_cpp_args + build_c_args,
-    dependencies : [opensea_common_dep, os_deps],
-    include_directories : incdir,
-    gnu_symbol_visibility : 'hidden')
+    c_args: global_cpp_args + build_c_args,
+    dependencies: [opensea_common_dep, os_deps],
+    include_directories: incdir,
+    gnu_symbol_visibility: 'hidden',
+)
 
-opensea_transport_dep = declare_dependency(link_with : opensea_transport_lib,
-    compile_args : global_cpp_args + dep_c_args,
-    dependencies : os_deps,
-    include_directories : incdir)
+opensea_transport_dep = declare_dependency(
+    link_with: opensea_transport_lib,
+    compile_args: global_cpp_args + dep_c_args,
+    dependencies: [os_deps, ssp_support_dep],
+    include_directories: incdir,
+)

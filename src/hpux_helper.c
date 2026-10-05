@@ -329,7 +329,7 @@ eReturnValues send_SIOC_IO_EXT(ScsiIoCtx* scsiIoCtx)
 }
 #endif // SIOC_IO_EXT
 
-M_PARAM_RO(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
+M_PARAM_RW(1) eReturnValues send_IO(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues ret = SUCCESS;
 #if defined(SIOC_IO_EXT)
@@ -828,7 +828,7 @@ OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Unlock_Device(const tDevice
     return ret;
 }
 
-OPENSEA_TRANSPORT_API M_PARAM_RO(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED const tDevice* M_NONNULL device)
+OPENSEA_TRANSPORT_API M_PARAM_RW(1) eReturnValues os_Get_Exclusive(M_ATTR_UNUSED tDevice* M_NONNULL device)
 {
     // TODO: Unimplemented because not sure if O_EXCL is allowed or not. -TJE
     return OS_COMMAND_NOT_AVAILABLE;
@@ -845,3 +845,16 @@ OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(M_ATTR_UNU
 {
     return OS_COMMAND_NOT_AVAILABLE;
 }
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
+M_PARAM_RO(1)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+{
+	return NOT_SUPPORTED;
+}
+
