@@ -2329,6 +2329,10 @@ OPENSEA_TRANSPORT_API eReturnValues compare_LBA(const tDevice* M_NONNULL device,
                                                 uint8_t* M_NONNULL       ptrData,
                                                 uint32_t                 dataSize)
 {
+    if (dataSize == 0 || ptrData == M_NULLPTR)
+    {
+        return BAD_PARAMETER;
+    }
     switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
@@ -2350,8 +2354,14 @@ OPENSEA_TRANSPORT_API eReturnValues compare_LBA(const tDevice* M_NONNULL device,
 #endif
         )
         {
-            return nvme_Compare(device, lba, NVME_0_BASED_ADJUST(dataSize / get_Device_BlockSize(device)), false, false,
-                                0, ptrData, dataSize);
+            uint32_t numBlocks = NVME_0_BASED_ADJUST(dataSize / get_Device_BlockSize(device));
+            if (numBlocks > UINT16_MAX)
+            {
+                return BAD_PARAMETER;
+            }
+            return nvme_Compare(device, lba,
+                                M_STATIC_CAST(uint16_t, numBlocks),
+                                false, false, 0, ptrData, dataSize);
         }
         else
         {

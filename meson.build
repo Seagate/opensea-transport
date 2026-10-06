@@ -8,8 +8,9 @@ project(
     meson_version: '>=0.56.0',
     default_options: [
         'warning_level=2',
+        'werror=true',
+        'b_ndebug=if-release',
         'default_library=static',
-        'c_winlibs=kernel32,user32,gdi32,winspool,shell32,ole32,oleaut32,uuid,comdlg32,advapi32,cfgmgr32',
     ],
 )
 
@@ -395,20 +396,15 @@ src_files = [
     'src/ata_cmds.c',
     'src/ata_helper.c',
     'src/ata_legacy_cmds.c',
-    'src/ciss_helper.c',
     'src/cmds.c',
     'src/common_public.c',
-    'src/csmi_helper.c',
-    'src/csmi_legacy_pt_cdb_helper.c',
     'src/cypress_legacy_helper.c',
-    'src/intel_rst_helper.c',
     'src/jmicron_legacy_helper.c',
     'src/jmicron_nvme_helper.c',
     'src/realtek_nvme_helper.c',
     'src/nec_legacy_helper.c',
     'src/nvme_cmds.c',
     'src/nvme_helper.c',
-    'src/of_nvme_helper.c',
     'src/prolific_legacy_helper.c',
     'src/psp_legacy_helper.c',
     'src/raid_scan_helper.c',
@@ -430,6 +426,10 @@ endif
 csmisupport = get_option('csmiraid')
 if csmisupport.enabled()
     add_project_arguments('-DENABLE_CSMI', language: 'c')
+    src_files += [
+        'src/csmi_helper.c',
+        'src/csmi_legacy_pt_cdb_helper.c',
+    ]
 endif
 cisssupport = get_option('cissraid')
 irstsupport = get_option('irstpt')
@@ -441,6 +441,7 @@ if target_machine.system() == 'linux'
     src_files += ['src/sg_helper.c', 'src/posix_common_lowlevel.c', 'src/nix_mounts.c']
     if cisssupport.enabled()
         add_project_arguments('-DENABLE_CISS', language: 'c')
+        src_files += ['src/ciss_helper.c']
     endif
     if nvmesupport.enabled()
         if c.check_header('linux/nvme_ioctl.h')
@@ -461,6 +462,7 @@ elif target_machine.system() == 'freebsd' or target_machine.system() == 'dragonf
     #TODO: Need to do some testing on FreeBSD before we allow this
     # if cisssupport.enabled()
     #   add_project_arguments('-DENABLE_CISS', language : 'c')
+    #   src_files += ['src/ciss_helper.c']
     # endif
     if not c.check_header('dev/nvme/nvme.h')
         add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language: 'c')
@@ -484,6 +486,7 @@ elif target_machine.system() == 'sunos'
     #TODO: Need to do some testing on Illumos before we allow this
     # if cisssupport.enabled()
     #   add_project_arguments('-DENABLE_CISS', language : 'c')
+    #   src_files += ['src/ciss_helper.c']
     # endif
 elif target_machine.system() == 'aix'
     src_files += ['src/aix_helper.c', 'src/posix_common_lowlevel.c']
@@ -508,9 +511,11 @@ elif target_machine.system() == 'windows'
     endif
     if irstsupport.enabled()
         add_project_arguments('-DENABLE_INTEL_RST', language: 'c')
+        src_files += ['src/intel_rst_helper.c']
     endif
     if ofnvmesupport.enabled()
         add_project_arguments('-DENABLE_OFNVME', language: 'c')
+        src_files += ['src/of_nvme_helper.c']
     endif
     global_cpp_args += ['-D_CRT_NONSTDC_NO_DEPRECATE', '-D_CRT_SECURE_NO_WARNINGS', '-D_UNICODE', '-DUNICODE']
 endif  # TODO UEFI and vmware
