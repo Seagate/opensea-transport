@@ -754,7 +754,7 @@ extern "C"
         uint8_t lbaHi;
         uint8_t device;
         uint8_t status;
-        uint8_t padding[5]; // empty padding to make sure this structure endds on an 8byte aligned boundary
+        uint8_t padding[5]; // empty padding to make sure this structure ends on an 8byte aligned boundary
     } ataReturnTFRs;
 
     static M_INLINE ataReturnTFRs initialize_ATA_RTFRs(void)
@@ -771,7 +771,7 @@ extern "C"
         init.lbaHi     = UINT8_C(0);
         init.device    = UINT8_C(0);
         init.status    = UINT8_C(0);
-        M_STATIC_CAST(void, safe_memset(init.padding, sizeof(init.padding), 0, sizeof(init.padding)));
+        explicit_zeroes(init.padding, sizeof(init.padding));
         return init;
     }
 
