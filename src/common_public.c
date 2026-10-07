@@ -7222,8 +7222,7 @@ OPENSEA_TRANSPORT_API bool set_Device_Handle_Friendly_Name(tDevice* M_NONNULL de
             // Do not change error to 0 here. Name should never be empty or null.
             // Zeroing this out is the safest bet in case anything attempts to access any part of this expecting null
             // termination By setting all bytes to 0, that effectively sets any possible access to a string of length 0
-            (void)safe_memset(device->os_info.friendlyName, sizeof(device->os_info.friendlyName), 0,
-                              sizeof(device->os_info.friendlyName));
+            explicit_zeroes(device->os_info.friendlyName, sizeof(device->os_info.friendlyName));
         }
         if (error == 0)
         {
