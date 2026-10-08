@@ -2359,9 +2359,7 @@ OPENSEA_TRANSPORT_API eReturnValues compare_LBA(const tDevice* M_NONNULL device,
             {
                 return BAD_PARAMETER;
             }
-            return nvme_Compare(device, lba,
-                                M_STATIC_CAST(uint16_t, numBlocks),
-                                false, false, 0, ptrData, dataSize);
+            return nvme_Compare(device, lba, M_STATIC_CAST(uint16_t, numBlocks), false, false, 0, ptrData, dataSize);
         }
         else
         {
