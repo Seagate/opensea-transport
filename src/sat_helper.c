@@ -4276,7 +4276,7 @@ static eReturnValues translate_SCSI_Inquiry_Command(const tDevice* device, ScsiI
             if (is_ATA_Identify_Word_Valid(le16_to_host(device->drive_info.IdentifyData.ata.Word080)))
             {
                 uint16_t     ataSpecVersion = UINT16_C(0);
-                unsigned int specCounter = first_leading_one(le16_to_host(device->drive_info.IdentifyData.ata.Word080));
+                unsigned int specCounter = first_leading_one_us(le16_to_host(device->drive_info.IdentifyData.ata.Word080));
                 switch (specCounter)
                 {
                 case 6: // ATA/ATAPI-6 15E0h
