@@ -32,6 +32,7 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         '-Wfloat-equal',
         '-Wnull-dereference',
         '-Wunused-const-variable',
+        '-Wunused-but-set-variable',
         '-Wunused-parameter',
         '-Wunused-value',
         '-Wduplicated-cond',
