@@ -1617,8 +1617,8 @@ static void set_Device_Fields_From_Handle(const char* M_NONNULL handle, tDevice*
                 DECLARE_ZERO_INIT_ARRAY(char, secondHandleButLongerToAvoidWarnings, OS_HANDLE_NAME_MAX_LENGTH);
                 char* dupHandle = M_NULLPTR;
                 M_IGNORE_SAFE_ERRNO_CALL(safe_memcpy(&secondHandleButLongerToAvoidWarnings, OS_HANDLE_NAME_MAX_LENGTH,
-                                                &sysFsInfo.secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH),
-                                          "copying a small buffer to a bigger buffer will not overflow");
+                                                     &sysFsInfo.secondaryHandleStr, OS_SECOND_HANDLE_NAME_LENGTH),
+                                         "copying a small buffer to a bigger buffer will not overflow");
                 if (0 != safe_strdup(&dupHandle, sysFsInfo.secondaryHandleStr) || dupHandle == M_NULLPTR)
                 {
                     set_Device_Name_In_tDevice(device, secondHandleButLongerToAvoidWarnings, M_NULLPTR);
@@ -1690,9 +1690,9 @@ static eReturnValues find_Link_In_ClassPath(const char* classPath,
         size_t      tempLen = safe_strlen(classPath) + safe_strlen(classList[iter]->d_name) + 1;
         char*       temp    = M_REINTERPRET_CAST(char*, safe_calloc(tempLen, sizeof(char)));
         struct stat tempStat;
-        safe_memset(&tempStat, sizeof(struct stat), 0, sizeof(struct stat));
-        snprintf_err_handle(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
-        if (lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode)) /*check if this is a link*/
+        M_INITIALIZE_STRUCTURE(&tempStat, sizeof(struct stat));
+        int snprintfres = snprintf_err_handle(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
+        if (snprintfres > 0 && lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode)) /*check if this is a link*/
         {
             DECLARE_ZERO_INIT_ARRAY(char, mapLink, PATH_MAX);
             ssize_t linkLen = readlink(temp, mapLink, PATH_MAX - 1);
@@ -2186,7 +2186,8 @@ static eReturnValues resolve_Block_Handle_To_Generic_Handle(const char* filename
     safe_free(&blockGenHandle);
 
 #if defined(_DEBUG)
-    printf("%s: filename = %s, genericHandle = %s\n", __FUNCTION__, filename, (genericHandle && *genericHandle) ? *genericHandle : "NULL");
+    printf("%s: filename = %s, genericHandle = %s\n", __FUNCTION__, filename,
+           (genericHandle && *genericHandle) ? *genericHandle : "NULL");
 #endif
 
     return SUCCESS;
@@ -4802,25 +4803,21 @@ OPENSEA_TRANSPORT_API eReturnValues os_Unmount_File_Systems_On_Device(const tDev
                                                                             : get_Device_Handle_Name(device));
 }
 
-
 // For USB: read/write /sys/bus/usb/devices/.../power/control and power/autosuspend_delay_ms
 // idleTimeoutMs = UINT32_MAX → write "on" to power/control (prevent autosuspend)
 // Restoring → write "auto" and restore the delay in ms
 // For SATA: return NOT_SUPPORTED (link PM doesn't cause device resets, no action needed)
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
-	return NOT_SUPPORTED;
+    return NOT_SUPPORTED;
 }
 
 M_PARAM_RO(1)
-OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice * M_NONNULL device)
+OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(M_ATTR_UNUSED const tDevice* M_NONNULL device)
 {
-	return NOT_SUPPORTED;
+    return NOT_SUPPORTED;
 }
-
-
-
 
 // This should be at the end of this file to undefine _GNU_SOURCE if this file manually enabled it
 #if !defined(GNU_SOURCE_DEFINED_IN_SG_HELPER)

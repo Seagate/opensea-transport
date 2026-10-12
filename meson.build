@@ -8,8 +8,9 @@ project(
     meson_version: '>=0.56.0',
     default_options: [
         'warning_level=2',
+        'werror=true',
+        'b_ndebug=if-release',
         'default_library=static',
-        'c_winlibs=kernel32,user32,gdi32,winspool,shell32,ole32,oleaut32,uuid,comdlg32,advapi32,cfgmgr32',
     ],
 )
 
@@ -31,6 +32,7 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         '-Wfloat-equal',
         '-Wnull-dereference',
         '-Wunused-const-variable',
+        '-Wunused-but-set-variable',
         '-Wunused-parameter',
         '-Wunused-value',
         '-Wduplicated-cond',
@@ -280,36 +282,36 @@ elif c.get_id().contains('msvc')
         '/wd5105',  # macro expansion producing 'defined' has undefined behavior
         '/wd4746',  # volatile access of '<expression>' is subject to /volatile:[iso|ms] setting; consider using __iso_volatile_load/store intrinsic functions.
         #Turn on the following warnings to make the output more useful or like GCC/clang
-        '/w14255',  # 'function' : no function prototype given: converting '()' to '(void)'
-        '/w14062',  # enumerator 'identifier' in switch of enum 'enumeration' is not handled
-        '/w14101',  # 'identifier' : unreferenced local variable
-        '/w14189',  # 'identifier' : local variable is initialized but not referenced
-        '/w15031',  # #pragma warning(pop): likely mismatch, popping warning state pushed in different file
-        '/w15032',  # detected #pragma warning(push) with no corresponding #pragma warning(pop)
-        '/w15262',  # implicit fall-through occurs here; are you missing a break statement? Use [[fallthrough]] when a break statement is intentionally omitted between cases
-        '/w14255',  # 'function' : no function prototype given: converting '()' to '(void)' #NOTE: Only needed for /Wall, otherwise enabling can be good-TJE
-        '/w14242',  # identifier conversion from type 1 to type 2, possible loss of data (matches -wconversion above)
-        '/w14254',  # operator conversion from type 1 to type 2, possible loss of data (matches -wconversion above)
-        '/w14287',  # operator: unsigned/negative constant mismatch (matches -wconversion above)
-        '/w14296',  # operator: expression is always false
-        '/w14365',  # action: conversion from type 1 to type 2, signed/unsigned mismatch (matches -wconversion above)
-        '/w14388',  # implicit conversion warning during a comparison (matches -wconversion above)
-        '/w14545',  # expression before comma evaluates to a function which is missing an argument list
-        '/w14546',  # function call before comma missing argument list
-        '/w14547',  # 'operator' : operator before comma has no effect; expected operator with side-effect
-        '/w14548',  # expression before comma has no effect; expected expression with side-effect
-        '/w14549',  # 'operator1': operator before comma has no effect; did you intend 'operator2'?
-        '/w14574',  # 'identifier' is defined to be '0': did you mean to use '#if identifier'?
-        '/w14605',  # 	'/Dmacro' specified on current command line, but was not specified when precompiled header was built
-        '/w14555',  # expression has no effect; expected expression with side-effect
-        '/w14774',  # 'string' : format string expected in argument number is not a string literal
-        '/w14777',  # 'function' : format string 'string' requires an argument of type 'type1', but variadic argument number has type 'type2'
-        '/w14826',  # Conversion from 'type1' to 'type2' is sign-extended. This may cause unexpected runtime behavior (more -wconversion)
-        '/w15219',  # implicit conversion from 'type-1' to 'type-2', possible loss of data (-wconversion)
-        '/w15240',  # 'attribute-name': attribute is ignored in this syntactic position
-        '/w15245',  # 'function': unreferenced function with internal linkage has been removed
-        '/w14555',  # expression has no effect; expected expression with side-effect
-        '/w15264',  # 'variable-name': 'const' variable is not used
+        '/w34255',  # 'function' : no function prototype given: converting '()' to '(void)'
+        '/w34062',  # enumerator 'identifier' in switch of enum 'enumeration' is not handled
+        '/w34101',  # 'identifier' : unreferenced local variable
+        '/w34189',  # 'identifier' : local variable is initialized but not referenced
+        '/w35031',  # #pragma warning(pop): likely mismatch, popping warning state pushed in different file
+        '/w35032',  # detected #pragma warning(push) with no corresponding #pragma warning(pop)
+        '/w35262',  # implicit fall-through occurs here; are you missing a break statement? Use [[fallthrough]] when a break statement is intentionally omitted between cases
+        '/w34255',  # 'function' : no function prototype given: converting '()' to '(void)' #NOTE: Only needed for /Wall, otherwise enabling can be good-TJE
+        '/w34242',  # identifier conversion from type 1 to type 2, possible loss of data (matches -wconversion above)
+        '/w34254',  # operator conversion from type 1 to type 2, possible loss of data (matches -wconversion above)
+        '/w34287',  # operator: unsigned/negative constant mismatch (matches -wconversion above)
+        '/w34296',  # operator: expression is always false
+        '/w34365',  # action: conversion from type 1 to type 2, signed/unsigned mismatch (matches -wconversion above)
+        '/w34388',  # implicit conversion warning during a comparison (matches -wconversion above)
+        '/w34545',  # expression before comma evaluates to a function which is missing an argument list
+        '/w34546',  # function call before comma missing argument list
+        '/w34547',  # 'operator' : operator before comma has no effect; expected operator with side-effect
+        '/w34548',  # expression before comma has no effect; expected expression with side-effect
+        '/w34549',  # 'operator1': operator before comma has no effect; did you intend 'operator2'?
+        '/w34574',  # 'identifier' is defined to be '0': did you mean to use '#if identifier'?
+        '/w34605',  # 	'/Dmacro' specified on current command line, but was not specified when precompiled header was built
+        '/w34555',  # expression has no effect; expected expression with side-effect
+        '/w34774',  # 'string' : format string expected in argument number is not a string literal
+        '/w34777',  # 'function' : format string 'string' requires an argument of type 'type1', but variadic argument number has type 'type2'
+        '/w34826',  # Conversion from 'type1' to 'type2' is sign-extended. This may cause unexpected runtime behavior (more -wconversion)
+        '/w35219',  # implicit conversion from 'type-1' to 'type-2', possible loss of data (-wconversion)
+        '/w35240',  # 'attribute-name': attribute is ignored in this syntactic position
+        '/w35245',  # 'function': unreferenced function with internal linkage has been removed
+        '/w34555',  # expression has no effect; expected expression with side-effect
+        '/w35264',  # 'variable-name': 'const' variable is not used
         '/w24302',  # 'conversion': truncation from 'type1' to 'type2'
         '/w14311',  # 'variable': pointer truncation from 'type' to 'type'
         '/w14312',  # 'operation': conversion from 'type1' to 'type2' of greater size
@@ -395,20 +397,15 @@ src_files = [
     'src/ata_cmds.c',
     'src/ata_helper.c',
     'src/ata_legacy_cmds.c',
-    'src/ciss_helper.c',
     'src/cmds.c',
     'src/common_public.c',
-    'src/csmi_helper.c',
-    'src/csmi_legacy_pt_cdb_helper.c',
     'src/cypress_legacy_helper.c',
-    'src/intel_rst_helper.c',
     'src/jmicron_legacy_helper.c',
     'src/jmicron_nvme_helper.c',
     'src/realtek_nvme_helper.c',
     'src/nec_legacy_helper.c',
     'src/nvme_cmds.c',
     'src/nvme_helper.c',
-    'src/of_nvme_helper.c',
     'src/prolific_legacy_helper.c',
     'src/psp_legacy_helper.c',
     'src/raid_scan_helper.c',
@@ -430,6 +427,10 @@ endif
 csmisupport = get_option('csmiraid')
 if csmisupport.enabled()
     add_project_arguments('-DENABLE_CSMI', language: 'c')
+    src_files += [
+        'src/csmi_helper.c',
+        'src/csmi_legacy_pt_cdb_helper.c',
+    ]
 endif
 cisssupport = get_option('cissraid')
 irstsupport = get_option('irstpt')
@@ -441,6 +442,7 @@ if target_machine.system() == 'linux'
     src_files += ['src/sg_helper.c', 'src/posix_common_lowlevel.c', 'src/nix_mounts.c']
     if cisssupport.enabled()
         add_project_arguments('-DENABLE_CISS', language: 'c')
+        src_files += ['src/ciss_helper.c']
     endif
     if nvmesupport.enabled()
         if c.check_header('linux/nvme_ioctl.h')
@@ -461,6 +463,7 @@ elif target_machine.system() == 'freebsd' or target_machine.system() == 'dragonf
     #TODO: Need to do some testing on FreeBSD before we allow this
     # if cisssupport.enabled()
     #   add_project_arguments('-DENABLE_CISS', language : 'c')
+    #   src_files += ['src/ciss_helper.c']
     # endif
     if not c.check_header('dev/nvme/nvme.h')
         add_project_arguments('-DDISABLE_NVME_PASSTHROUGH', language: 'c')
@@ -484,6 +487,7 @@ elif target_machine.system() == 'sunos'
     #TODO: Need to do some testing on Illumos before we allow this
     # if cisssupport.enabled()
     #   add_project_arguments('-DENABLE_CISS', language : 'c')
+    #   src_files += ['src/ciss_helper.c']
     # endif
 elif target_machine.system() == 'aix'
     src_files += ['src/aix_helper.c', 'src/posix_common_lowlevel.c']
@@ -508,9 +512,11 @@ elif target_machine.system() == 'windows'
     endif
     if irstsupport.enabled()
         add_project_arguments('-DENABLE_INTEL_RST', language: 'c')
+        src_files += ['src/intel_rst_helper.c']
     endif
     if ofnvmesupport.enabled()
         add_project_arguments('-DENABLE_OFNVME', language: 'c')
+        src_files += ['src/of_nvme_helper.c']
     endif
     global_cpp_args += ['-D_CRT_NONSTDC_NO_DEPRECATE', '-D_CRT_SECURE_NO_WARNINGS', '-D_UNICODE', '-DUNICODE']
 endif  # TODO UEFI and vmware
