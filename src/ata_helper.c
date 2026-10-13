@@ -1353,12 +1353,12 @@ OPENSEA_TRANSPORT_API eReturnValues ata_SF_SATA_Hardware_Feature_Control(const t
     if (state == ATA_SF_ENABLE)
     {
         return ata_Set_Features(device, SF_ENABLE_SATA_FEATURE, SATA_FEATURE_ENABLE_HARDWARE_FEATURE_CONTROL,
-                                M_Byte0(feature), M_Byte1(feature), RESERVED);
+                                M_Byte0(M_STATIC_CAST(uint16_t, feature)), M_Byte1(M_STATIC_CAST(uint16_t, feature)), RESERVED);
     }
     else
     {
         return ata_Set_Features(device, SF_DISABLE_SATA_FEATURE, SATA_FEATURE_ENABLE_HARDWARE_FEATURE_CONTROL,
-                                M_Byte0(feature), M_Byte1(feature), RESERVED);
+                                M_Byte0(M_STATIC_CAST(uint16_t, feature)), M_Byte1(M_STATIC_CAST(uint16_t, feature)), RESERVED);
     }
 }
 
