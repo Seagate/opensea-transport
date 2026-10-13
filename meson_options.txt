@@ -28,4 +28,22 @@ option(
                 'When built as a subproject, this option yields to the superproject\'s ssp value.',
   yield : true
 )
+option(
+  'nodlopen',
+  type : 'boolean',
+  value : false,
+  description : 'Link with -z,nodlopen (DF_1_NOOPEN). Set true only when the result must never be dlopen()-able. ' +
+                'When built as a subproject, this option yields to the superproject\'s nodlopen value.',
+  yield : true
+)
+option(
+  'hardened_warn',
+  type : 'feature',
+  value : 'disabled',
+  description : '-Whardened check for the -fhardened umbrella flag. ' +
+                'disabled (default) adds -Wno-hardened because GCC 14.2 false-positives it; ' +
+                'enabled adds -Whardened; auto enables it on GCC 15 or later. ' +
+                'When built as a subproject, this option yields to the superproject\'s hardened_warn value.',
+  yield : true
+)
 option('cc-suggest-attribute', type : 'boolean', value : false, description : 'Enable warnings where the compiler can suggest various attributes to be applied to functions for optimization and correctness.')
