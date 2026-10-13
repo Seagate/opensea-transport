@@ -7629,11 +7629,11 @@ OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t get_Device_OS_Info_Last_Error(const t
 
 OPENSEA_TRANSPORT_API int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* M_NONNULL device)
 {
-    if (verbosity < VERBOSITY_QUIET || verbosity > VERBOSITY_BUFFERS)
+    if (verbosity < M_STATIC_CAST(int32_t, VERBOSITY_QUIET) || verbosity > M_STATIC_CAST(int32_t, VERBOSITY_BUFFERS))
     {
         return -1;
     }
-    device->deviceVerbosity = verbosity;
+    device->deviceVerbosity = M_STATIC_CAST(eVerbosityLevels, verbosity);
     return 0;
 }
 
