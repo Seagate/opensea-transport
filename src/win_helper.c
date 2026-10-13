@@ -208,13 +208,13 @@ M_PARAM_RW(1) eReturnValues get_Windows_SMART_IO_Support(tDevice* M_NONNULL devi
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* M_NONNULL device, STORAGE_BUS_TYPE busType);
 #endif
-#    if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
+#if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
 bool is_Firmware_Download_Command_Compatible_With_Win_API(const ScsiIoCtx* M_NONNULL scsiIoCtx);
-#endif 
-#    if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
+#endif
+#if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
-#    endif 
+#endif
 
 #if defined(WIN_DEBUG)
 // \fn print_bus_type (BYTE type)
@@ -3365,7 +3365,9 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* M_NONNULL devic
                     for (uint8_t iter = UINT8_C(0); iter < firmwareInfo->SlotCount && iter < UINT8_C(7); ++iter)
                     {
                         DECLARE_ZERO_INIT_ARRAY(char, v1Revision, 9);
-                        if (0 != safe_strncpy(v1Revision, 9, M_REINTERPRET_CAST(const char*, firmwareInfo->Slot[iter].Revision.Info), sizeof(firmwareInfo->Slot[iter].Revision.Info)))
+                        if (0 != safe_strncpy(v1Revision, 9,
+                                              M_REINTERPRET_CAST(const char*, firmwareInfo->Slot[iter].Revision.Info),
+                                              sizeof(firmwareInfo->Slot[iter].Revision.Info)))
                             M_UNLIKELY
                             {
                                 perror("Error copying firmware revision info (truncation likely)");
