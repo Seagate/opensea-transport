@@ -429,12 +429,28 @@ int mount_iter_open(MountIter* it)
     {
         return -1;
     }
-#if defined (__FreeBSD__)
+#if defined(__OpenBSD__) && defined (OpenBSD2_6)
+    // openbsd changes parameter buf size from long to size_t in version 2.6
+    int got = getfsstat(it->buf, size, MNT_WAIT);
+#else
+    #if defined (__APPLE__)
+    // Apple uses an int for the bufsize
+    // note: darwin/opendarwin man pages vary a bit by version.
+    // May need to refine this check in the future.
+    int bufsize = 0;
+    if (size < INT_MAX)
+    {
+        bufsize = M_STATIC_CAST(int, size);
+    }
+    #else
+    // 4.4 BSD man pages (very old) use long which is also what is in freebsd
+    // This is more or less the "default" case
     long bufsize = 0;
     if (size < LONG_MAX)
     {
         bufsize = M_STATIC_CAST(long, size);
     }
+    #endif
     else
     {
         safe_free_core(M_REINTERPRET_CAST(void**, &it->buf));
@@ -443,8 +459,6 @@ int mount_iter_open(MountIter* it)
     }
 
     int got = getfsstat(it->buf, bufsize, MNT_WAIT);
-#else
-    int got = getfsstat(it->buf, size, MNT_WAIT);
 #endif
     if (got < 0)
     {
