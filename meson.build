@@ -293,7 +293,15 @@ if c.get_id().contains('gcc') or c.get_id().contains('clang')
         endif
     endif
 
-    linker_flags += ['-Wl,-z,noexecstack', '-Wl,-z,relro', '-Wl,-z,now', '-Wl,--no-copy-dt-needed-entries']
+    linker_flags += ['-Wl,-z,noexecstack', '-Wl,-z,relro', '-Wl,-z,now']
+    # lld-family linkers (lld-link for the MSVC interface, ld.lld for the GNU interface)
+    # do not know --no-copy-dt-needed-entries: they warn and ignore it, so the support
+    # probe "passes" (exit 0) and the flag ends up on every link line. lld already does
+    # not copy DT_NEEDED entries by default; state it explicitly only for toolchains
+    # where the probe genuinely validates it (older binutils < 2.22).
+    if not c.get_linker_id().contains('lld')
+        linker_flags += '-Wl,--no-copy-dt-needed-entries'
+    endif
     #DF_1_NOOPEN (-z,nodlopen) is a build option so targets that must remain dlopen()-able
     #can disable it; --no-copy-dt-needed-entries is the binutils default since 2.22 but is
     #stated explicitly for systems that still link with older toolchains
