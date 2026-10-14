@@ -429,8 +429,23 @@ int mount_iter_open(MountIter* it)
     {
         return -1;
     }
+#if defined (__FreeBSD__)
+    long bufsize = 0;
+    if (size < LONG_MAX)
+    {
+        bufsize = M_STATIC_CAST(long, size);
+    }
+    else
+    {
+        safe_free_core(M_REINTERPRET_CAST(void**, &it->buf));
+        it->buf = M_NULLPTR;
+        return -1;
+    }
 
+    int got = getfsstat(it->buf, bufsize, MNT_WAIT);
+#else
     int got = getfsstat(it->buf, size, MNT_WAIT);
+#endif
     if (got < 0)
     {
         safe_free_core(M_REINTERPRET_CAST(void**, &it->buf));

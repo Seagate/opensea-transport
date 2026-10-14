@@ -3083,10 +3083,10 @@ OPENSEA_TRANSPORT_API void seagate_Serial_Number_Cleanup(const char* M_NONNULL t
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
 M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* device)
 {
-    int        ret              = FAILURE;
-    bool       mediumNotPresent = false; // assume medium is available until we find out otherwise.
-    scsiStatus turStatus;
-    uint8_t*   inq_buf = M_NULLPTR;
+    eReturnValues ret              = FAILURE;
+    bool          mediumNotPresent = false; // assume medium is available until we find out otherwise.
+    scsiStatus    turStatus;
+    uint8_t*      inq_buf = M_NULLPTR;
 #ifdef _DEBUG
     printf("%s: -->\n", __FUNCTION__);
 #endif

@@ -207,10 +207,15 @@ extern bool validate_Device_Struct(versionBlock);
 M_PARAM_RW(1) eReturnValues get_Windows_SMART_IO_Support(tDevice* M_NONNULL device);
 #if WINVER >= SEA_WIN32_WINNT_WIN10
 M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* M_NONNULL device, STORAGE_BUS_TYPE busType);
+#endif
+#if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
 bool is_Firmware_Download_Command_Compatible_With_Win_API(const ScsiIoCtx* M_NONNULL scsiIoCtx);
+#endif
+#if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_18362
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 M_PARAM_RW(1) eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx);
 #endif
+
 #if defined(WIN_DEBUG)
 // \fn print_bus_type (BYTE type)
 // \nbrief Funtion to print in human readable format the BusType of a device
@@ -3360,7 +3365,9 @@ static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* M_NONNULL devic
                     for (uint8_t iter = UINT8_C(0); iter < firmwareInfo->SlotCount && iter < UINT8_C(7); ++iter)
                     {
                         DECLARE_ZERO_INIT_ARRAY(char, v1Revision, 9);
-                        if (0 != safe_strcpy(v1Revision, 9, firmwareInfo->Slot[iter].Revision.Info))
+                        if (0 != safe_strncpy(v1Revision, 9,
+                                              M_REINTERPRET_CAST(const char*, firmwareInfo->Slot[iter].Revision.Info),
+                                              sizeof(firmwareInfo->Slot[iter].Revision.Info)))
                             M_UNLIKELY
                             {
                                 perror("Error copying firmware revision info (truncation likely)");
@@ -3411,8 +3418,7 @@ readlogext command before each download command when performing deferred downloa
 bus trace of the sequence.
 
 */
-
-bool is_Firmware_Download_Command_Compatible_With_Win_API(const ScsiIoCtx* scsiIoCtx)
+bool is_Firmware_Download_Command_Compatible_With_Win_API(const ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
 #    if defined(_DEBUG_FWDL_API_COMPATABILITY)
     print_str("Checking if FWDL Command is compatible with Win 10 API\n");
@@ -4693,22 +4699,21 @@ static eReturnValues win_Get_Access_Alignment_Descriptor(HANDLE*                
 //     lbProvisioningDescriptor), sizeof(DEVICE_LB_PROVISIONING_DESCRIPTOR));
 // }
 
-static eReturnValues win_Get_Power_Property(HANDLE *deviceHandle, PDEVICE_POWER_DESCRIPTOR *powerDescriptor)
+static eReturnValues win_Get_Power_Property(HANDLE* deviceHandle, PDEVICE_POWER_DESCRIPTOR* powerDescriptor)
 {
     return check_And_Get_Storage_Property(deviceHandle, StorageDevicePowerProperty, C_CAST(void**, powerDescriptor),
-    sizeof(DEVICE_POWER_DESCRIPTOR));
+                                          sizeof(DEVICE_POWER_DESCRIPTOR));
 }
 
-static eReturnValues win_Enable_Idle_Power(HANDLE *deviceHandle, PSTORAGE_IDLE_POWER idlePower)
+static eReturnValues win_Enable_Idle_Power(HANDLE* deviceHandle, PSTORAGE_IDLE_POWER idlePower)
 {
     eReturnValues ret = NOT_SUPPORTED;
     if (deviceHandle && idlePower)
     {
-        BOOL                   success      = FALSE;
-        DWORD                  returnedData = DWORD_C(0);
-        success          = DeviceIoControl(deviceHandle, IOCTL_STORAGE_ENABLE_IDLE_POWER, idlePower,
-                                  sizeof(STORAGE_IDLE_POWER), M_NULLPTR, 0,
-                                  &returnedData, M_NULLPTR);
+        BOOL  success      = FALSE;
+        DWORD returnedData = DWORD_C(0);
+        success = DeviceIoControl(deviceHandle, IOCTL_STORAGE_ENABLE_IDLE_POWER, idlePower, sizeof(STORAGE_IDLE_POWER),
+                                  M_NULLPTR, 0, &returnedData, M_NULLPTR);
         if (MSFT_BOOL_FALSE(success))
         {
             ret = NOT_SUPPORTED;
@@ -5543,15 +5548,16 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
     SEA_WIN32_WINNT_WIN8 // If this check is wrong, make sure minGW is properly defining WINVER in the makefile.
             if (is_Windows_8_Or_Higher()) // from opensea-common now to remove versionhelpes.h include
             {
-                device->os_info.srbtype = adapter_desc->SrbType;
+                device->os_info.srbtype                  = adapter_desc->SrbType;
                 PDEVICE_POWER_DESCRIPTOR powerDescriptor = M_NULLPTR;
                 if (SUCCESS == win_Get_Power_Property(&device->os_info.fd, &powerDescriptor))
                 {
-                    device->os_info.powerDesc.valid = true;
+                    device->os_info.powerDesc.valid         = true;
                     device->os_info.powerDesc.idleSupported = M_ToBool(powerDescriptor->D3ColdSupported);
                     device->os_info.powerDesc.wakeSupported = M_ToBool(powerDescriptor->DeviceAttentionSupported);
-                    device->os_info.powerDesc.idleTimeMS    = MSFT_BOOL_TRUE(powerDescriptor->IdlePowerManagementEnabled) ?
-                        C_CAST(uint32_t, powerDescriptor->IdleTimeoutInMS) : 0;
+                    device->os_info.powerDesc.idleTimeMS = MSFT_BOOL_TRUE(powerDescriptor->IdlePowerManagementEnabled)
+                                                               ? C_CAST(uint32_t, powerDescriptor->IdleTimeoutInMS)
+                                                               : 0;
                 }
                 else
                 {
@@ -6786,10 +6792,11 @@ static eReturnValues send_Win_IOCTL_Disk_Reassign_Blocks_Ex(ScsiIoCtx* scsiIoCtx
         for (uint32_t iter = REASSIGN_BLOCKS_LIST_HEADER_LENGTH, counter = 0;
              iter < scsiIoCtx->dataLength && counter < lbaEntries; iter += REASSIGN_BLOCKS_LONG_LBA_LENGTH, ++counter)
         {
-            winReassignBlocks->BlockNumber[counter].QuadPart = M_STATIC_CAST(LONGLONG,
-                M_BytesTo8ByteValue(scsiIoCtx->pdata[iter], scsiIoCtx->pdata[iter + 1], scsiIoCtx->pdata[iter + 2],
-                                    scsiIoCtx->pdata[iter + 3], scsiIoCtx->pdata[iter + 4], scsiIoCtx->pdata[iter + 5],
-                                    scsiIoCtx->pdata[iter + 6], scsiIoCtx->pdata[iter + 7]));
+            winReassignBlocks->BlockNumber[counter].QuadPart =
+                M_STATIC_CAST(LONGLONG, M_BytesTo8ByteValue(scsiIoCtx->pdata[iter], scsiIoCtx->pdata[iter + 1],
+                                                            scsiIoCtx->pdata[iter + 2], scsiIoCtx->pdata[iter + 3],
+                                                            scsiIoCtx->pdata[iter + 4], scsiIoCtx->pdata[iter + 5],
+                                                            scsiIoCtx->pdata[iter + 6], scsiIoCtx->pdata[iter + 7]));
         }
         BOOL ioResult = DeviceIoControl(scsiIoCtx->device->os_info.fd, IOCTL_DISK_REASSIGN_BLOCKS_EX, winReassignBlocks,
                                         reassignStructLen, M_NULLPTR, 0, &bytesReturned, M_NULLPTR);
@@ -6981,7 +6988,7 @@ static eReturnValues send_SCSI_Pass_Through_EX(ScsiIoCtx* scsiIoCtx)
         if (overlappedStruct.hEvent != M_NULLPTR)
         {
             CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent          = M_NULLPTR;
+            overlappedStruct.hEvent = M_NULLPTR;
         }
         scsiIoCtx->returnStatus.senseKey = sptdioEx->scsiPassThroughEX.ScsiStatus;
 
@@ -7241,7 +7248,7 @@ static eReturnValues send_SCSI_Pass_Through_EX_Direct(ScsiIoCtx* scsiIoCtx)
         if (overlappedStruct.hEvent != M_NULLPTR)
         {
             CloseHandle(overlappedStruct.hEvent); // close the overlapped handle since it isn't needed any more...-TJE
-            overlappedStruct.hEvent          = M_NULLPTR;
+            overlappedStruct.hEvent = M_NULLPTR;
         }
         scsiIoCtx->returnStatus.senseKey = sptdio->scsiPassThroughEXDirect.ScsiStatus;
 
@@ -7858,7 +7865,7 @@ static eReturnValues send_SCSI_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
 }
 
 // \return SUCCESS - pass, !SUCCESS fail or something went wrong
-static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(const ScsiIoCtx*               p_scsiIoCtx,
+static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(const ScsiIoCtx*         p_scsiIoCtx,
                                                        PATA_PASS_THROUGH_DIRECT ptrATAPassThroughDirect,
                                                        uint8_t*                 alignedDataPointer)
 {
@@ -7881,7 +7888,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(const ScsiIoCtx*         
     case XFER_NO_DATA:
         ptrATAPassThroughDirect->DataTransferLength = ULONG_C(0);
         ptrATAPassThroughDirect->DataBuffer         = M_NULLPTR;
-       // NOLINTEND(bugprone-branch-clone)
+        // NOLINTEND(bugprone-branch-clone)
         break;
     default:
         print_tDevice_Verbose_Formatted_String(p_scsiIoCtx->device, VERBOSITY_QUIET, "\nData Direction Unspecified.\n");
@@ -7902,7 +7909,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(const ScsiIoCtx*         
         // these are supported but no flags need to be set
         break;
     case ATA_PROTOCOL_PIO:
-    #if WINVER >= SEA_WIN32_WINNT_VISTA
+#if WINVER >= SEA_WIN32_WINNT_VISTA
         switch (p_scsiIoCtx->pAtaCmdOpts->tfr.CommandStatus)
         {
         case ATA_READ_MULTIPLE_CMD:
@@ -7916,7 +7923,7 @@ static eReturnValues convert_SCSI_CTX_To_ATA_PT_Direct(const ScsiIoCtx*         
             ptrATAPassThroughDirect->AtaFlags |= ATA_FLAGS_NO_MULTIPLE;
             break;
         }
-    #endif // WIN_VISTA
+#endif // WIN_VISTA
         break;
     case ATA_PROTOCOL_RET_INFO:
         // this doesn't do anything in ATA PassThrough and is only useful for SCSI PassThrough since this is an HBA
@@ -8067,10 +8074,10 @@ static eReturnValues send_ATA_Passthrough_Direct(ScsiIoCtx* scsiIoCtx)
                 ret = OS_PASSTHROUGH_FAILURE;
                 break;
             }
-            char* winErrorStr = get_windows_error_str(
-                M_STATIC_CAST(winsyserror_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device)));
-            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE,
-                                                    "Windows Error: %s\n", winErrorStr);
+            char* winErrorStr =
+                get_windows_error_str(M_STATIC_CAST(winsyserror_t, get_Device_OS_Info_Last_Error(scsiIoCtx->device)));
+            print_tDevice_Verbose_Formatted_String(scsiIoCtx->device, VERBOSITY_COMMAND_VERBOSE, "Windows Error: %s\n",
+                                                   winErrorStr);
             safe_free(&winErrorStr);
         }
         stop_Timer(&commandTimer);
@@ -8833,7 +8840,7 @@ static eReturnValues send_IDE_Pass_Through_IO(ScsiIoCtx* scsiIoCtx)
 // }
 
 #if WINVER >= SEA_WIN32_WINNT_WIN10
-eReturnValues get_Windows_FWDL_IO_Support(tDevice* device, STORAGE_BUS_TYPE busType)
+M_PARAM_RW(1) eReturnValues get_Windows_FWDL_IO_Support(tDevice* M_NONNULL device, STORAGE_BUS_TYPE busType)
 {
     eReturnValues                  ret = NOT_SUPPORTED;
     STORAGE_HW_FIRMWARE_INFO_QUERY fwdlInfo;
@@ -9382,7 +9389,8 @@ static eReturnValues windows_Firmware_Download_IO_SCSI(ScsiIoCtx* scsiIoCtx)
 #endif
 
 // Checks if SMART IO is supported and sets some bit flags up for later when issuing those IOs
-eReturnValues get_Windows_SMART_IO_Support(tDevice* device)
+M_PARAM_RW(1)
+eReturnValues get_Windows_SMART_IO_Support(tDevice* M_NONNULL device)
 {
     ULONG              returned_data = ULONG_C(0);
     GETVERSIONINPARAMS smartVersionInfo;
@@ -14281,7 +14289,7 @@ static eReturnValues win10_Translate_Write(nvmeCmdCtx* nvmeIoCtx)
 }
 
 // MSFT documentation does not show this translation as available. Code left here in case someone wants to test it in
-M_PARAM_RO(1)
+// M_PARAM_RO(1)
 // the future. M_PARAM_RW(1) static eReturnValues win10_Translate_Compare(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -14517,7 +14525,7 @@ static eReturnValues win10_Translate_Sanitize(nvmeCmdCtx* nvmeIoCtx)
 }
 
 // These commands are not supported VIA SCSI translation. There are however other Windows IOCTLs that may work
-M_PARAM_RO(1)
+// M_PARAM_RO(1)
 // M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Register(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -14601,7 +14609,7 @@ M_PARAM_RO(1)
 //     return ret;
 // }
 //
-M_PARAM_RO(1)
+// M_PARAM_RO(1)
 // M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Report(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -14619,7 +14627,7 @@ M_PARAM_RO(1)
 //     return ret;
 // }
 //
-M_PARAM_RO(1)
+// M_PARAM_RO(1)
 // M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Acquire(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -14708,7 +14716,7 @@ M_PARAM_RO(1)
 //     return ret;
 // }
 //
-M_PARAM_RO(1)
+// M_PARAM_RO(1)
 // M_PARAM_RW(1) static eReturnValues win10_Translate_Reservation_Release(nvmeCmdCtx *nvmeIoCtx)
 //{
 //     eReturnValues ret = OS_COMMAND_NOT_AVAILABLE;
@@ -14785,7 +14793,7 @@ M_PARAM_RO(1)
 // Windows 10 added a way to query for ATA identify data. Seems to work ok.
 // Note: Any odd parameters like a change in TFRs from the spec will not work here.
 M_PARAM_RW(1)
-eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues returnValue    = SUCCESS;
     BOOL          result         = FALSE;
@@ -14896,7 +14904,7 @@ eReturnValues send_Win_ATA_Identify_Cmd(ScsiIoCtx* scsiIoCtx)
 }
 
 M_PARAM_RW(1)
-eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* scsiIoCtx)
+eReturnValues send_Win_ATA_Get_Log_Page_Cmd(ScsiIoCtx* M_NONNULL scsiIoCtx)
 {
     eReturnValues returnValue    = SUCCESS;
     BOOL          result         = FALSE;
@@ -15960,16 +15968,16 @@ M_PARAM_RO(1)
 OPENSEA_TRANSPORT_API eReturnValues os_Disable_Idle_Power(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = NOT_SUPPORTED;
-#    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+#if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
     STORAGE_IDLE_POWER idlePower;
     M_INITIALIZE_STRUCTURE(&idlePower, sizeof(STORAGE_IDLE_POWER));
-    idlePower.Version = 1;
-    idlePower.Size = sizeof(STORAGE_IDLE_POWER);
+    idlePower.Version       = 1;
+    idlePower.Size          = sizeof(STORAGE_IDLE_POWER);
     idlePower.D3IdleTimeout = DWORD_MAX; // essentially disabled at 49.7 days
-    ret = win_Enable_Idle_Power(device->os_info.fd, &idlePower);
-#    else
+    ret                     = win_Enable_Idle_Power(device->os_info.fd, &idlePower);
+#else
     M_USE_UNUSED(device);
-#    endif
+#endif
     return ret;
 }
 
@@ -15977,20 +15985,20 @@ M_PARAM_RO(1)
 OPENSEA_TRANSPORT_API eReturnValues os_Restore_Idle_Power(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = NOT_SUPPORTED;
-#    if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
+#if defined(WINVER) && WINVER >= SEA_WIN32_WINNT_WIN8
     STORAGE_IDLE_POWER idlePower;
     M_INITIALIZE_STRUCTURE(&idlePower, sizeof(STORAGE_IDLE_POWER));
     idlePower.Version = 1;
-    idlePower.Size = sizeof(STORAGE_IDLE_POWER);
+    idlePower.Size    = sizeof(STORAGE_IDLE_POWER);
     if (device->os_info.powerDesc.valid)
     {
         idlePower.WakeCapableHint = device->os_info.powerDesc.wakeSupported;
         idlePower.D3ColdSupported = device->os_info.powerDesc.idleSupported;
-        idlePower.D3IdleTimeout = device->os_info.powerDesc.idleTimeMS;
+        idlePower.D3IdleTimeout   = device->os_info.powerDesc.idleTimeMS;
     }
     ret = win_Enable_Idle_Power(device->os_info.fd, &idlePower);
-#    else
+#else
     M_USE_UNUSED(device);
-#    endif
+#endif
     return ret;
 }

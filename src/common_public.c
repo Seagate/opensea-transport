@@ -3793,8 +3793,6 @@ OPENSEA_TRANSPORT_API bool is_Removable_Media(const tDevice* M_NONNULL device)
     }
     if (device->deviceVerbosity > VERBOSITY_COMMAND_NAMES)
     {
-        printf("Calling from file : %s function : %s line : %li \n", __FILE__, __FUNCTION__,
-               C_CAST(long int, __LINE__));
         if (result)
         {
             print_str("This is a Removable Media");
@@ -7176,7 +7174,7 @@ OPENSEA_TRANSPORT_API bool set_Device_Handle_Name(tDevice* M_NONNULL device, con
             // Do not change error to 0 here. Name should never be empty or null.
             // Zeroing this out is the safest bet in case anything attempts to access any part of this expecting null
             // termination By setting all bytes to 0, that effectively sets any possible access to a string of length 0
-            (void)safe_memset(device->os_info.name, sizeof(device->os_info.name), 0, sizeof(device->os_info.name));
+            explicit_zeroes(device->os_info.name, sizeof(device->os_info.name));
         }
         if (error == 0)
         {
@@ -7224,8 +7222,7 @@ OPENSEA_TRANSPORT_API bool set_Device_Handle_Friendly_Name(tDevice* M_NONNULL de
             // Do not change error to 0 here. Name should never be empty or null.
             // Zeroing this out is the safest bet in case anything attempts to access any part of this expecting null
             // termination By setting all bytes to 0, that effectively sets any possible access to a string of length 0
-            (void)safe_memset(device->os_info.friendlyName, sizeof(device->os_info.friendlyName), 0,
-                              sizeof(device->os_info.friendlyName));
+            explicit_zeroes(device->os_info.friendlyName, sizeof(device->os_info.friendlyName));
         }
         if (error == 0)
         {
@@ -7632,11 +7629,11 @@ OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t get_Device_OS_Info_Last_Error(const t
 
 OPENSEA_TRANSPORT_API int32_t set_Device_Verbosity_Level(int32_t verbosity, tDevice* M_NONNULL device)
 {
-    if (verbosity < VERBOSITY_QUIET || verbosity > VERBOSITY_BUFFERS)
+    if (verbosity < M_STATIC_CAST(int32_t, VERBOSITY_QUIET) || verbosity > M_STATIC_CAST(int32_t, VERBOSITY_BUFFERS))
     {
         return -1;
     }
-    device->deviceVerbosity = verbosity;
+    device->deviceVerbosity = M_STATIC_CAST(eVerbosityLevels, verbosity);
     return 0;
 }
 

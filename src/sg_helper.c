@@ -1690,9 +1690,9 @@ static eReturnValues find_Link_In_ClassPath(const char* classPath,
         size_t      tempLen = safe_strlen(classPath) + safe_strlen(classList[iter]->d_name) + 1;
         char*       temp    = M_REINTERPRET_CAST(char*, safe_calloc(tempLen, sizeof(char)));
         struct stat tempStat;
-        safe_memset(&tempStat, sizeof(struct stat), 0, sizeof(struct stat));
-        snprintf_err_handle(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
-        if (lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode)) /*check if this is a link*/
+        M_INITIALIZE_STRUCTURE(&tempStat, sizeof(struct stat));
+        int snprintfres = snprintf_err_handle(temp, tempLen, "%s%s", classPath, classList[iter]->d_name);
+        if (snprintfres > 0 && lstat(temp, &tempStat) == 0 && S_ISLNK(tempStat.st_mode)) /*check if this is a link*/
         {
             DECLARE_ZERO_INIT_ARRAY(char, mapLink, PATH_MAX);
             ssize_t linkLen = readlink(temp, mapLink, PATH_MAX - 1);
@@ -2121,23 +2121,23 @@ static eReturnValues resolve_Incoming_To_Block_Generic_Handle(const char* M_NONN
             if (genHandle != M_NULLPTR)
             {
 #if defined(_DEBUG)
-                printf("genHandle = %s\t", genHandle);
+            printf("genHandle = %s\t", genHandle);
 #endif
-            }
-            if (blockHandle != M_NULLPTR)
-            {
+        }
+        if (blockHandle != M_NULLPTR)
+        {
 #if defined(_DEBUG)
-                printf("blockHandle = %s\t", blockHandle);
+            printf("blockHandle = %s\t", blockHandle);
 #endif
-            }
-            if (blockGenHandle != M_NULLPTR)
-            {
+        }
+        if (blockGenHandle != M_NULLPTR)
+        {
 #if defined(_DEBUG)
-                printf("blockGenericHandle = %s", blockGenHandle);
+            printf("blockGenericHandle = %s", blockGenHandle);
 #endif
-            }
+        }
 #if defined(_DEBUG)
-            printf("\n");
+        printf("\n");
 #endif
 
             if ((blockGenHandle != M_NULLPTR))
