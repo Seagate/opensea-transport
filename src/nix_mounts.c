@@ -429,7 +429,7 @@ int mount_iter_open(MountIter* it)
     {
         return -1;
     }
-#if defined(__OpenBSD__) // && defined (OpenBSD2_6)
+#if defined(__OpenBSD__) && defined (OpenBSD) && OpenBSD >= 199912
     // openbsd changes parameter buf size from long to size_t in version 2.6
     int got = getfsstat(it->buf, size, MNT_WAIT);
 #else
