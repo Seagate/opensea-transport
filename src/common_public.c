@@ -3369,12 +3369,12 @@ M_PARAM_RO(1) static uint32_t get_OS_Transfer_Size_For_Device(const tDevice* M_N
 {
     uint32_t transferSizeBytes = startingSize;
 #if defined(_AIX)
-    if (device->os_info.maxXferLength < transferSizeBytes)
+    if (device->os_info.maxXferLength > 0 && device->os_info.maxXferLength < transferSizeBytes)
     {
         transferSizeBytes = device->os_info.maxXferLength;
     }
 #elif defined (__sun)
-    if (device->os_info.adapterMaxTransferSize < transferSizeBytes)
+    if (device->os_info.maxXferLength > 0 && device->os_info.adapterMaxTransferSize < transferSizeBytes)
     {
         transferSizeBytes = device->os_info.adapterMaxTransferSize;
     }
