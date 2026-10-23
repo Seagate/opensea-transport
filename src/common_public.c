@@ -3350,8 +3350,8 @@ enum {
     DATA_32K = UINT32_C(32) * UINT32_C(1024)
 };
 
-M_STATIC_ASSERT((DATA_64K > 0) && ((DATA_64K & (DATA_64K - 1)) == 0), "This constant must be a power of 2!");
-M_STATIC_ASSERT((DATA_32K > 0) && ((DATA_32K & (DATA_32K - 1)) == 0), "This constant must be a power of 2!");
+M_STATIC_ASSERT((DATA_64K > 0) && ((DATA_64K & (DATA_64K - 1)) == 0), This_constant_must_be_a_power_of_2!);
+M_STATIC_ASSERT((DATA_32K > 0) && ((DATA_32K & (DATA_32K - 1)) == 0), This_constant_must_be_a_power_of_2!);
 
 //! \fn static uint32_t get_OS_Transfer_Size_For_Device(const tDevice* M_NONNULL device, uint32_t startingSize)
 //! \brief Determine the maximum transfer size allowed by the OS for a given device...this takes into account OS-specific limitations.
@@ -3394,7 +3394,7 @@ M_PARAM_RO(1) static uint32_t get_Default_Transfer_Size_For_Device_From_Hacks(co
     case ATA_DRIVE:
         if (device->drive_info.interface_type == IDE_INTERFACE)
         {
-            if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength != 0 && 
+            if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength != 0 &&
                 device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength < transferSizeBytes)
             {
                 transferSizeBytes = device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength;
@@ -3408,7 +3408,7 @@ M_PARAM_RO(1) static uint32_t get_Default_Transfer_Size_For_Device_From_Hacks(co
     case NVME_DRIVE:
         if (device->drive_info.interface_type == NVME_INTERFACE)
         {
-            if (device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength != 0 && 
+            if (device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength != 0 &&
                 device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength < transferSizeBytes)
             {
                 transferSizeBytes = device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength;
@@ -3427,7 +3427,7 @@ M_PARAM_RO(1) static uint32_t get_Default_Transfer_Size_For_Device_From_Hacks(co
     if (useSCSILength)
     {
         // Interface does not need checking. We are already a SCSI drive which always uses the scsi hack for max transferlength
-        if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength != 0 && 
+        if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength != 0 &&
             device->drive_info.passThroughHacks.scsiHacks.maxTransferLength < transferSizeBytes)
         {
             transferSizeBytes = device->drive_info.passThroughHacks.scsiHacks.maxTransferLength;
@@ -3444,7 +3444,7 @@ M_PARAM_RO(1) static uint32_t get_Native_Transfer_Size_For_Device_From_Hacks(con
     switch (device->drive_info.drive_type)
     {
     case ATA_DRIVE:
-        if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength != 0 && 
+        if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength != 0 &&
             device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength < transferSizeBytes)
         {
             transferSizeBytes = device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength;
@@ -3452,7 +3452,7 @@ M_PARAM_RO(1) static uint32_t get_Native_Transfer_Size_For_Device_From_Hacks(con
         }
         break;
     case NVME_DRIVE:
-        if (device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength != 0 && 
+        if (device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength != 0 &&
             device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength < transferSizeBytes)
         {
             transferSizeBytes = device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength;
@@ -3466,7 +3466,7 @@ M_PARAM_RO(1) static uint32_t get_Native_Transfer_Size_For_Device_From_Hacks(con
     if (useSCSILength)
     {
         // Interface does not need checking. We are already a SCSI drive which always uses the scsi hack for max transferlength
-        if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength != 0 && 
+        if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength != 0 &&
             device->drive_info.passThroughHacks.scsiHacks.maxTransferLength < transferSizeBytes)
         {
             transferSizeBytes = device->drive_info.passThroughHacks.scsiHacks.maxTransferLength;
