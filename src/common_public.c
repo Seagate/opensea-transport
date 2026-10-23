@@ -3343,78 +3343,203 @@ OPENSEA_TRANSPORT_API eReturnValues calculate_Checksum(uint8_t* M_NONNULL pBuf, 
     return SUCCESS;
 }
 
-#define DATA_64K 65536
-#define DATA_32K 32768
+enum {
+    /*!< 64KiB in bytes */
+    DATA_64K = UINT32_C(64) * UINT32_C(1024),
+    /*!< 32KiB in bytes */
+    DATA_32K = UINT32_C(32) * UINT32_C(1024)
+};
 
-OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(const tDevice* M_NONNULL device)
+M_STATIC_ASSERT((DATA_64K > 0) && ((DATA_64K & (DATA_64K - 1)) == 0), This_constant_must_be_a_power_of_2!);
+M_STATIC_ASSERT((DATA_32K > 0) && ((DATA_32K & (DATA_32K - 1)) == 0), This_constant_must_be_a_power_of_2!);
+
+//! \fn static uint32_t get_OS_Transfer_Size_For_Device(const tDevice* M_NONNULL device, uint32_t startingSize)
+//! \brief Determine the maximum transfer size allowed by the OS for a given device...this takes into account OS-specific limitations.
+//! \details Based on the OS and the way the device is communicating with the OS, we need to determine how we want to set the transfer size for optimal compatibility.
+//! Windows GENERALLY has a 64KiB limit. There are exceptions to this, but we are not going to get into those details right now
+//! Note: Windows we do track maxXferSize, however that is not reliable. Sometimes it reports something much larger than what
+//! will actually succeed in passthrough commands.
+//! Linux has a limit, but we do not know exactly what it is in all cases...64KiB is generally safe enough.
+//! Other systems likely have a limit, but we do not know what it is or how to determine it.
+//! Generally, 64KiB works really well and without error, so that is why it is the default.
+//! \param device Pointer to the device structure.
+//! \param startingSize The initial transfer size to consider for the transfer. Intended to be a default starting point before adjusted down. 64KiB is generally a safe starting point.
+//! \return The adjusted transfer size that is compatible with the OS limitations.
+M_PARAM_RO(1) static uint32_t get_OS_Transfer_Size_For_Device(const tDevice* M_NONNULL device, const uint32_t startingSize)
 {
-    switch (get_Device_InterfaceType(device))
+    uint32_t transferSizeBytes = startingSize;
+#if defined(_AIX)
+    if (device->os_info.maxXferLength < transferSizeBytes)
     {
-    case IDE_INTERFACE:
-    case SCSI_INTERFACE:
-    case RAID_INTERFACE:
-    case NVME_INTERFACE:
-        // set the sector count for a 64k transfer. This is most compatible (typically 128 sectors at a time-512B sector
-        // size) - TJE
-        return DATA_64K / get_Device_BlockSize(device);
-    case USB_INTERFACE:
-    case MMC_INTERFACE:
-    case SD_INTERFACE:
-    case IEEE_1394_INTERFACE:
-        // set the sector count for a 32k transfer. This is most compatible on these external interface drives since
-        // they typically have RAM limitations on the bridge chip - TJE
-        return DATA_32K / get_Device_BlockSize(device);
-    default:
-        return 64; // just set something in case they try to use this value but didn't check the return code from this
-                   // function - TJE
+        transferSizeBytes = device->os_info.maxXferLength;
     }
+#elif defined (__sun)
+    if (device->os_info.adapterMaxTransferSize < transferSizeBytes)
+    {
+        transferSizeBytes = device->os_info.adapterMaxTransferSize;
+    }
+#else
+    M_USE_UNUSED(device);
+#endif
+    return transferSizeBytes;
 }
 
-OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) static uint32_t get_Default_Transfer_Size_For_Device_From_Hacks(const tDevice* M_NONNULL device, const uint32_t currentTransferSize)
 {
-    switch (get_Device_InterfaceType(device))
+    uint32_t transferSizeBytes = currentTransferSize;
+    // Adjust transfer size based on default command set...aka SCSI in most cases.
+    bool useSCSILength = false;
+    switch (device->drive_info.drive_type)
     {
-    case IDE_INTERFACE:
-    case SCSI_INTERFACE:
-    case RAID_INTERFACE:
-    case NVME_INTERFACE:
-        // set the sector count for a 64k transfer.
-        return 128; // DATA_64K / 512;
-    case USB_INTERFACE:
-    case MMC_INTERFACE:
-    case SD_INTERFACE:
-    case IEEE_1394_INTERFACE:
-        // set the sector count for a 32k transfer. This is most compatible on these external interface drives since
-        // they typically have RAM limitations on the bridge chip - TJE
-        // fallthrough to set 32k
+    case ATA_DRIVE:
+        if (device->drive_info.interface_type == IDE_INTERFACE)
+        {
+            if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength != 0 &&
+                device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength < transferSizeBytes)
+            {
+                transferSizeBytes = device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength;
+            }
+        }
+        else
+        {
+            useSCSILength = true;
+        }
+        break;
+    case NVME_DRIVE:
+        if (device->drive_info.interface_type == NVME_INTERFACE)
+        {
+            if (device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength != 0 &&
+                device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength < transferSizeBytes)
+            {
+                transferSizeBytes = device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength;
+            }
+        }
+        else
+        {
+            useSCSILength = true;
+        }
+        break;
+    case SCSI_DRIVE:
     default:
-        return 64; // just set something in case they try to use this value but didn't check the return code from this
-                   // function - TJE
+        useSCSILength = true;
+        break;
     }
+    if (useSCSILength)
+    {
+        // Interface does not need checking. We are already a SCSI drive which always uses the scsi hack for max transferlength
+        if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength != 0 &&
+            device->drive_info.passThroughHacks.scsiHacks.maxTransferLength < transferSizeBytes)
+        {
+            transferSizeBytes = device->drive_info.passThroughHacks.scsiHacks.maxTransferLength;
+        }
+    }
+    return transferSizeBytes;
 }
 
-OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(const tDevice* M_NONNULL device)
+M_PARAM_RO(1) static uint32_t get_Native_Transfer_Size_For_Device_From_Hacks(const tDevice* M_NONNULL device, const uint32_t currentTransferSize)
 {
+    uint32_t transferSizeBytes = currentTransferSize;
+    // Adjust transfer size based on native command set...aka passthrough in most cases
+    bool useSCSILength = true;
+    switch (device->drive_info.drive_type)
+    {
+    case ATA_DRIVE:
+        if (device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength != 0 &&
+            device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength < transferSizeBytes)
+        {
+            transferSizeBytes = device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength;
+            useSCSILength = false;
+        }
+        break;
+    case NVME_DRIVE:
+        if (device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength != 0 &&
+            device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength < transferSizeBytes)
+        {
+            transferSizeBytes = device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength;
+            useSCSILength = false;
+        }
+        break;
+    case SCSI_DRIVE:
+    default:
+        break;
+    }
+    if (useSCSILength)
+    {
+        // Interface does not need checking. We are already a SCSI drive which always uses the scsi hack for max transferlength
+        if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength != 0 &&
+            device->drive_info.passThroughHacks.scsiHacks.maxTransferLength < transferSizeBytes)
+        {
+            transferSizeBytes = device->drive_info.passThroughHacks.scsiHacks.maxTransferLength;
+        }
+    }
+    return transferSizeBytes;
+}
+
+M_PARAM_RO(1) static uint32_t get_Transfer_Size_For_Device_From_Hacks(const tDevice* M_NONNULL device, const uint32_t currentTransferSize, eCommandXferSizeType xferSizeType)
+{
+    uint32_t transferSizeBytes = currentTransferSize;
+    if (device->drive_info.passThroughHacks.hacksSetByReportedID || device->drive_info.passThroughHacks.someHacksSetByOSDiscovery)
+    {
+        switch (xferSizeType)
+        {
+        case COMMAND_XFER_SIZE_TYPE_DEFAULT:
+            transferSizeBytes = get_Default_Transfer_Size_For_Device_From_Hacks(device, transferSizeBytes);
+            break;
+        case COMMAND_XFER_SIZE_TYPE_NATIVE:
+            transferSizeBytes = get_Native_Transfer_Size_For_Device_From_Hacks(device, transferSizeBytes);
+            break;
+        default:
+            break;
+        }
+    }
+    return transferSizeBytes;
+}
+
+// The purpose of this is to get what is most likely compatible with the OS, adapter, drive, and interface.
+// Sometimes there are various limitations so this helps figure out how many bytes we can transfer at a time.
+// This looks for COMPATIBLE
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Transfer_Size_For_Device(const tDevice* M_NONNULL device, eCommandXferSizeType xferSizeType)
+{
+    // Default starting point of 64K because it usually is fine
+    uint32_t transferSizeBytes = DATA_64K;
     switch (get_Device_InterfaceType(device))
     {
     case IDE_INTERFACE:
     case SCSI_INTERFACE:
     case RAID_INTERFACE:
     case NVME_INTERFACE:
-        // set the sector count for a 64k transfer.
-        return 16; // DATA_64K / 4096;
+        break;
     case USB_INTERFACE:
     case MMC_INTERFACE:
     case SD_INTERFACE:
     case IEEE_1394_INTERFACE:
-        // set the sector count for a 32k transfer. This is most compatible on these external interface drives since
-        // they typically have RAM limitations on the bridge chip - TJE
-        // fallthrough to set 32k
-        // DATA_32K / 4096;
     default:
-        return 8; // just set something in case they try to use this value but didn't check the return code from this
-                  // function - TJE
+        // For these other interfaces, dropping the size due to variations in how well things work.
+        // If we have specific passthrough hacks set, then and only then, will this be increased...it
+        // may also be decreased.
+        transferSizeBytes = DATA_32K;
+        break;
     }
+
+    transferSizeBytes = get_OS_Transfer_Size_For_Device(device, transferSizeBytes);
+
+    transferSizeBytes = get_Transfer_Size_For_Device_From_Hacks(device, transferSizeBytes, xferSizeType);
+    return transferSizeBytes;
+}
+
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_Read_Write(const tDevice* M_NONNULL device)
+{
+    return get_Transfer_Size_For_Device(device, COMMAND_XFER_SIZE_TYPE_DEFAULT) / get_Device_BlockSize(device);
+}
+
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_512B_Based_XFers(const tDevice* M_NONNULL device)
+{
+    return get_Transfer_Size_For_Device(device, COMMAND_XFER_SIZE_TYPE_DEFAULT) / UINT32_C(512);
+}
+
+M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Sector_Count_For_4096B_Based_XFers(const tDevice* M_NONNULL device)
+{
+    return get_Transfer_Size_For_Device(device, COMMAND_XFER_SIZE_TYPE_DEFAULT) / UINT32_C(4096);
 }
 
 typedef enum eTimeUnits
