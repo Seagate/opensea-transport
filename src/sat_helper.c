@@ -577,7 +577,11 @@ eReturnValues set_Transfer_Bits(uint8_t* M_NONNULL            satCDB,
     switch (tLength)
     {
     case ATA_PT_LEN_NO_DATA:
-        // other bits don't matter here since it's non-data so just break
+        // Workaround for an LSI 3008 firmware bug: with BYTE_BLOCK clear, the HBA
+        // clamps COUNT to min(COUNT * 512B, bufferLength) / 512B. bufferLength is 0
+        // for a no-data command, so COUNT would be zeroed before reaching the drive.
+        satCDB[transferBitsOffset] |= SAT_BYTE_BLOCK_BIT_SET;
+        // other bits don't matter here since it's non-data
         break;
     case ATA_PT_LEN_FEATURES_REGISTER:
     case ATA_PT_LEN_SECTOR_COUNT:
