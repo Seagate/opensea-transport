@@ -1700,7 +1700,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
      * @author 521852 (8/27/2018)
      */
     int                 fd2;
-    struct nvme_handle* nvmeFd2;
+    struct nvme_handle* M_NULLABLE nvmeFd2;
 #    else
     bool             fd2Opened; // Ex: fd = sg/bsg handle opened, fd2 = sd handle opened.
     int              fd2;       // second handle. Ex: fd = sg/bsg handle opened, fd2 = sd handle opened.
@@ -3400,6 +3400,33 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     M_DEPRECATED_REASON("Use the checksum functions in ata_helper_func.h instead")
     M_PARAM_RW_SIZE(1, 2)
     OPENSEA_TRANSPORT_API eReturnValues calculate_Checksum(uint8_t* M_NONNULL pBuf, uint32_t blockSize);
+
+    //! \enum eCommandXferSizeType
+    //! \brief Specify what way to calculate the transfer size for a command.
+    //! \details This enum is meant to help simplify how to determine an appropriate
+    //! transfer size given a specific type of operation being performed.
+    //! Doing a read/write the way the OS does? Use COMMAND_XFER_SIZE_TYPE_DEFAULT.
+    //! Pulling a log specific to the drive type? Use COMMAND_XFER_SIZE_TYPE_NATIVE.
+    M_DECLARE_ENUM(eCommandXferSizeType,
+        /*!< Default method, or the way the OS would talk to the drive.
+        For ATA attached via SCSI/USB, essentially looks at SCSI type commands (read/write)
+        to determine what transfer size to use. Same as NVMe via SCSI/USB*/
+        COMMAND_XFER_SIZE_TYPE_DEFAULT,
+        /*!< Allocate based on the native command set to the type of drive. For SAS, this is
+        exactly the same as above, but for ATA attached over SCSI/USB, this determines a transfer 
+        size that should work when passing the command through to the device. Same with NVMe
+        that is attached over USB or tri-mode HBA and passing commands through. */
+        COMMAND_XFER_SIZE_TYPE_NATIVE
+    );
+
+    //! \brief  Gets the transfer size for a device based on the specified transfer size type.
+    //! \details This function determines the appropriate transfer size for a device, taking into account OS limitations
+    //!          and any hacks that may be necessary for compatibility. The \a xferSizeType used changes how this is calculated since
+    //!          limits may vary depending on what you are doing and how the device is attached.
+    //! \param[in] device = pointer to the device struct.
+    //! \param[in] xferSizeType = the type of transfer size calculation to use (default or native).
+    //! \return The transfer size in bytes that should be used for the device.
+    M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Transfer_Size_For_Device(const tDevice* M_NONNULL device, eCommandXferSizeType xferSizeType);
 
     //-----------------------------------------------------------------------------
     //

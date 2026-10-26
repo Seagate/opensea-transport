@@ -3258,6 +3258,7 @@ M_PARAM_RW(1)
 static eReturnValues get_Win_FWDL_Miniport_Capabilities(tDevice* M_NONNULL device, bool controllerRequest)
 {
     eReturnValues ret = NOT_SUPPORTED;
+    device->os_info.fwdlIOsupport.fwdlIOSupported = false;
 #    if WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_THRESHOLD
     if (is_Windows_10_Or_Higher())
     {
