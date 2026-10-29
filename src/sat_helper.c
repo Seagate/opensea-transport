@@ -1546,8 +1546,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                             ataReturnTFRs tempRtfrs = initialize_ATA_RTFRs();
                             if (NOT_SUPPORTED == request_Return_TFRs_From_Device(device, &tempRtfrs))
                             {
-                                M_CONST_CAST(tDevice*, device)
-                                    ->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = false;
+                                set_Hack_ATA_Return_Response_Info_Supported(M_CONST_CAST(tDevice*, device), false, PH_BY_PROBE);
                             }
                             else if (SUCCESS == ret)
                             {
@@ -1706,15 +1705,13 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                 (ataCommandOptions->rtfr.status == 0 ||
                  ((ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR) && ataCommandOptions->rtfr.error == 0)))
             {
-                M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;
-                if (!device->drive_info.passThroughHacks.hacksSetByReportedID &&
+                set_Hack_ATA_Check_Condition_Empty(M_CONST_CAST(tDevice*, device), true, PH_BY_PROBE);
+                if (!has_Reported_ID_Provenance(device) &&
                     !device->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible)
                 {
                     // turn on return response info to try that since the check condition came back empty
-                    M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported =
-                        true;
-                    M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR =
-                        true;
+                    set_Hack_ATA_Return_Response_Info_Supported(M_CONST_CAST(tDevice*, device), true, PH_BY_PROBE);
+                    set_Hack_ATA_Return_Response_Info_Needs_TDIR(M_CONST_CAST(tDevice*, device), true, PH_BY_PROBE);
                 }
             }
         }
@@ -1727,17 +1724,16 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
         {
             if (SUCCESS != request_Return_TFRs_From_Device(device, &ataCommandOptions->rtfr))
             {
-                if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
+                if (!has_Reported_ID_Provenance(device))
                 {
-                    M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported =
-                        false;
+                    set_Hack_ATA_Return_Response_Info_Supported(M_CONST_CAST(tDevice*, device), false, PH_BY_PROBE);
                     if (device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty)
                     {
                         // Set this disable check condition because we already auto tried check condition and got an
                         // empty result We are now here where the follow up command also failed. So to prevent future
                         // retries, also set this field. Basically reusing an existing hack to determine when a retry
                         // has already been tested.
-                        M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible = true;
+                        set_Hack_ATA_No_RTFRs_Possible(M_CONST_CAST(tDevice*, device), true, PH_BY_PROBE);
                     }
                 }
             }

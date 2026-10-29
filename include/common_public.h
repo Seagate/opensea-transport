@@ -1089,14 +1089,30 @@ extern "C"
 #define MAX_MP10_ATTEMPTS 8
     // The passthroughHacks structure is to hold information to help with passthrough on OSs, USB adapters, SCSI
     // adapters, etc. Most of this is related to USB adapters though.
+    // Provenance for how a passthrough hack was determined. Flag enumeration (each value a unique flag) so the
+    // sources that set the tDevice passThroughHacks accumulate, OR'd into the hackSources bit-flag word (see the
+    // s_passthroughHacks structure below); the tDevice zero-init at discovery clears the word, so a stamp latches
+    // for the session. Identity-class sources (known from identity) and discovery-class sources (OS discovery,
+    // probes, runtime state) are checked with the PH_REPORTED_ID_MASK / PH_OS_DISCOVERY_MASK predicates below so
+    // the transfer-size and probe-suppression guards can tell "known from identity" from "guessed.".
+    typedef enum M_FLAG_ENUM ePassthroughHackSource
+    {
+        PH_NONE               = 0u,     // no flag: the cleared state after the tDevice zero-init; the identity value for comparisons against hackSources
+        PH_BY_ADAPTER_ID      = 1u << 0, // host adapter identity: (vid,pid / ssvid:ssdid) table lookup (USB, PCIe, FireWire) -- high-confidence, vendor-assigned
+        PH_BY_DEVICE_REPORTED = 1u << 1, // device self-report: SCSI inquiry strings, SAT VPD data, ATA identify
+        PH_BY_OS_DISCOVERY    = 1u << 2, // known from OS-level or RAID-library discovery paths
+        PH_BY_PROBE           = 1u << 3, // learned by trial-and-error commands issued to the device (probe confirmed)
+        PH_BY_HEURISTIC       = 1u << 4, // inferred from observed device behavior (signature/fallback discovery)
+        PH_RUNTIME_STATE      = 1u << 5  // transient session bookkeeping (counters, one-shot state)
+    } ePassthroughHackSource;
+
     typedef struct s_passthroughHacks
     {
         // generic information up top.
-        bool hacksSetByReportedID; // This is true if the code was able to read and set hacks based on reported vendor
-                                   // and product IDs from lower levels. If this is NOT set, then the information below
-                                   // is set either by trial and error or by known product identification matches.
-        bool someHacksSetByOSDiscovery; // Will be set if any of the below are set by default by the OS level code. This
-                                        // may happen in Windows for ATA/SCSI passthrough to ATA devices
+        // Provenance: which source set any of the passthrough hacks below. Latching OR-accumulation of
+        // ePassthroughHackSource flags, cleared only by the tDevice zero-init at discovery. Checked with the
+        // PH_REPORTED_ID_MASK / PH_OS_DISCOVERY_MASK predicates further below.
+        ePassthroughHackSource hackSources;
         ePassthroughType passthroughType; // This should be left alone unless you know for a fact which passthrough to
                                           // use. SAT is the default and should be used unless you know you need a
                                           // legacy (pre-SAT) passthrough type.
@@ -1945,6 +1961,1454 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         FILE* M_NULLABLE verboseOutputStream; // can be a real file, stdout, stderr, a pipe, etc.
     } tDevice;
 
+
+
+    // Provenance check masks over the hackSources word (ePassthroughHackSource flags). Deliberately cast-free:
+    // the plain flag OR stays int-typed in non-Clang toolchains (flag enums otherwise need a cast), so C and C++
+    // consumers can use these masks without any cast at the usage sites.
+    #define PH_REPORTED_ID_MASK (PH_BY_ADAPTER_ID | PH_BY_DEVICE_REPORTED | PH_BY_HEURISTIC)
+    #define PH_OS_DISCOVERY_MASK (PH_BY_OS_DISCOVERY | PH_BY_PROBE | PH_RUNTIME_STATE)
+
+    M_PARAM_RO(1)
+    static M_INLINE bool has_Reported_ID_Provenance(const tDevice* M_NONNULL device)
+    {
+        return (device->drive_info.passThroughHacks.hackSources & PH_REPORTED_ID_MASK) != PH_NONE;
+    }
+
+    M_PARAM_RO(1)
+    static M_INLINE bool has_OS_Discovery_Provenance(const tDevice* M_NONNULL device)
+    {
+        return (device->drive_info.passThroughHacks.hackSources & PH_OS_DISCOVERY_MASK) != PH_NONE;
+    }
+
+    M_PARAM_RO(1)
+    static M_INLINE bool has_Any_Provenance(const tDevice* M_NONNULL device)
+    {
+        return device->drive_info.passThroughHacks.hackSources != PH_NONE;
+    }
+
+    // The getters and setters for passthrough hacks, exported through the transport API (no M_INLINE).
+    // The TDEV_ACCESSOR_* macros below emit prototypes only; the call site supplies the terminating ';'.
+    // Matching definitions live in src/tdevice_accessors.c, which re-#defines these same macro names as
+    // full definitions taking (name, expr) so one signature pattern covers both sides and only the field
+    // expression comes from the definition side. Setters assign the field AND OR the source flag into the
+    // passThroughHacks.hackSources provenance word (latching: bits accumulate for the session, cleared only
+    // by the tDevice zero-init at discovery); the PH_*_MASK predicates above test it.
+    //
+    // The source provenance parameter is specific to the passthrough-hacks layer: it is the only
+    // tDevice section that records which source set each hack. The future layered per-substructure
+    // TDEV_ accessors take plain (device, val) setter and (device) getter signatures with no provenance parameter.
+
+    #define TDEV_ACCESSOR_BOOL_SETTER(name)                                                                     \
+        M_PARAM_RW(1)                                                                                      \
+        OPENSEA_TRANSPORT_API void name(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    #define TDEV_ACCESSOR_BOOL_GETTER(name)                                                                     \
+        M_PARAM_RO(1)                                                                                      \
+        OPENSEA_TRANSPORT_API M_PURE_FUNC bool name(const tDevice* M_NONNULL device)
+    #define TDEV_ACCESSOR_U32_SETTER(name)                                                                     \
+        M_PARAM_RW(1)                                                                                      \
+        OPENSEA_TRANSPORT_API void name(tDevice* M_NONNULL device, const uint32_t val, const ePassthroughHackSource source)
+    #define TDEV_ACCESSOR_U32_GETTER(name)                                                                     \
+        M_PARAM_RO(1)                                                                                      \
+        OPENSEA_TRANSPORT_API M_PURE_FUNC uint32_t name(const tDevice* M_NONNULL device)
+    #define TDEV_ACCESSOR_I8_SETTER(name)                                                                     \
+        M_PARAM_RW(1)                                                                                      \
+        OPENSEA_TRANSPORT_API void name(tDevice* M_NONNULL device, const int8_t val, const ePassthroughHackSource source)
+    #define TDEV_ACCESSOR_I8_GETTER(name)                                                                     \
+        M_PARAM_RO(1)                                                                                      \
+        OPENSEA_TRANSPORT_API M_PURE_FUNC int8_t name(const tDevice* M_NONNULL device)
+    #define TDEV_ACCESSOR_U8_SETTER(name)                                                                     \
+        M_PARAM_RW(1)                                                                                      \
+        OPENSEA_TRANSPORT_API void name(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    #define TDEV_ACCESSOR_U8_GETTER(name)                                                                     \
+        M_PARAM_RO(1)                                                                                      \
+        OPENSEA_TRANSPORT_API M_PURE_FUNC uint8_t name(const tDevice* M_NONNULL device)
+    #define TDEV_ACCESSOR_ENUM_SETTER(name, typ)                                                                     \
+        M_PARAM_RW(1)                                                                                      \
+        OPENSEA_TRANSPORT_API void name(tDevice* M_NONNULL device, const typ val, const ePassthroughHackSource source)
+    #define TDEV_ACCESSOR_ENUM_GETTER(name, typ)                                                                     \
+        M_PARAM_RO(1)                                                                                      \
+        OPENSEA_TRANSPORT_API M_PURE_FUNC typ name(const tDevice* M_NONNULL device)
+
+
+    //! \fn void set_Hack_Generic_Passthrough_Type(tDevice* M_NONNULL device, const ePassthroughType val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.passthroughType field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_ENUM_SETTER(set_Hack_Generic_Passthrough_Type, ePassthroughType);
+
+    //! \fn ePassthroughType get_Hack_Generic_Passthrough_Type(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.passthroughType field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_ENUM_GETTER(get_Hack_Generic_Passthrough_Type, ePassthroughType);
+
+    //! \fn void set_Hack_Generic_Test_Unit_Ready_After_Failure(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.testUnitReadyAfterAnyCommandFailure field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_Generic_Test_Unit_Ready_After_Failure);
+
+    //! \fn bool get_Hack_Generic_Test_Unit_Ready_After_Failure(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.testUnitReadyAfterAnyCommandFailure field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_Generic_Test_Unit_Ready_After_Failure);
+
+    //! \fn void set_Hack_Generic_TURF_Value(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.turfValue field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U8_SETTER(set_Hack_Generic_TURF_Value);
+
+    //! \fn uint8_t get_Hack_Generic_TURF_Value(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.turfValue field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U8_GETTER(get_Hack_Generic_TURF_Value);
+
+    //! \fn void set_Hack_SCSI_Max_Xfer_Length(tDevice* M_NONNULL device, const uint32_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.maxTransferLength field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U32_SETTER(set_Hack_SCSI_Max_Xfer_Length);
+
+    //! \fn uint32_t get_Hack_SCSI_Max_Xfer_Length(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.maxTransferLength field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U32_GETTER(get_Hack_SCSI_Max_Xfer_Length);
+
+    //! \fn void set_Hack_SCSI_Unit_SN_Available(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.unitSNAvailable field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_Unit_SN_Available);
+
+    //! \fn bool get_Hack_SCSI_Unit_SN_Available(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.unitSNAvailable field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_Unit_SN_Available);
+
+    //! \fn void set_Hack_SCSI_RW_Available(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.readWrite.available field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_RW_Available);
+
+    //! \fn bool get_Hack_SCSI_RW_Available(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.readWrite.available field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_RW_Available);
+
+    //! \fn void set_Hack_SCSI_RW6(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.readWrite.rw6 field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_RW6);
+
+    //! \fn bool get_Hack_SCSI_RW6(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.readWrite.rw6 field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_RW6);
+
+    //! \fn void set_Hack_SCSI_RW10(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.readWrite.rw10 field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_RW10);
+
+    //! \fn bool get_Hack_SCSI_RW10(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.readWrite.rw10 field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_RW10);
+
+    //! \fn void set_Hack_SCSI_RW12(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.readWrite.rw12 field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_RW12);
+
+    //! \fn bool get_Hack_SCSI_RW12(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.readWrite.rw12 field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_RW12);
+
+    //! \fn void set_Hack_SCSI_RW16(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.readWrite.rw16 field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_RW16);
+
+    //! \fn bool get_Hack_SCSI_RW16(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.readWrite.rw16 field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_RW16);
+
+    //! \fn void set_Hack_SCSI_No_VPD_Pages(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.noVPDPages field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_No_VPD_Pages);
+
+    //! \fn bool get_Hack_SCSI_No_VPD_Pages(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.noVPDPages field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_No_VPD_Pages);
+
+    //! \fn void set_Hack_SCSI_No_Mode_Pages(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.noModePages field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_No_Mode_Pages);
+
+    //! \fn bool get_Hack_SCSI_No_Mode_Pages(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.noModePages field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_No_Mode_Pages);
+
+    //! \fn void set_Hack_SCSI_No_Log_Pages(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.noLogPages field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_No_Log_Pages);
+
+    //! \fn bool get_Hack_SCSI_No_Log_Pages(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.noLogPages field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_No_Log_Pages);
+
+    //! \fn void set_Hack_SCSI_No_Log_Sub_Pages(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.noLogSubPages field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_No_Log_Sub_Pages);
+
+    //! \fn bool get_Hack_SCSI_No_Log_Sub_Pages(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.noLogSubPages field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_No_Log_Sub_Pages);
+
+    //! \fn void set_Hack_SCSI_Mode6_Bytes(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.mode6bytes field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_Mode6_Bytes);
+
+    //! \fn bool get_Hack_SCSI_Mode6_Bytes(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.mode6bytes field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_Mode6_Bytes);
+
+    //! \fn void set_Hack_SCSI_No_Mode_Sub_Pages(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.noModeSubPages field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_No_Mode_Sub_Pages);
+
+    //! \fn bool get_Hack_SCSI_No_Mode_Sub_Pages(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.noModeSubPages field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_No_Mode_Sub_Pages);
+
+    //! \fn void set_Hack_SCSI_No_Report_Supported_Ops(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.noReportSupportedOperations field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_No_Report_Supported_Ops);
+
+    //! \fn bool get_Hack_SCSI_No_Report_Supported_Ops(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.noReportSupportedOperations field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_No_Report_Supported_Ops);
+
+    //! \fn void set_Hack_SCSI_Report_Single_Op_Codes(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.reportSingleOpCodes field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_Report_Single_Op_Codes);
+
+    //! \fn bool get_Hack_SCSI_Report_Single_Op_Codes(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.reportSingleOpCodes field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_Report_Single_Op_Codes);
+
+    //! \fn void set_Hack_SCSI_Report_All_Op_Codes(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.reportAllOpCodes field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_Report_All_Op_Codes);
+
+    //! \fn bool get_Hack_SCSI_Report_All_Op_Codes(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.reportAllOpCodes field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_Report_All_Op_Codes);
+
+    //! \fn void set_Hack_SCSI_Security_Protocol_Supported(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.securityProtocolSupported field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_Security_Protocol_Supported);
+
+    //! \fn bool get_Hack_SCSI_Security_Protocol_Supported(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.securityProtocolSupported field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_Security_Protocol_Supported);
+
+    //! \fn void set_Hack_SCSI_Security_Protocol_Inc512(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.securityProtocolWithInc512 field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_Security_Protocol_Inc512);
+
+    //! \fn bool get_Hack_SCSI_Security_Protocol_Inc512(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.securityProtocolWithInc512 field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_Security_Protocol_Inc512);
+
+    //! \fn void set_Hack_SCSI_Pre_SCSI2_Inq_Data(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.preSCSI2InqData field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_Pre_SCSI2_Inq_Data);
+
+    //! \fn bool get_Hack_SCSI_Pre_SCSI2_Inq_Data(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.preSCSI2InqData field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_Pre_SCSI2_Inq_Data);
+
+    //! \fn void set_Hack_SCSI_INQ_ProductID_Offset(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.scsiInq.productIDOffset field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U8_SETTER(set_Hack_SCSI_INQ_ProductID_Offset);
+
+    //! \fn uint8_t get_Hack_SCSI_INQ_ProductID_Offset(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.scsiInq.productIDOffset field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U8_GETTER(get_Hack_SCSI_INQ_ProductID_Offset);
+
+    //! \fn void set_Hack_SCSI_INQ_ProductID_Length(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.scsiInq.productIDLength field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U8_SETTER(set_Hack_SCSI_INQ_ProductID_Length);
+
+    //! \fn uint8_t get_Hack_SCSI_INQ_ProductID_Length(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.scsiInq.productIDLength field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U8_GETTER(get_Hack_SCSI_INQ_ProductID_Length);
+
+    //! \fn void set_Hack_SCSI_INQ_ProductRev_Offset(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.scsiInq.productRevOffset field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U8_SETTER(set_Hack_SCSI_INQ_ProductRev_Offset);
+
+    //! \fn uint8_t get_Hack_SCSI_INQ_ProductRev_Offset(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.scsiInq.productRevOffset field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U8_GETTER(get_Hack_SCSI_INQ_ProductRev_Offset);
+
+    //! \fn void set_Hack_SCSI_INQ_ProductRev_Length(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.scsiInq.productRevLength field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U8_SETTER(set_Hack_SCSI_INQ_ProductRev_Length);
+
+    //! \fn uint8_t get_Hack_SCSI_INQ_ProductRev_Length(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.scsiInq.productRevLength field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U8_GETTER(get_Hack_SCSI_INQ_ProductRev_Length);
+
+    //! \fn void set_Hack_SCSI_INQ_VendorID_Offset(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.scsiInq.vendorIDOffset field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U8_SETTER(set_Hack_SCSI_INQ_VendorID_Offset);
+
+    //! \fn uint8_t get_Hack_SCSI_INQ_VendorID_Offset(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.scsiInq.vendorIDOffset field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U8_GETTER(get_Hack_SCSI_INQ_VendorID_Offset);
+
+    //! \fn void set_Hack_SCSI_INQ_VendorID_Length(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.scsiInq.vendorIDLength field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U8_SETTER(set_Hack_SCSI_INQ_VendorID_Length);
+
+    //! \fn uint8_t get_Hack_SCSI_INQ_VendorID_Length(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.scsiInq.vendorIDLength field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U8_GETTER(get_Hack_SCSI_INQ_VendorID_Length);
+
+    //! \fn void set_Hack_SCSI_INQ_SerialNumber_Offset(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.scsiInq.serialNumberOffset field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U8_SETTER(set_Hack_SCSI_INQ_SerialNumber_Offset);
+
+    //! \fn uint8_t get_Hack_SCSI_INQ_SerialNumber_Offset(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.scsiInq.serialNumberOffset field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U8_GETTER(get_Hack_SCSI_INQ_SerialNumber_Offset);
+
+    //! \fn void set_Hack_SCSI_INQ_SerialNumber_Length(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.scsiInq.serialNumberLength field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U8_SETTER(set_Hack_SCSI_INQ_SerialNumber_Length);
+
+    //! \fn uint8_t get_Hack_SCSI_INQ_SerialNumber_Length(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.scsiInq.serialNumberLength field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U8_GETTER(get_Hack_SCSI_INQ_SerialNumber_Length);
+
+    //! \fn void set_Hack_SCSI_WriteBuffer_No_Deferred_Download(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.writeBufferNoDeferredDownload field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_WriteBuffer_No_Deferred_Download);
+
+    //! \fn bool get_Hack_SCSI_WriteBuffer_No_Deferred_Download(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.writeBufferNoDeferredDownload field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_WriteBuffer_No_Deferred_Download);
+
+    //! \fn void set_Hack_SCSI_Mode6B_For_Subpage_Zero(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.useMode6BForSubpageZero field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_Mode6B_For_Subpage_Zero);
+
+    //! \fn bool get_Hack_SCSI_Mode6B_For_Subpage_Zero(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.useMode6BForSubpageZero field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_Mode6B_For_Subpage_Zero);
+
+    //! \fn void set_Hack_SCSI_Read_Buffer_Cmd_Size(tDevice* M_NONNULL device, const int8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.readBufferCmdSize field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_I8_SETTER(set_Hack_SCSI_Read_Buffer_Cmd_Size);
+
+    //! \fn int8_t get_Hack_SCSI_Read_Buffer_Cmd_Size(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.readBufferCmdSize field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_I8_GETTER(get_Hack_SCSI_Read_Buffer_Cmd_Size);
+
+    //! \fn void set_Hack_SCSI_No_SAT_VPD_Page(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.noSATVPDPage field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_No_SAT_VPD_Page);
+
+    //! \fn bool get_Hack_SCSI_No_SAT_VPD_Page(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.noSATVPDPage field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_No_SAT_VPD_Page);
+
+    //! \fn void set_Hack_SCSI_Sync_Cache_Cmd_Size(tDevice* M_NONNULL device, const int8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.syncCacheCmdSize field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_I8_SETTER(set_Hack_SCSI_Sync_Cache_Cmd_Size);
+
+    //! \fn int8_t get_Hack_SCSI_Sync_Cache_Cmd_Size(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.syncCacheCmdSize field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_I8_GETTER(get_Hack_SCSI_Sync_Cache_Cmd_Size);
+
+    //! \fn void set_Hack_SCSI_Write_And_Verify_Cmd_Size(tDevice* M_NONNULL device, const int8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.writeAndVerifyCmdSize field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_I8_SETTER(set_Hack_SCSI_Write_And_Verify_Cmd_Size);
+
+    //! \fn int8_t get_Hack_SCSI_Write_And_Verify_Cmd_Size(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.writeAndVerifyCmdSize field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_I8_GETTER(get_Hack_SCSI_Write_And_Verify_Cmd_Size);
+
+    //! \fn void set_Hack_SCSI_Write_Buffer_Cmd_Size(tDevice* M_NONNULL device, const int8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.writeBufferCmdSize field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_I8_SETTER(set_Hack_SCSI_Write_Buffer_Cmd_Size);
+
+    //! \fn int8_t get_Hack_SCSI_Write_Buffer_Cmd_Size(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.writeBufferCmdSize field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_I8_GETTER(get_Hack_SCSI_Write_Buffer_Cmd_Size);
+
+    //! \fn void set_Hack_SCSI_Write_Same_Cmd_Size(tDevice* M_NONNULL device, const int8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.writeSameCmdSize field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_I8_SETTER(set_Hack_SCSI_Write_Same_Cmd_Size);
+
+    //! \fn int8_t get_Hack_SCSI_Write_Same_Cmd_Size(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.writeSameCmdSize field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_I8_GETTER(get_Hack_SCSI_Write_Same_Cmd_Size);
+
+    //! \fn void set_Hack_SCSI_Write_Same_Data_Out_Required(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.writeSameDataOutRequired field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_Write_Same_Data_Out_Required);
+
+    //! \fn bool get_Hack_SCSI_Write_Same_Data_Out_Required(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.writeSameDataOutRequired field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_Write_Same_Data_Out_Required);
+
+    //! \fn void set_Hack_SCSI_No_Compare_Logical_Blocks(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.noCompareLogicalBlocks field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_No_Compare_Logical_Blocks);
+
+    //! \fn bool get_Hack_SCSI_No_Compare_Logical_Blocks(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.noCompareLogicalBlocks field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_No_Compare_Logical_Blocks);
+
+    //! \fn void set_Hack_SCSI_CmdDT_Checked(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.cmdDTchecked field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_CmdDT_Checked);
+
+    //! \fn bool get_Hack_SCSI_CmdDT_Checked(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.cmdDTchecked field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_CmdDT_Checked);
+
+    //! \fn void set_Hack_SCSI_CmdDT_Supported(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.cmdDTSupported field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_CmdDT_Supported);
+
+    //! \fn bool get_Hack_SCSI_CmdDT_Supported(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.cmdDTSupported field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_CmdDT_Supported);
+
+    // SCSI probe counters (passThroughHacks.scsiHacks): the increment/decrement wrappers
+    // clamp the value internally so the raw field can never overflow or underflow. The
+    // return value reports whether the counter actually changed (false at the clamp limit),
+    // which leaves room for future clamp-triggered hack decisions without an API change.
+    // The attempt counters are only ever read in >= MAX_*_ATTEMPTS comparisons, so clamping
+    // them at those values keeps every read site behaving exactly as before.
+
+    //! \fn bool increment_Hack_SCSI_MP6_SP0_Success(tDevice* M_NONNULL device)
+    //! \brief Increments the passThroughHacks.scsiHacks.mp6sp0Success counter, clamped at UINT8_MAX.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was incremented, false when already at the clamp limit
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_MP6_SP0_Success(tDevice* M_NONNULL device);
+
+    //! \fn bool decrement_Hack_SCSI_MP6_SP0_Success(tDevice* M_NONNULL device)
+    //! \brief Decrements the passThroughHacks.scsiHacks.mp6sp0Success counter, clamped at 0.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was decremented, false when already at 0
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_MP6_SP0_Success(tDevice* M_NONNULL device);
+
+    //! \fn bool increment_Hack_SCSI_Attempted_MP6s(tDevice* M_NONNULL device)
+    //! \brief Increments the passThroughHacks.scsiHacks.attemptedMP6s counter, clamped at MAX_MP6_ATTEMPTS.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was incremented, false when already at the clamp limit
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Attempted_MP6s(tDevice* M_NONNULL device);
+
+    //! \fn bool decrement_Hack_SCSI_Attempted_MP6s(tDevice* M_NONNULL device)
+    //! \brief Decrements the passThroughHacks.scsiHacks.attemptedMP6s counter, clamped at 0.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was decremented, false when already at 0
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Attempted_MP6s(tDevice* M_NONNULL device);
+
+    //! \fn bool increment_Hack_SCSI_Successful_MP6s(tDevice* M_NONNULL device)
+    //! \brief Increments the passThroughHacks.scsiHacks.successfulMP6s counter, clamped at UINT8_MAX.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was incremented, false when already at the clamp limit
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Successful_MP6s(tDevice* M_NONNULL device);
+
+    //! \fn bool decrement_Hack_SCSI_Successful_MP6s(tDevice* M_NONNULL device)
+    //! \brief Decrements the passThroughHacks.scsiHacks.successfulMP6s counter, clamped at 0.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was decremented, false when already at 0
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Successful_MP6s(tDevice* M_NONNULL device);
+
+    //! \fn bool increment_Hack_SCSI_Attempted_MP10s(tDevice* M_NONNULL device)
+    //! \brief Increments the passThroughHacks.scsiHacks.attemptedMP10s counter, clamped at MAX_MP10_ATTEMPTS.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was incremented, false when already at the clamp limit
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Attempted_MP10s(tDevice* M_NONNULL device);
+
+    //! \fn bool decrement_Hack_SCSI_Attempted_MP10s(tDevice* M_NONNULL device)
+    //! \brief Decrements the passThroughHacks.scsiHacks.attemptedMP10s counter, clamped at 0.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was decremented, false when already at 0
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Attempted_MP10s(tDevice* M_NONNULL device);
+
+    //! \fn bool increment_Hack_SCSI_Successful_MP10s(tDevice* M_NONNULL device)
+    //! \brief Increments the passThroughHacks.scsiHacks.successfulMP10s counter, clamped at UINT8_MAX.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was incremented, false when already at the clamp limit
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Successful_MP10s(tDevice* M_NONNULL device);
+
+    //! \fn bool decrement_Hack_SCSI_Successful_MP10s(tDevice* M_NONNULL device)
+    //! \brief Decrements the passThroughHacks.scsiHacks.successfulMP10s counter, clamped at 0.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was decremented, false when already at 0
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Successful_MP10s(tDevice* M_NONNULL device);
+
+    //! \fn bool increment_Hack_SCSI_Attempted_LPs(tDevice* M_NONNULL device)
+    //! \brief Increments the passThroughHacks.scsiHacks.attemptedLPs counter, clamped at MAX_LP_ATTEMPTS.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was incremented, false when already at the clamp limit
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Attempted_LPs(tDevice* M_NONNULL device);
+
+    //! \fn bool decrement_Hack_SCSI_Attempted_LPs(tDevice* M_NONNULL device)
+    //! \brief Decrements the passThroughHacks.scsiHacks.attemptedLPs counter, clamped at 0.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was decremented, false when already at 0
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Attempted_LPs(tDevice* M_NONNULL device);
+
+    //! \fn bool increment_Hack_SCSI_Successful_LPs(tDevice* M_NONNULL device)
+    //! \brief Increments the passThroughHacks.scsiHacks.successfulLPs counter, clamped at UINT8_MAX.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was incremented, false when already at the clamp limit
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Successful_LPs(tDevice* M_NONNULL device);
+
+    //! \fn bool decrement_Hack_SCSI_Successful_LPs(tDevice* M_NONNULL device)
+    //! \brief Decrements the passThroughHacks.scsiHacks.successfulLPs counter, clamped at 0.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was decremented, false when already at 0
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Successful_LPs(tDevice* M_NONNULL device);
+
+    //! \fn bool increment_Hack_SCSI_Attempted_VPDs(tDevice* M_NONNULL device)
+    //! \brief Increments the passThroughHacks.scsiHacks.attemptedVPDs counter, clamped at MAX_VPD_ATTEMPTS.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was incremented, false when already at the clamp limit
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Attempted_VPDs(tDevice* M_NONNULL device);
+
+    //! \fn bool decrement_Hack_SCSI_Attempted_VPDs(tDevice* M_NONNULL device)
+    //! \brief Decrements the passThroughHacks.scsiHacks.attemptedVPDs counter, clamped at 0.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was decremented, false when already at 0
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Attempted_VPDs(tDevice* M_NONNULL device);
+
+    //! \fn bool increment_Hack_SCSI_Successful_VPDs(tDevice* M_NONNULL device)
+    //! \brief Increments the passThroughHacks.scsiHacks.successfulVPDs counter, clamped at UINT8_MAX.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was incremented, false when already at the clamp limit
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Successful_VPDs(tDevice* M_NONNULL device);
+
+    //! \fn bool decrement_Hack_SCSI_Successful_VPDs(tDevice* M_NONNULL device)
+    //! \brief Decrements the passThroughHacks.scsiHacks.successfulVPDs counter, clamped at 0.
+    //! \param device pointer to the tDevice to update
+    //! \returns true if the counter was decremented, false when already at 0
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Successful_VPDs(tDevice* M_NONNULL device);
+
+    //! \fn void set_Hack_ATA_Max_Xfer_Length(tDevice* M_NONNULL device, const uint32_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.maxTransferLength field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U32_SETTER(set_Hack_ATA_Max_Xfer_Length);
+
+    //! \fn uint32_t get_Hack_ATA_Max_Xfer_Length(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.maxTransferLength field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U32_GETTER(get_Hack_ATA_Max_Xfer_Length);
+
+    //! \fn void set_Hack_ATA_SCT_Smart_Logs_Only(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_SCT_Smart_Logs_Only);
+
+    //! \fn bool get_Hack_ATA_SCT_Smart_Logs_Only(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.smartCommandTransportWithSMARTLogCommandsOnly field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_SCT_Smart_Logs_Only);
+
+    //! \fn void set_Hack_ATA_A1_Never_Supported(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.a1NeverSupported field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_A1_Never_Supported);
+
+    //! \fn bool get_Hack_ATA_A1_Never_Supported(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.a1NeverSupported field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_A1_Never_Supported);
+
+    //! \fn void set_Hack_ATA_A1_Ext_Command_When_Possible(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.a1ExtCommandWhenPossible field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_A1_Ext_Command_When_Possible);
+
+    //! \fn bool get_Hack_ATA_A1_Ext_Command_When_Possible(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.a1ExtCommandWhenPossible field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_A1_Ext_Command_When_Possible);
+
+    //! \fn void set_Hack_ATA_Return_Response_Info_Supported(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.returnResponseInfoSupported field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Return_Response_Info_Supported);
+
+    //! \fn bool get_Hack_ATA_Return_Response_Info_Supported(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.returnResponseInfoSupported field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Return_Response_Info_Supported);
+
+    //! \fn void set_Hack_ATA_Return_Response_Info_Needs_TDIR(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Return_Response_Info_Needs_TDIR);
+
+    //! \fn bool get_Hack_ATA_Return_Response_Info_Needs_TDIR(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Return_Response_Info_Needs_TDIR);
+
+    //! \fn void set_Hack_ATA_Return_Response_Ignore_Extend_Bit(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Return_Response_Ignore_Extend_Bit);
+
+    //! \fn bool get_Hack_ATA_Return_Response_Ignore_Extend_Bit(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.returnResponseIgnoreExtendBit field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Return_Response_Ignore_Extend_Bit);
+
+    //! \fn void set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough);
+
+    //! \fn bool get_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough);
+
+    //! \fn void set_Hack_ATA_Always_Check_Condition_Available(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Always_Check_Condition_Available);
+
+    //! \fn bool get_Hack_ATA_Always_Check_Condition_Available(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Always_Check_Condition_Available);
+
+    //! \fn void set_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA);
+
+    //! \fn bool get_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA);
+
+    //! \fn void set_Hack_ATA_DMA_Not_Supported(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.dmaNotSupported field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_DMA_Not_Supported);
+
+    //! \fn bool get_Hack_ATA_DMA_Not_Supported(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.dmaNotSupported field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_DMA_Not_Supported);
+
+    //! \fn void set_Hack_ATA_Partial_RTFRs(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.partialRTFRs field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Partial_RTFRs);
+
+    //! \fn bool get_Hack_ATA_Partial_RTFRs(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.partialRTFRs field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Partial_RTFRs);
+
+    //! \fn void set_Hack_ATA_No_RTFRs_Possible(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.noRTFRsPossible field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_No_RTFRs_Possible);
+
+    //! \fn bool get_Hack_ATA_No_RTFRs_Possible(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.noRTFRsPossible field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_No_RTFRs_Possible);
+
+    //! \fn void set_Hack_ATA_Multi_Sector_PIO_With_Multiple_Mode(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.multiSectorPIOWithMultipleMode field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Multi_Sector_PIO_With_Multiple_Mode);
+
+    //! \fn bool get_Hack_ATA_Multi_Sector_PIO_With_Multiple_Mode(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.multiSectorPIOWithMultipleMode field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Multi_Sector_PIO_With_Multiple_Mode);
+
+    //! \fn void set_Hack_ATA_Single_Sector_PIO_Only(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.singleSectorPIOOnly field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Single_Sector_PIO_Only);
+
+    //! \fn bool get_Hack_ATA_Single_Sector_PIO_Only(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.singleSectorPIOOnly field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Single_Sector_PIO_Only);
+
+    //! \fn void set_Hack_ATA_28_Bit_Only(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.ata28BitOnly field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_28_Bit_Only);
+
+    //! \fn bool get_Hack_ATA_28_Bit_Only(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.ata28BitOnly field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_28_Bit_Only);
+
+    //! \fn void set_Hack_ATA_No_Multiple_Mode_Commands(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.noMultipleModeCommands field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_No_Multiple_Mode_Commands);
+
+    //! \fn bool get_Hack_ATA_No_Multiple_Mode_Commands(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.noMultipleModeCommands field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_No_Multiple_Mode_Commands);
+
+    //! \fn void set_Hack_ATA_Limited_Use_TPSIU(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.limitedUseTPSIU field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Limited_Use_TPSIU);
+
+    //! \fn bool get_Hack_ATA_Limited_Use_TPSIU(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.limitedUseTPSIU field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Limited_Use_TPSIU);
+
+    //! \fn void set_Hack_ATA_Disable_Check_Condition(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.disableCheckCondition field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Disable_Check_Condition);
+
+    //! \fn bool get_Hack_ATA_Disable_Check_Condition(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.disableCheckCondition field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Disable_Check_Condition);
+
+    //! \fn void set_Hack_ATA_Check_Condition_Empty(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.checkConditionEmpty field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Check_Condition_Empty);
+
+    //! \fn bool get_Hack_ATA_Check_Condition_Empty(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.checkConditionEmpty field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Check_Condition_Empty);
+
+    //! \fn void set_Hack_ATA_Possibly_Emulated_NVMe(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.possilbyEmulatedNVMe field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Possibly_Emulated_NVMe);
+
+    //! \fn bool get_Hack_ATA_Possibly_Emulated_NVMe(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.possilbyEmulatedNVMe field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Possibly_Emulated_NVMe);
+
+    //! \fn void set_Hack_ATA_Known_Realtek_USB(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.knownRealtekUSB field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Known_Realtek_USB);
+
+    //! \fn bool get_Hack_ATA_Known_Realtek_USB(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.knownRealtekUSB field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Known_Realtek_USB);
+
+    //! \fn void set_Hack_ATA_SMART_Enabled(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.smartEnabled field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_SMART_Enabled);
+
+    //! \fn bool get_Hack_ATA_SMART_Enabled(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.smartEnabled field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_SMART_Enabled);
+
+    //! \fn void set_Hack_ATA_Retry_With_JMicron_PT(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.retryWithJMicronPT field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Retry_With_JMicron_PT);
+
+    //! \fn bool get_Hack_ATA_Retry_With_JMicron_PT(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.retryWithJMicronPT field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Retry_With_JMicron_PT);
+
+    //! \fn void set_Hack_ATA_JM_PT_Dev_Set(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.jmPTDevSet field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_JM_PT_Dev_Set);
+
+    //! \fn bool get_Hack_ATA_JM_PT_Dev_Set(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.jmPTDevSet field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_JM_PT_Dev_Set);
+
+    //! \fn void set_Hack_ATA_Non_Data_Count_Broken(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.nonDataCountBroken field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Non_Data_Count_Broken);
+
+    //! \fn bool get_Hack_ATA_Non_Data_Count_Broken(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.nonDataCountBroken field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Non_Data_Count_Broken);
+
+    //! \fn void set_Hack_ATA_Non_Data_LBA_Broken(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.nonDataLBABroken field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Non_Data_LBA_Broken);
+
+    //! \fn bool get_Hack_ATA_Non_Data_LBA_Broken(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.nonDataLBABroken field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Non_Data_LBA_Broken);
+
+    //! \fn void set_Hack_ATA_Fixed_Sense_Hack(tDevice* M_NONNULL device, const eSATFixedFormatSenseHack val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.fixedSenseHack field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_ENUM_SETTER(set_Hack_ATA_Fixed_Sense_Hack, eSATFixedFormatSenseHack);
+
+    //! \fn eSATFixedFormatSenseHack get_Hack_ATA_Fixed_Sense_Hack(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.fixedSenseHack field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_ENUM_GETTER(get_Hack_ATA_Fixed_Sense_Hack, eSATFixedFormatSenseHack);
+
+    //! \fn void set_Hack_NVMe_Max_Xfer_Length(tDevice* M_NONNULL device, const uint32_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.maxTransferLength field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_U32_SETTER(set_Hack_NVMe_Max_Xfer_Length);
+
+    //! \fn uint32_t get_Hack_NVMe_Max_Xfer_Length(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.maxTransferLength field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_U32_GETTER(get_Hack_NVMe_Max_Xfer_Length);
+
+    //! \fn void set_Hack_NVMe_Limited_Passthrough_Capabilities(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Passthrough_Capabilities);
+
+    //! \fn bool get_Hack_NVMe_Limited_Passthrough_Capabilities(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Passthrough_Capabilities);
+
+    //! \fn void set_Hack_NVMe_Limited_ID_Gen(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_ID_Gen);
+
+    //! \fn bool get_Hack_NVMe_Limited_ID_Gen(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_ID_Gen);
+
+    //! \fn void set_Hack_NVMe_Limited_ID_Controller(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_ID_Controller);
+
+    //! \fn bool get_Hack_NVMe_Limited_ID_Controller(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyController field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_ID_Controller);
+
+    //! \fn void set_Hack_NVMe_Limited_ID_Namespace(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_ID_Namespace);
+
+    //! \fn bool get_Hack_NVMe_Limited_ID_Namespace(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_ID_Namespace);
+
+    //! \fn void set_Hack_NVMe_Limited_Get_Log_Page(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Get_Log_Page);
+
+    //! \fn bool get_Hack_NVMe_Limited_Get_Log_Page(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Get_Log_Page);
+
+    //! \fn void set_Hack_NVMe_Limited_Format(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.format field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Format);
+
+    //! \fn bool get_Hack_NVMe_Limited_Format(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.format field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Format);
+
+    //! \fn void set_Hack_NVMe_Limited_Get_Features(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Get_Features);
+
+    //! \fn bool get_Hack_NVMe_Limited_Get_Features(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Get_Features);
+
+    //! \fn void set_Hack_NVMe_Limited_Firmware_Download(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Firmware_Download);
+
+    //! \fn bool get_Hack_NVMe_Limited_Firmware_Download(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Firmware_Download);
+
+    //! \fn void set_Hack_NVMe_Limited_Firmware_Commit(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Firmware_Commit);
+
+    //! \fn bool get_Hack_NVMe_Limited_Firmware_Commit(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Firmware_Commit);
+
+    //! \fn void set_Hack_NVMe_Limited_Vendor_Unique(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Vendor_Unique);
+
+    //! \fn bool get_Hack_NVMe_Limited_Vendor_Unique(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Vendor_Unique);
+
+    //! \fn void set_Hack_NVMe_Limited_Device_Self_Test(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Device_Self_Test);
+
+    //! \fn bool get_Hack_NVMe_Limited_Device_Self_Test(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Device_Self_Test);
+
+    //! \fn void set_Hack_NVMe_Limited_Sanitize(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Sanitize);
+
+    //! \fn bool get_Hack_NVMe_Limited_Sanitize(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Sanitize);
+
+    //! \fn void set_Hack_NVMe_Limited_NS_Management(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_NS_Management);
+
+    //! \fn bool get_Hack_NVMe_Limited_NS_Management(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceManagement field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_NS_Management);
+
+    //! \fn void set_Hack_NVMe_Limited_NS_Attachment(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceAttachment field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_NS_Attachment);
+
+    //! \fn bool get_Hack_NVMe_Limited_NS_Attachment(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.namespaceAttachment field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_NS_Attachment);
+
+    //! \fn void set_Hack_NVMe_Limited_Set_Features(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Set_Features);
+
+    //! \fn bool get_Hack_NVMe_Limited_Set_Features(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Set_Features);
+
+    //! \fn void set_Hack_NVMe_Limited_MI_Send(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_MI_Send);
+
+    //! \fn bool get_Hack_NVMe_Limited_MI_Send(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_MI_Send);
+
+    //! \fn void set_Hack_NVMe_Limited_MI_Receive(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_MI_Receive);
+
+    //! \fn bool get_Hack_NVMe_Limited_MI_Receive(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_MI_Receive);
+
+    //! \fn void set_Hack_NVMe_Limited_Security_Send(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Security_Send);
+
+    //! \fn bool get_Hack_NVMe_Limited_Security_Send(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Security_Send);
+
+    //! \fn void set_Hack_NVMe_Limited_Security_Receive(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Security_Receive);
+
+    //! \fn bool get_Hack_NVMe_Limited_Security_Receive(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Security_Receive);
+
+    //! \fn void set_Hack_NVMe_Limited_Format_User_Erase(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatUserSecureErase field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Format_User_Erase);
+
+    //! \fn bool get_Hack_NVMe_Limited_Format_User_Erase(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatUserSecureErase field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Format_User_Erase);
+
+    //! \fn void set_Hack_NVMe_Limited_Format_Crypto_Erase(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Format_Crypto_Erase);
+
+    //! \fn bool get_Hack_NVMe_Limited_Format_Crypto_Erase(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.formatCryptoSecureErase field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Format_Crypto_Erase);
+
+    //! \fn void set_Hack_NVMe_Limited_Sanitize_Crypto(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeCrypto field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Sanitize_Crypto);
+
+    //! \fn bool get_Hack_NVMe_Limited_Sanitize_Crypto(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeCrypto field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Sanitize_Crypto);
+
+    //! \fn void set_Hack_NVMe_Limited_Sanitize_Block(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeBlock field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Sanitize_Block);
+
+    //! \fn bool get_Hack_NVMe_Limited_Sanitize_Block(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeBlock field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Sanitize_Block);
+
+    //! \fn void set_Hack_NVMe_Limited_Sanitize_Overwrite(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeOverwrite field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_NVMe_Limited_Sanitize_Overwrite);
+
+    //! \fn bool get_Hack_NVMe_Limited_Sanitize_Overwrite(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeOverwrite field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_NVMe_Limited_Sanitize_Overwrite);
+
+    #undef TDEV_ACCESSOR_BOOL_SETTER
+    #undef TDEV_ACCESSOR_BOOL_GETTER
+    #undef TDEV_ACCESSOR_U32_SETTER
+    #undef TDEV_ACCESSOR_U32_GETTER
+    #undef TDEV_ACCESSOR_I8_SETTER
+    #undef TDEV_ACCESSOR_I8_GETTER
+    #undef TDEV_ACCESSOR_U8_SETTER
+    #undef TDEV_ACCESSOR_U8_GETTER
+    #undef TDEV_ACCESSOR_ENUM_SETTER
+    #undef TDEV_ACCESSOR_ENUM_GETTER
     // Set the output stream for verbose output for a given device.
     // This must be opened with write permissions as fprintf and fputs will be used to write to it.
     M_PARAM_RW(1)

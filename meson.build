@@ -475,6 +475,7 @@ src_files = [
     'src/scsi_helper.c',
     'src/sntl_helper.c',
     'src/sunplus_legacy_helper.c',
+    'src/tdevice_accessors.c',
     'src/ti_legacy_helper.c',
     'src/usb_hacks.c',
 ]

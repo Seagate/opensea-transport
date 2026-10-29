@@ -1924,12 +1924,11 @@ static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
     DECLARE_ZERO_INIT_ARRAY(uint8_t, iddata, LEGACY_DRIVE_SEC_SIZE);
     if ((get_Device_DriveType(device) == ATAPI_DRIVE || get_Device_DriveType(device) == LEGACY_TAPE_DRIVE ||
          get_Device_MediaType(device) == MEDIA_OPTICAL || get_Device_MediaType(device) == MEDIA_TAPE) &&
-        !(device->drive_info.passThroughHacks.hacksSetByReportedID ||
-          device->drive_info.passThroughHacks.someHacksSetByOSDiscovery))
+        !has_Any_Provenance(device))
     {
         // make sure we disable sending the A1h SAT CDB or we could accidentally send a "blank" command due to how most
         // of these devices receive commands under different OSs or through translators.
-        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+        set_Hack_ATA_A1_Never_Supported(device, true, PH_BY_PROBE);
     }
     do
     {
@@ -1947,21 +1946,21 @@ static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
                 // Invalid Field in CDB
                 // Most likely check condition, so check that first.
                 // Then try TPSIU
-                if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
+                if (!has_Reported_ID_Provenance(device))
                 {
                     if (device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
                     {
-                        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = false;
+                        set_Hack_ATA_Always_Check_Condition_Available(device, false, PH_BY_PROBE);
                         noMoreRetries                                                                = false;
                     }
                     else if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
                     {
-                        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+                        set_Hack_ATA_A1_Never_Supported(device, true, PH_BY_PROBE);
                         noMoreRetries                                                   = false;
                     }
                     else if (!device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough)
                     {
-                        device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
+                        set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_PROBE);
                         noMoreRetries                                                                  = false;
                     }
                 }
@@ -1972,24 +1971,24 @@ static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
                 // This means CDB byte 0 is wrong, however a lot of USB adapters seem to do this when they just
                 // don't like a field in the CDB. In this case first try the 16B command if we have not already.
                 // Otherwise check if the check condition bit is set to remove. If not, just exit
-                if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
+                if (!has_Reported_ID_Provenance(device))
                 {
                     if (!device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported)
                     {
-                        device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+                        set_Hack_ATA_A1_Never_Supported(device, true, PH_BY_PROBE);
                         noMoreRetries                                                   = false;
                     }
                     else if (get_Device_InterfaceType(device) == USB_INTERFACE &&
                              !device->drive_info.passThroughHacks.ataPTHacks.disableCheckCondition &&
                              device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable)
                     {
-                        device->drive_info.passThroughHacks.ataPTHacks.alwaysCheckConditionAvailable = false;
+                        set_Hack_ATA_Always_Check_Condition_Available(device, false, PH_BY_PROBE);
                         noMoreRetries                                                                = false;
                     }
                     else if (device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT &&
                              device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_JMICRON)
                     {
-                        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_JMICRON;
+                        set_Hack_Generic_Passthrough_Type(device, ATA_PASSTHROUGH_JMICRON, PH_BY_PROBE);
                         noMoreRetries                                       = false;
                     }
                 }
@@ -1998,7 +1997,7 @@ static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
                     if (device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT &&
                         device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_JMICRON)
                     {
-                        device->drive_info.passThroughHacks.passthroughType = ATA_PASSTHROUGH_JMICRON;
+                        set_Hack_Generic_Passthrough_Type(device, ATA_PASSTHROUGH_JMICRON, PH_BY_PROBE);
                         noMoreRetries                                       = false;
                     }
                 }
@@ -2339,10 +2338,10 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
                     device, VERBOSITY_COMMAND_VERBOSE,
                     "NOP Test: Setting nonDataCountBroken=false, nonDataLBABroken=false, nonDataTest=ALLOW_ALL\n");
                 flush_tDevice_Verbose_Stream(device);
-                device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = false;
-                device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken   = false;
-                device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack = SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED;
-                device->drive_info.passThroughHacks.ataPTHacks.nonDataTest    = ATA_NON_DATA_TEST_ALLOW_ALL;
+                set_Hack_ATA_Non_Data_Count_Broken(device, false, PH_BY_PROBE);
+                set_Hack_ATA_Non_Data_LBA_Broken(device, false, PH_BY_PROBE);
+                set_Hack_ATA_Fixed_Sense_Hack(device, SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED, PH_BY_PROBE);
+                device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_ALLOW_ALL;
                 return;
             }
             else
@@ -2389,8 +2388,7 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
                     {
                         // Looks like a common way we've seen this report in libATA which is not the right location, but
                         // we can work around this.
-                        device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack =
-                            SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG;
+                        set_Hack_ATA_Fixed_Sense_Hack(device, SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, PH_BY_PROBE);
                         // Try locating any other part of our command/pattern in the information/command specific
                         // information fields. Note that during debugging 12B and 16B provided different responses with
                         // different registers in different locations! It was observed that with the 12B device and
@@ -2520,10 +2518,10 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
     if (successfulMatches == NOP_MAX_TESTS && confidenceScore >= 50)
     {
         // All tests passed with high confidence
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = false;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken   = false;
-        device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack     = SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest        = ATA_NON_DATA_TEST_ALLOW_ALL;
+        set_Hack_ATA_Non_Data_Count_Broken(device, false, PH_BY_PROBE);
+        set_Hack_ATA_Non_Data_LBA_Broken(device, false, PH_BY_PROBE);
+        set_Hack_ATA_Fixed_Sense_Hack(device, SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED, PH_BY_PROBE);
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_ALLOW_ALL;
         print_tDevice_Verbose_String(
             device, VERBOSITY_COMMAND_VERBOSE,
             "NOP Test Result: PASS (High Confidence) - Device properly echoes register values in standard locations\n");
@@ -2531,8 +2529,8 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
     else if (brokenCountResponses == NOP_MAX_TESTS && confidenceScore >= 20)
     {
         // All 6 tests show COUNT broken consistently with moderate-to-high confidence (Broadcom bug pattern)
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = true;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest        = ATA_NON_DATA_TEST_COUNT_ZERO_ONLY;
+        set_Hack_ATA_Non_Data_Count_Broken(device, true, PH_BY_PROBE);
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_COUNT_ZERO_ONLY;
         print_tDevice_Verbose_String(
             device, VERBOSITY_COMMAND_VERBOSE,
             "NOP Test Result: FAILED - COUNT register consistently zeroed by HBA (Broadcom 9300 pattern detected)\n");
@@ -2541,9 +2539,8 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
     {
         // All 6 tests show LBA Lo and Hi consistently byte-swapped - SATL returns bytes in reversed byte order
         // The registers are all there, just Lo and Hi are exchanged. Do NOT block commands, just fix extraction.
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken = false;
-        device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack =
-            SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER;
+        set_Hack_ATA_Non_Data_LBA_Broken(device, false, PH_BY_PROBE);
+        set_Hack_ATA_Fixed_Sense_Hack(device, SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER, PH_BY_PROBE);
         device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_ALLOW_ALL;
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
                                      "NOP Test Result: SWAPPED LBA BYTE ORDER - Lo and Hi bytes consistently reversed, "
@@ -2552,8 +2549,8 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
     else if (brokenLBAResponses == NOP_MAX_TESTS && confidenceScore >= 20)
     {
         // All 6 tests show LBA broken consistently with moderate-to-high confidence
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken = true;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest      = ATA_NON_DATA_TEST_LBA_ZERO_ONLY;
+        set_Hack_ATA_Non_Data_LBA_Broken(device, true, PH_BY_PROBE);
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_LBA_ZERO_ONLY;
         print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
                                      "NOP Test Result: FAILED - LBA register consistently zeroed by HBA\n");
     }
@@ -2565,10 +2562,10 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
         // For the libata 21/04 bug, we deliberately allow the workaround even when the NOP command did not
         // return ABORTED, because the repeated 21/04 signature is the stronger indicator that this is the
         // same translator defect. The SAT layer will still only recover fields it can validate later.
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = false; // COUNT is recoverable from offset
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken   = true;  // LBA is misaligned/broken
-        device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack     = SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest        = ATA_NON_DATA_TEST_ALLOW_ALL;
+        set_Hack_ATA_Non_Data_Count_Broken(device, false, PH_BY_PROBE); // COUNT is recoverable from offset
+        set_Hack_ATA_Non_Data_LBA_Broken(device, true, PH_BY_PROBE);    // LBA is misaligned/broken
+        set_Hack_ATA_Fixed_Sense_Hack(device, SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, PH_BY_PROBE);
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_ALLOW_ALL;
         print_tDevice_Verbose_Formatted_String(
             device, VERBOSITY_COMMAND_VERBOSE,
             "NOP Test Decision: TAKING libATA PATH (useAlternateOffsets=true, countOffsetInResult=%d, brokenLBA=%d)\n",
@@ -2589,9 +2586,9 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
         // Kept as fallback: all 6 tests had consistent behavior, LBA was consistently wrong in some other way,
         // but the command did return the expected ABORTED status (confidenceScore >= 0).
         // A very negative confidence score (e.g. device rejected the command with ASC=20h) drops to INCONCLUSIVE.
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = false;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken   = true;
-        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest        = ATA_NON_DATA_TEST_LBA_ZERO_ONLY;
+        set_Hack_ATA_Non_Data_Count_Broken(device, false, PH_BY_PROBE);
+        set_Hack_ATA_Non_Data_LBA_Broken(device, true, PH_BY_PROBE);
+        device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_LBA_ZERO_ONLY;
         print_tDevice_Verbose_Formatted_String(
             device, VERBOSITY_COMMAND_VERBOSE,
             "NOP Test Decision: FALLBACK - Success=%d, BrokenCount=%d, BrokenLBA=%d, no alt offsets\n",
@@ -2694,7 +2691,7 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
                 {
                     if (countWasBrokenBefore && countFixedByWorkaround)
                     {
-                        device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken = true;
+                        set_Hack_ATA_Non_Data_Count_Broken(device, true, PH_BY_PROBE);
                         device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_COUNT_ZERO_ONLY;
                         print_tDevice_Verbose_String(
                             device, VERBOSITY_COMMAND_VERBOSE,
@@ -2702,7 +2699,7 @@ static void test_Passthrough_Register_Response_NonData(tDevice* M_NONNULL device
                     }
                     else if (lbaWasBrokenBefore && lbaFixedByWorkaround)
                     {
-                        device->drive_info.passThroughHacks.ataPTHacks.nonDataLBABroken = true;
+                        set_Hack_ATA_Non_Data_LBA_Broken(device, true, PH_BY_PROBE);
                         device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_LBA_ZERO_ONLY;
                         print_tDevice_Verbose_String(
                             device, VERBOSITY_COMMAND_VERBOSE,
@@ -3195,7 +3192,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
                 // most likely some old drive with SWDMA only. Disable DMA mode commands just to be sure everything
                 // works as expected.-TJE
                 device->drive_info.ata_Options.dmaSupported                    = false;
-                device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported = true;
+                set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_PROBE);
             }
             else
             {
@@ -3241,8 +3238,8 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
                                          "WARNING: possible RTL 9210 detected and missed with all other checks.\n");
             print_tDevice_Verbose_String(device, VERBOSITY_DEFAULT,
                                          "         this may cause adverse behavior and require --forceSCSI\n");
-            device->drive_info.passThroughHacks.ataPTHacks.possilbyEmulatedNVMe = true;
-            device->drive_info.passThroughHacks.ataPTHacks.knownRealtekUSB      = true;
+            set_Hack_ATA_Possibly_Emulated_NVMe(device, true, PH_BY_PROBE);
+            set_Hack_ATA_Known_Realtek_USB(device, true, PH_BY_PROBE);
         }
 
         if (get_Device_InterfaceType(device) == SCSI_INTERFACE)

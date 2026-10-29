@@ -166,8 +166,8 @@ static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device
     device->os_info.osType = OS_FREEBSD;
 #    endif
 
-    device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported   = true;
-    device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = INT_MAX;
+    set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_OS_DISCOVERY);
+    set_Hack_ATA_Max_Xfer_Length(device, INT_MAX, PH_BY_OS_DISCOVERY);
 
     if (device->dFlags == OPEN_HANDLE_ONLY)
     {

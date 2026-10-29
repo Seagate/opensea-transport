@@ -5658,10 +5658,9 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                 {
                     set_Device_DriveType(device, ATAPI_DRIVE);
                     set_Device_InterfaceType(device, IDE_INTERFACE);
-                    device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
-                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported =
-                        true; // This is GENERALLY true because almost all times the CDB is passed through instead of
-                              // translated for a passthrough command, so just block it no matter what.
+                    // This is GENERALLY true because almost all times the CDB is passed through instead of
+                    // translated for a passthrough command, so just block it no matter what.
+                    set_Hack_ATA_A1_Never_Supported(device, true, PH_BY_OS_DISCOVERY);
                     // These devices use the SCSI MMC command set in packet commands over ATA...other than for a few
                     // other commands. If we care to properly support this, we should investigate either how to send a
                     // packet command, or we should try issuing only SCSI commands
@@ -5688,8 +5687,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                     // a few chipsets this appears to be correct.
                     set_Device_InterfaceType(device, IDE_INTERFACE);
                     device->os_info.ioType                                          = WIN_IOCTL_SCSI_PASSTHROUGH;
-                    device->drive_info.passThroughHacks.someHacksSetByOSDiscovery   = true;
-                    device->drive_info.passThroughHacks.ataPTHacks.a1NeverSupported = true;
+                    set_Hack_ATA_A1_Never_Supported(device, true, PH_BY_OS_DISCOVERY);
 #if defined(WIN_DEBUG)
                     print_str("WIN: get SMART IO support SATA\n");
 #endif                                                    // WIN_DEBUG
@@ -5748,19 +5746,18 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                                 // before it stopped receiving support-TJE Code in ofnvme 1.5 does not properly validate
                                 // if log subpages or mode subpages are requested and returns the incorrect data. setup
                                 // some flags for everything else though based on what is in the translation code.
-                                device->drive_info.passThroughHacks.scsiHacks.noLogSubPages               = true;
-                                device->drive_info.passThroughHacks.scsiHacks.noModeSubPages              = true;
-                                device->drive_info.passThroughHacks.scsiHacks.readWrite.available         = true;
-                                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6               = true;
-                                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10              = true;
-                                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12              = true;
-                                device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16              = true;
-                                device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
-                                device->drive_info.passThroughHacks.scsiHacks.securityProtocolSupported =
-                                    true; // depending on if this is uncommented or not in the compiled driver, it may
-                                          // or may not work, but code seems to have some knowledge of this translation
-                                          // in some cases.-TJE
-                                device->drive_info.passThroughHacks.scsiHacks.noSATVPDPage = true;
+                                set_Hack_SCSI_No_Log_Sub_Pages(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_SCSI_No_Mode_Sub_Pages(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_SCSI_RW_Available(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_SCSI_RW6(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_SCSI_RW10(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_SCSI_RW12(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_SCSI_RW16(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_SCSI_No_Report_Supported_Ops(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_SCSI_Security_Protocol_Supported(
+                                    device, true, PH_BY_OS_DISCOVERY); // depending on if this is uncommented or not
+                                                                       // in the compiled driver, it may or may not work
+                                set_Hack_SCSI_No_SAT_VPD_Page(device, true, PH_BY_OS_DISCOVERY);
 
 #        if defined(WIN_DEBUG)
                                 print_str("WIN: open fabrics NVMe supported\n");
@@ -5777,31 +5774,21 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                                 set_Device_InterfaceType(device, NVME_INTERFACE);
                                 device->os_info.intelNVMePassthroughSupported                                  = true;
                                 foundNVMePassthrough                                                           = true;
-                                device->drive_info.passThroughHacks.someHacksSetByOSDiscovery                  = true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .identifyGeneric = true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .identifyController = true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .identifyNamespace = true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage =
-                                    true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures =
-                                    true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures =
-                                    true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .firmwareCommit = true; // NOTE: Always requires a reboot for activation even when
+                                // the capability limitation was learned from OS-level discovery; the setter stamps the flag for us
+                                set_Hack_NVMe_Limited_Passthrough_Capabilities(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_ID_Gen(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_ID_Controller(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_ID_Namespace(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_Get_Log_Page(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_Get_Features(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_Set_Features(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_Firmware_Commit(device, true, PH_BY_OS_DISCOVERY); // NOTE: Always requires a reboot for activation even when
                                                             // error code does not indicate this
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .firmwareDownload = true;
+                                set_Hack_NVMe_Limited_Firmware_Download(device, true, PH_BY_OS_DISCOVERY);
                                 // supported features: power management, temperature threshold, APST, HCTM (17.2+),
                                 // vendor specific.
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique =
-                                    true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .deviceSelfTest = true; // not documented, but found with trial and error.
+                                set_Hack_NVMe_Limited_Vendor_Unique(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_Device_Self_Test(device, true, PH_BY_OS_DISCOVERY); // not documented, but found with trial and error.
                                 // NOTE: some of this comes from an intel document and some comes from trial and error.
                                 //       It is extremely likely that the supported commands vary by driver version, but
                                 //       we do not have that level of detail to populate this list at this time-TJE
@@ -5857,22 +5844,15 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                             device->os_info.osReadWriteRecommended =
                                 true; // setting this so that read/write LBA functions will call Windows functions when
                                       // possible for this, althrough SCSI Read/write 16 will work too!
-                            device->drive_info.passThroughHacks.someHacksSetByOSDiscovery                  = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit =
-                                true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload =
-                                true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage =
-                                true; // This has seen some changes as Win10 API has advanced. May need more specific
+                            set_Hack_NVMe_Limited_Passthrough_Capabilities(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Firmware_Commit(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Firmware_Download(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Get_Features(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Get_Log_Page(device, true, PH_BY_OS_DISCOVERY); // This has seen some changes as Win10 API has advanced. May need more specific
                                       // flags!
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                .identifyController = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace =
-                                true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique =
-                                true;
+                            set_Hack_NVMe_Limited_ID_Controller(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_ID_Namespace(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Vendor_Unique(device, true, PH_BY_OS_DISCOVERY);
 #    if defined(ENABLE_TRANSLATE_FORMAT)
                             if (is_Windows_10_Version_1607_Or_Higher())
                             {
@@ -5880,8 +5860,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                                      !device->os_info.fileSystemInfo.isSystemDisk) ||
                                     is_Windows_PE())
                                 {
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                        .formatCryptoSecureErase = true;
+                                    set_Hack_NVMe_Limited_Format_Crypto_Erase(device, true, PH_BY_OS_DISCOVERY);
                                 }
                             }
 #    endif // ENABLE_TRANSLATE_FORMAT
@@ -5893,8 +5872,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
            // this is definitely blocked in 1809, so this seems to have started being available in 1903
            // NOTE: probably specific to a certain Win10 update. Not clearly documented when this became available, so
            // need to do some testing before this is perfect
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .deviceSelfTest = true;
+                                set_Hack_NVMe_Limited_Device_Self_Test(device, true, PH_BY_OS_DISCOVERY);
 #    if defined(WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
                                 if ((device->os_info.fileSystemInfo.fileSystemInfoValid &&
                                      !device->os_info.fileSystemInfo.isSystemDisk))
@@ -5903,8 +5881,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                                     // IOCTL_STORAGE_REINITIALIZE_MEDIA changes behanvrio based on OS version and drive
                                     // capabilities.
 #        if defined(ENABLE_TRANSLATE_FORMAT)
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                        .formatCryptoSecureErase = true;
+                                    set_Hack_NVMe_Limited_Format_Crypto_Erase(device, true, PH_BY_OS_DISCOVERY);
 #        endif // ENABLE_TRANSLATE_FORMAT
                // NOTE: Cannot do format with user erase because that is not what MSFT translates for the Sanitize block
                // erase...it just does sanitize block erase.
@@ -5912,17 +5889,13 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                //       right now.
                // NOTE: It is not clear if sanitize crypto was switched to starting in 1903 or if it was an earlier
                // version. The documentation only goes back to 1903 online.-TJE
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                        .sanitizeCrypto = true;
+                                    set_Hack_NVMe_Limited_Sanitize_Crypto(device, true, PH_BY_OS_DISCOVERY);
                                 }
 #    endif // WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_14393
                             }
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securityReceive =
-                                true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.securitySend =
-                                true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures =
-                                true; // Only 1 feature today. <--this is old. There is now a set features API, but I
+                            set_Hack_NVMe_Limited_Security_Receive(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Security_Send(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Set_Features(device, true, PH_BY_OS_DISCOVERY); // Only 1 feature today. <--this is old. There is now a set features API, but I
                                       // don't see what it does or does not allow. Still needs implementing. - TJE
 #    if defined(WIN_DEBUG)
                             print_str("WIN: Checking for Win PE\n");
@@ -5933,24 +5906,17 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                                 print_str("WIN: PE environment found\n");
 #    endif // WIN_DEBUG
            // If in Windows PE, then these other commands become available
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .namespaceAttachment = true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .namespaceManagement                                                        = true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.format = true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miReceive =
-                                    true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.miSend = true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitize =
-                                    true;
+                                set_Hack_NVMe_Limited_NS_Attachment(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_NS_Management(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_Format(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_MI_Receive(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_MI_Send(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_Sanitize(device, true, PH_BY_OS_DISCOVERY);
                                 // adding more detail since the previous bool was a little too generic and this will
                                 // improve overall accuracy of supported commands-TJE
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .sanitizeCrypto = true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.sanitizeBlock =
-                                    true;
-                                device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                    .sanitizeOverwrite = true;
+                                set_Hack_NVMe_Limited_Sanitize_Crypto(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_Sanitize_Block(device, true, PH_BY_OS_DISCOVERY);
+                                set_Hack_NVMe_Limited_Sanitize_Overwrite(device, true, PH_BY_OS_DISCOVERY);
                             }
                             if (is_Windows_10_Version_21H1_Or_Higher())
                             {
@@ -5965,10 +5931,8 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                                     // it should work in Win11 just like PE, but that is not the case! The only way that
                                     // seems to actually work is PE as always or the reinitialize media IOCTL which is
                                     // slightly more limited in capabilities.
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                        .sanitizeCrypto = true;
-                                    device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                        .sanitizeBlock = true;
+                                    set_Hack_NVMe_Limited_Sanitize_Crypto(device, true, PH_BY_OS_DISCOVERY);
+                                    set_Hack_NVMe_Limited_Sanitize_Block(device, true, PH_BY_OS_DISCOVERY);
                                 }
 #    endif // #if defined (WIN_API_TARGET_VERSION) && WIN_API_TARGET_VERSION >= WIN_API_TARGET_WIN10_20348
                             }
@@ -6068,28 +6032,20 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
 #endif // WIN_DEBUG
        // TODO: This passthrough may be limited in commands allowed to be sent. If this is limited, need to fill in the
        // nvme hacks to show what is or is not supported.
-                            device->drive_info.passThroughHacks.someHacksSetByOSDiscovery                  = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedPassthroughCapabilities = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyGeneric =
-                                true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported
-                                .identifyController = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.identifyNamespace =
-                                true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getLogPage  = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.getFeatures = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.setFeatures = true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareCommit =
-                                true; // NOTE: Always requires a reboot for activation even when error code does not
+                            set_Hack_NVMe_Limited_Passthrough_Capabilities(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_ID_Gen(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_ID_Controller(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_ID_Namespace(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Get_Log_Page(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Get_Features(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Set_Features(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Firmware_Commit(device, true, PH_BY_OS_DISCOVERY); // NOTE: Always requires a reboot for activation even when error code does not
                                       // indicate this
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.firmwareDownload =
-                                true;
+                            set_Hack_NVMe_Limited_Firmware_Download(device, true, PH_BY_OS_DISCOVERY);
                             // supported features: power management, temperature threshold, APST, HCTM (17.2+), vendor
                             // specific.
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.vendorUnique =
-                                true;
-                            device->drive_info.passThroughHacks.nvmePTHacks.limitedCommandsSupported.deviceSelfTest =
-                                true; // not documented, but found with trial and error.
+                            set_Hack_NVMe_Limited_Vendor_Unique(device, true, PH_BY_OS_DISCOVERY);
+                            set_Hack_NVMe_Limited_Device_Self_Test(device, true, PH_BY_OS_DISCOVERY); // not documented, but found with trial and error.
                             // NOTE: some of this comes from an intel document and some comes from trial and error.
                             //       It is extremely likely that the supported commands vary by driver version, but we
                             //       do not have that level of detail to populate this list at this time-TJE
