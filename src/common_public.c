@@ -1472,6 +1472,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int    
                             }
                             safe_free(&genName);
                             safe_free(&blockName);
+                            safe_free(&bsgHandle);
                         }
                         else if ((flags & SD_HANDLES) > 0)
                         {
@@ -1491,6 +1492,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Devs_For_Scan_And_Print(unsigned int    
                             }
                             safe_free(&genName);
                             safe_free(&blockName);
+                            safe_free(&bsgHandle);
                         }
 #endif
 
