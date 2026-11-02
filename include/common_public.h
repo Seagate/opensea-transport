@@ -1080,6 +1080,57 @@ extern "C"
         ATA_NON_DATA_TEST_ALLOW_ALL = 0xFF // Setting a max here.
     } eNonDataTest;
 
+    // DMA protocol selection for ATA passthrough (replaces the alwaysUseDMAInsteadOfUDMA bool).
+    // AUTO = 0 keeps the current default path: assume MWDMA/UDMA from identify and let the
+    // existing fallback logic work. Fixed values refine that behavior for known adapters.
+    typedef enum eATA_DMA_Selection
+    {
+        ATA_DMA_SEL_AUTO     = 0, // not tested/inferred yet so use the normal discovery path
+        ATA_DMA_SEL_USE_DMA,      // force DMA (MWDMA/SWDMA) mode; the translator does not like UDMA
+        ATA_DMA_SEL_USE_UDMA,     // UDMA only; the current default behavior made explicit
+        ATA_DMA_SEL_USE_EITHER,   // either protocol acceptable (try UDMA, DMA fallback is fine)
+        ATA_DMA_SEL_NO_DMA        // no DMA passthrough of any kind; PIO only (pairs with the dmaNotSupported / NDMA hack)
+    } eATA_DMA_Selection;
+
+    // Sync cache command mode (replaces the syncCacheCmdSize int8_t: 0=unset, <0=not supported, 10, 16).
+    typedef enum eSCSI_Sync_Cache_Mode
+    {
+        SYNC_CACHE_AUTO  = 0, // use the normal path: determine from the current command capability checks
+        SYNC_CACHE_10B,      // use the 10B SYNCHRONIZE CACHE command only
+        SYNC_CACHE_16B,      // use the 16B SYNCHRONIZE CACHE command only
+        SYNC_CACHE_NONE      // not supported; do not issue SYNCHRONIZE CACHE at all
+    } eSCSI_Sync_Cache_Mode;
+
+    // Report LUNS mode. AUTO = 0 keeps the current condition exactly (allowed only for
+    // direct-attached SCSI > SCSI2; force-skipped on USB/1394). WORKS issues the command even
+    // on USB/1394 when the adapter is known to tolerate it; BROKEN skips it everywhere.
+    typedef enum eSCSI_Report_Luns_Mode
+    {
+        REPORT_LUNS_AUTO   = 0, // keep the current condition and skip behavior
+        REPORT_LUNS_BROKEN,     // do not issue REPORT LUNS at all, even on direct-attach SCSI
+        REPORT_LUNS_WORKS       // issue it even through USB/1394 bridges
+    } eSCSI_Report_Luns_Mode;
+
+    // Where the task-file registers (RTFRs) appear in fixed-format sense data, based on the SAT
+    // revision/implementation. TEST_WITH_NOP = 0 keeps the current behavior: run the NOP
+    // discovery sequence on open. The fixed values let known devices/hardware skip that test
+    // sequence on open. Orthogonal to eSATFixedFormatSenseHack (which holds the discovered
+    // RESULT of the test).
+    // Scope of the mismatch in the real world: it only has consequences for ATA drives under ~2TB
+    // (28-bit LBA) behind a SATL (USB bridges, SAS adapters, etc.) - on 48-bit LBA drives the
+    // 28-bit LBA task-file registers the workaround paths depend on go unused (all zeros), so the
+    // difference between the layouts is behaviorally moot. Known SATL families:
+    //   SAT-3 compliant or later (SAT-3 layout): HPE/PMC-Sierra based SATLs
+    //   All other SATL adapters tested for the USB profile table produced the SAT-2/era layout,
+    //   so set_USB_Passthrough_Hacks_By_PID_and_VID() stamps FF_FMT_SAT2_FIXED_FORMAT across that
+    //   table as a whole (one choke point, rather than per adapter ID).
+    typedef enum eSAT_Fixed_Sense_Format
+    {
+        FF_FMT_TEST_WITH_NOP         = 0, // run the NOP RTFR-location test on open (current behavior)
+        FF_FMT_SAT2_FIXED_FORMAT,        // SAT-2/era fixed-format layout (e.g. libata/ACS style)
+        FF_FMT_SAT3_LATER_FIXED_FORMAT  // SAT-3 and later standard fixed-format layout
+    } eSAT_Fixed_Sense_Format;
+
 // This is for test unit ready after failures to keep up performance on devices that slow down a LOT durring error
 // processing (USB mostly)
 #define TURF_LIMIT        10
@@ -1207,7 +1258,8 @@ extern "C"
             int8_t   readBufferCmdSize;     // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
             bool noSATVPDPage; // when this is set, the SAT VPD is not available and should not be read, skipping ahead
                                // to instead directly trying a passthrough command
-            int8_t syncCacheCmdSize;      // 0 = not set, <0 = not supported, 10 = 10B version, 16 = 16B version
+            eSCSI_Sync_Cache_Mode syncCacheMode; // AUTO = normal path, 10B/16B fixed, or NONE (never issue SYNC CACHE)
+            eSCSI_Report_Luns_Mode reportLunsMode; // how to deal with REPORT LUNS (AUTO = current USB/1394-skip behavior)
             int8_t writeAndVerifyCmdSize; // 0 = not set, <0 = not supported, 10 = 10B version, 12 = 12B version, 16 =
                                           // 16B version
             int8_t writeBufferCmdSize;    // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
@@ -1226,7 +1278,7 @@ extern "C"
             RSIE - returnResponseIgnoreExtendBit
             TSPIU - alwaysUseTPSIUForSATPassthrough
             CHK - alwaysCheckConditionAvailable
-            FDMA - alwaysUseDMAInsteadOfUDMA
+            FDMA - dmaModeSelection (ATA_DMA_SEL_USE_DMA forces DMA; other values keep the default path)
             NDMA - dmaNotSupported
             PARTRTFR - partialRTFRs
             NORTFR - noRTFRsPossible
@@ -1260,8 +1312,9 @@ extern "C"
             bool alwaysUseTPSIUForSATPassthrough; // some USBs do this better than others.
             bool alwaysCheckConditionAvailable;   // Not supported by all SAT translators. Don't set unless you know for
                                                   // sure!!!
-            bool alwaysUseDMAInsteadOfUDMA; // send commands with DMA mode instead of UDMA since the device doesn't
-                                            // support UDMA passthrough modes.
+            eATA_DMA_Selection dmaModeSelection; // Which DMA protocol to use for ATA passthrough. AUTO (default) keeps
+                                                  // the discovery path as is; USE_DMA force-selects DMA mode instead of
+                                                  // UDMA because the translator doesn't support UDMA passthrough modes.
             bool dmaNotSupported;           // DMA passthrough is not available of any kind.
             bool partialRTFRs; // This means only 28bit RTFRs will be able to be retrived by the device. This hack is
                                // more helpful for code trying different commands to filter capabilities than for trying
@@ -1304,6 +1357,9 @@ extern "C"
                                       // command. when above hacks are set or everything is working properly
             eSATFixedFormatSenseHack fixedSenseHack; // Various methods to handle fixed format sense data responses from
                                                      // SATLs which may or may not implement the standard correctly.
+            eSAT_Fixed_Sense_Format fixedSenseFormat; // Prior knowledge of the RTFR location in fixed-format sense data.
+                                                      // TEST_WITH_NOP (default) runs the NOP test on open; the fixed values
+                                                      // skip it for known devices/hardware.
         } ataPTHacks;
         // NVMe Hacks
         struct
@@ -2473,18 +2529,31 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //! \returns the current value of the field
     TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_No_SAT_VPD_Page);
 
-    //! \fn void set_Hack_SCSI_Sync_Cache_Cmd_Size(tDevice* M_NONNULL device, const int8_t val, const ePassthroughHackSource source)
-    //! \brief Sets the passThroughHacks.scsiHacks.syncCacheCmdSize field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \fn void set_Hack_SCSI_Sync_Cache_Mode(tDevice* M_NONNULL device, const eSCSI_Sync_Cache_Mode val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.syncCacheMode field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
     //! \param device pointer to the tDevice to update
     //! \param val value to store
     //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
-    TDEV_ACCESSOR_I8_SETTER(set_Hack_SCSI_Sync_Cache_Cmd_Size);
+    TDEV_ACCESSOR_ENUM_SETTER(set_Hack_SCSI_Sync_Cache_Mode, eSCSI_Sync_Cache_Mode);
 
-    //! \fn int8_t get_Hack_SCSI_Sync_Cache_Cmd_Size(const tDevice* M_NONNULL device)
-    //! \brief Gets the passThroughHacks.scsiHacks.syncCacheCmdSize field of the tDevice passThroughHacks structure.
+    //! \fn eSCSI_Sync_Cache_Mode get_Hack_SCSI_Sync_Cache_Mode(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.syncCacheMode field of the tDevice passThroughHacks structure.
     //! \param device pointer to the tDevice to read
     //! \returns the current value of the field
-    TDEV_ACCESSOR_I8_GETTER(get_Hack_SCSI_Sync_Cache_Cmd_Size);
+    TDEV_ACCESSOR_ENUM_GETTER(get_Hack_SCSI_Sync_Cache_Mode, eSCSI_Sync_Cache_Mode);
+
+    //! \fn void set_Hack_SCSI_Report_Luns_Mode(tDevice* M_NONNULL device, const eSCSI_Report_Luns_Mode val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.reportLunsMode field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_ENUM_SETTER(set_Hack_SCSI_Report_Luns_Mode, eSCSI_Report_Luns_Mode);
+
+    //! \fn eSCSI_Report_Luns_Mode get_Hack_SCSI_Report_Luns_Mode(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.reportLunsMode field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_ENUM_GETTER(get_Hack_SCSI_Report_Luns_Mode, eSCSI_Report_Luns_Mode);
 
     //! \fn void set_Hack_SCSI_Write_And_Verify_Cmd_Size(tDevice* M_NONNULL device, const int8_t val, const ePassthroughHackSource source)
     //! \brief Sets the passThroughHacks.scsiHacks.writeAndVerifyCmdSize field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
@@ -2827,18 +2896,18 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //! \returns the current value of the field
     TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Always_Check_Condition_Available);
 
-    //! \fn void set_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
-    //! \brief Sets the passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \fn void set_Hack_ATA_DMA_Mode_Selection(tDevice* M_NONNULL device, const eATA_DMA_Selection val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.dmaModeSelection field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
     //! \param device pointer to the tDevice to update
     //! \param val value to store
     //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
-    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA);
+    TDEV_ACCESSOR_ENUM_SETTER(set_Hack_ATA_DMA_Mode_Selection, eATA_DMA_Selection);
 
-    //! \fn bool get_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA(const tDevice* M_NONNULL device)
-    //! \brief Gets the passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA field of the tDevice passThroughHacks structure.
+    //! \fn eATA_DMA_Selection get_Hack_ATA_DMA_Mode_Selection(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.dmaModeSelection field of the tDevice passThroughHacks structure.
     //! \param device pointer to the tDevice to read
     //! \returns the current value of the field
-    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA);
+    TDEV_ACCESSOR_ENUM_GETTER(get_Hack_ATA_DMA_Mode_Selection, eATA_DMA_Selection);
 
     //! \fn void set_Hack_ATA_DMA_Not_Supported(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
     //! \brief Sets the passThroughHacks.ataPTHacks.dmaNotSupported field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
@@ -3073,6 +3142,19 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //! \param device pointer to the tDevice to read
     //! \returns the current value of the field
     TDEV_ACCESSOR_ENUM_GETTER(get_Hack_ATA_Fixed_Sense_Hack, eSATFixedFormatSenseHack);
+
+    //! \fn void set_Hack_ATA_Fixed_Sense_Format(tDevice* M_NONNULL device, const eSAT_Fixed_Sense_Format val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.fixedSenseFormat field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_ENUM_SETTER(set_Hack_ATA_Fixed_Sense_Format, eSAT_Fixed_Sense_Format);
+
+    //! \fn eSAT_Fixed_Sense_Format get_Hack_ATA_Fixed_Sense_Format(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.fixedSenseFormat field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_ENUM_GETTER(get_Hack_ATA_Fixed_Sense_Format, eSAT_Fixed_Sense_Format);
 
     //! \fn void set_Hack_NVMe_Max_Xfer_Length(tDevice* M_NONNULL device, const uint32_t val, const ePassthroughHackSource source)
     //! \brief Sets the passThroughHacks.nvmePTHacks.maxTransferLength field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
@@ -4877,7 +4959,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         to determine what transfer size to use. Same as NVMe via SCSI/USB*/
         COMMAND_XFER_SIZE_TYPE_DEFAULT,
         /*!< Allocate based on the native command set to the type of drive. For SAS, this is
-        exactly the same as above, but for ATA attached over SCSI/USB, this determines a transfer 
+        exactly the same as above, but for ATA attached over SCSI/USB, this determines a transfer
         size that should work when passing the command through to the device. Same with NVMe
         that is attached over USB or tri-mode HBA and passing commands through. */
         COMMAND_XFER_SIZE_TYPE_NATIVE

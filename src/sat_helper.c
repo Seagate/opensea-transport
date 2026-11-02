@@ -1163,6 +1163,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
     uint8_t*      senseData      = M_NULLPTR; // only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool          localSenseData = false;
     bool          dmaRetry       = false;
+    bool          udmaRetry      = false;
     if (ataCommandOptions->ptrSenseData == M_NULLPTR)
     {
         senseData = M_REINTERPRET_CAST(
@@ -1653,6 +1654,12 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                         {
                             dmaRetry = true;
                         }
+                        else if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA)
+                        {
+                            // reverse direction: some translators dislike the generic DMA protocol (the library
+                            // default for SAT devices) - retry the other way with the UDMA protocol.
+                            udmaRetry = true;
+                        }
                         // TODO: Check condition bit check for retry with follow up command instead?
                     }
                     break;
@@ -1893,6 +1900,18 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
             // if changing back to DMA worked, then we're changing some flags in the ataOptions struct to make sure
             // we have success with future commands.
             M_CONST_CAST(tDevice*, device)->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+        }
+    }
+    else if (udmaRetry)
+    {
+        // reverse direction of the retry above: the SATL rejected the generic DMA protocol field, so it likely
+        // prefers the explicit UDMA protocol. If the retry with UDMA works, persist the mode so future commands
+        // use it without another round of trial and error.
+        ataCommandOptions->commadProtocol = ATA_PROTOCOL_UDMA;
+        ret                               = send_SAT_Passthrough_Command(device, ataCommandOptions);
+        if (ret == SUCCESS)
+        {
+            M_CONST_CAST(tDevice*, device)->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
         }
     }
     return ret;

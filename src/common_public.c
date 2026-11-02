@@ -399,6 +399,26 @@ OPENSEA_TRANSPORT_API void print_Low_Level_Info(const tDevice* M_NONNULL device)
         {
             print_str("\t\t\t\t\tWBND (HBA blocks SCSI write buffer - deferred download modes)\n");
         }
+        if (device->drive_info.passThroughHacks.scsiHacks.reportLunsMode == REPORT_LUNS_BROKEN)
+        {
+            print_str("\t\t\t\t\tRLB (REPORT LUNS known broken - never issued on this adapter)\n");
+        }
+        if (device->drive_info.passThroughHacks.scsiHacks.reportLunsMode == REPORT_LUNS_WORKS)
+        {
+            print_str("\t\t\t\t\tRLW (REPORT LUNS known to work - issued even through USB/1394 bridges)\n");
+        }
+        if (device->drive_info.passThroughHacks.scsiHacks.syncCacheMode == SYNC_CACHE_10B)
+        {
+            print_str("\t\t\t\t\tSYNC10 (SYNC CACHE must use the 10-byte command on this adapter)\n");
+        }
+        if (device->drive_info.passThroughHacks.scsiHacks.syncCacheMode == SYNC_CACHE_16B)
+        {
+            print_str("\t\t\t\t\tSYNC16 (SYNC CACHE must use the 16-byte command on this adapter)\n");
+        }
+        if (device->drive_info.passThroughHacks.scsiHacks.syncCacheMode == SYNC_CACHE_NONE)
+        {
+            print_str("\t\t\t\t\tNOSYNC (SYNC CACHE is never issued on this adapter)\n");
+        }
         // MXFER > 0 means we know a maximum transfer size available
         if (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength > 0)
         {
@@ -551,13 +571,35 @@ OPENSEA_TRANSPORT_API void print_Low_Level_Info(const tDevice* M_NONNULL device)
         {
             print_str("\t\t\t\t\tCHK (SAT check condition bit is always supported)\n");
         }
-        if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA)
+        if (device->drive_info.passThroughHacks.ataPTHacks.dmaModeSelection == ATA_DMA_SEL_USE_DMA)
         {
             print_str("\t\t\t\t\tFDMA (SAT dma commands MUST use protocol set to DMA instead of UDMA-in/out)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.dmaModeSelection == ATA_DMA_SEL_USE_UDMA)
+        {
+            print_str("\t\t\t\t\tUDMA (SAT DMA commands will use the UDMA protocol explicitly)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
         {
             print_str("\t\t\t\t\tNDMA (No DMA commands are supported on this adapter. Must use PIO only)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.dmaModeSelection == ATA_DMA_SEL_NO_DMA)
+        {
+            print_str(
+                "\t\t\t\t\tNODMA (no DMA passthrough of any kind on this adapter; PIO only, enforced from the "
+                "DMA mode selection)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.fixedSenseFormat == FF_FMT_SAT2_FIXED_FORMAT)
+        {
+            print_str(
+                "\t\t\t\t\tFSAT2 (SAT-2/libata-era fixed-format sense data known. NOP RTFR discovery test is "
+                "skipped and the libata workaround results are applied)\n");
+        }
+        if (device->drive_info.passThroughHacks.ataPTHacks.fixedSenseFormat == FF_FMT_SAT3_LATER_FIXED_FORMAT)
+        {
+            print_str(
+                "\t\t\t\t\tFSAT3 (SAT-3+ compliant fixed-format sense data known. NOP RTFR discovery test is "
+                "skipped and compliant results are applied)\n");
         }
         if (device->drive_info.passThroughHacks.ataPTHacks.partialRTFRs)
         {
@@ -617,7 +659,9 @@ OPENSEA_TRANSPORT_API void print_Low_Level_Info(const tDevice* M_NONNULL device)
         // print out the os_info unique things. This has a lot of ifdefs for the different OSs/configurations so need to
         // watch out for the differences in here
         print_str("\t---OS Info---\n");
-        printf("\t\thandle name: %s\n", get_Device_Handle_Name(device));
+        // get_Device_Handle_Name is M_NULLABLE on some OS paths, so guard the %s with a fallback
+        printf("\t\thandle name: %s\n",
+               get_Device_Handle_Name(device) ? get_Device_Handle_Name(device) : "(name unavailable)");
         printf("\t\tfriendly name: %s\n", get_Device_Handle_Friendly_Name(device));
         printf("\t\tminimum memory alignment: %zu\n", get_Device_IO_Minimum_Alignment(device));
 #if defined(UEFI_C_SOURCE)
@@ -3972,6 +4016,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_SCSI_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         set_Hack_ATA_28_Bit_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID); // TODO: Cypress passthrough has a bit for UDMA mode, but didn't appear to work in testing.
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
     case 0x0502:
@@ -3987,6 +4032,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_SCSI_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         set_Hack_ATA_28_Bit_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_No_Multiple_Mode_Commands(device, true, PH_BY_ADAPTER_ID); // mutliple mode commands don't work in passthrough.
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
@@ -4007,6 +4053,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_SCSI_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         set_Hack_ATA_28_Bit_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID); // TODO: Cypress passthrough has a bit for UDMA mode, but didn't appear to work in testing.
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
     case 0x1000: // FreeAgentGoSmall
@@ -4026,6 +4073,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
     case 0x200D: // Game Drive XBox
@@ -4050,6 +4098,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2020: // Firecuda HDD
     case 0x2021: // Firecuda HDD
@@ -4072,6 +4121,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x203C: // One Touch SSD
     case 0x203E: // One Touch SSD
@@ -4095,6 +4145,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
         set_Hack_ATA_28_Bit_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 0, PH_BY_ADAPTER_ID);
         break;
     case 0x2030: // Expansion HDD
@@ -4118,6 +4169,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2036: // Expansion HDD
     case 0x2037: // Expansion HDD
@@ -4139,6 +4191,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x204B: // FireCuda HDD
     case 0x204C: // FireCuda HDDv
@@ -4162,6 +4215,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2060: // Game Drive PS
         passthroughHacksSet                                                       = true;
@@ -4182,6 +4236,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2061: // Game Drive PS
         passthroughHacksSet                                                       = true;
@@ -4203,6 +4258,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2064: // Ultra Touch HDD
         passthroughHacksSet                                                       = true;
@@ -4223,6 +4279,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2065: // Ultra Touch HDD
         passthroughHacksSet                                 = true;
@@ -4243,6 +4300,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x207B: // Ultra Touch SSD
         // very similar to 0x207C, but slightly different firmware capabilities
@@ -4263,6 +4321,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Limited_Use_TPSIU(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 512, PH_BY_ADAPTER_ID); // NOTE: Test failed with zero, but setting 512 for single sectors
         break;
     case 0x207C: // Ultra Touch SSD
@@ -4283,6 +4342,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Limited_Use_TPSIU(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 512, PH_BY_ADAPTER_ID); // NOTE: Test failed with zero, but setting 512 for single sectors
         break;
     case 0x2088: // Firecuda eSSD
@@ -4314,6 +4374,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
                   // if we need to
         set_Hack_ATA_Single_Sector_PIO_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 4096, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Possibly_Emulated_NVMe(device, true, PH_BY_ADAPTER_ID); // no way to tell at this point. Will need to make full determination in the fill_ATA_Info
                   // function
         set_Hack_ATA_No_Multiple_Mode_Commands(device, true, PH_BY_ADAPTER_ID); // probably not needed, but after what I saw testing this, it can't hurt to set this
@@ -4340,6 +4401,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
         set_Hack_ATA_28_Bit_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 0, PH_BY_ADAPTER_ID);
         break;
     case 0x208F: // Expansion Free
@@ -4425,6 +4487,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2101: // FreeAgent Go
         passthroughHacksSet                                                       = true;
@@ -4443,6 +4506,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
     case 0x2120: // FreeAgent Go
@@ -4465,6 +4529,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
     case 0x2300: // Portable
@@ -4502,6 +4567,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2321: // Expansion
         passthroughHacksSet                                                       = true;
@@ -4519,6 +4585,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2322: // Expansion (Xbox drive uses this chip)
         // NOTE: Need to rerun a full test someday as we don't have full confirmation on supported read
@@ -4538,6 +4605,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2330: // Portable
         passthroughHacksSet                                                       = true;
@@ -4554,6 +4622,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Single_Sector_PIO_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 512, PH_BY_ADAPTER_ID);
         break;
     case 0x2332: // Portable
@@ -4577,6 +4646,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 8192, PH_BY_ADAPTER_ID);
         break;
     case 0x2344: // portable
@@ -4598,6 +4668,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x2400: // Backup
         passthroughHacksSet                                                       = true;
@@ -4616,6 +4687,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
     case 0x2700: // BlackArmorDAS25
@@ -4657,6 +4729,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x3001: // FreeAgent
         passthroughHacksSet                                                       = true;
@@ -4677,6 +4750,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x3010: // FreeAgent Pro
         passthroughHacksSet                                                       = true;
@@ -4696,6 +4770,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 122880, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x3300: // Desktop
         passthroughHacksSet                                                       = true;
@@ -4714,6 +4789,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
     case 0x3320: // Expansion Desk
@@ -4736,6 +4812,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Supported(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x3330: // External
         passthroughHacksSet                                                     = true;
@@ -4758,6 +4835,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Single_Sector_PIO_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 512, PH_BY_ADAPTER_ID);
         break;
     case 0x3332: // External
@@ -4783,6 +4861,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 1024, PH_BY_ADAPTER_ID);
         break;
     case 0x3340: // Expansion+ Desk
@@ -4803,6 +4882,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x5020: // USB 2.0 Cable
         passthroughHacksSet                                                       = true;
@@ -4867,6 +4947,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x5031: // Freeagent GoFlex.
         passthroughHacksSet = true;
@@ -4884,7 +4965,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
-        set_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65024, PH_BY_ADAPTER_ID);
         break;
     case 0x5060: // FreeAgent
@@ -4996,6 +5077,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Single_Sector_PIO_Only(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 512, PH_BY_ADAPTER_ID);
         break;
     case 0x5130: // GoFlex Cable
@@ -5017,6 +5099,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x5170: // USB 3.0 Cable
         passthroughHacksSet                                                       = true;
@@ -5037,6 +5120,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x6126: // D3 Station
         passthroughHacksSet                                                       = true;
@@ -5058,6 +5142,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x617A: // GoFlex Slim Mac
         passthroughHacksSet                                                       = true;
@@ -5078,6 +5163,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x61B5: // M3 Portable
         // rev 1402h
@@ -5096,6 +5182,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xA003: // GoFlex Slim
         passthroughHacksSet                                                       = true;
@@ -5115,6 +5202,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Single_Sector_PIO_Only(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 512, PH_BY_ADAPTER_ID);
         break;
     case 0xA013: // Backup+ RD
@@ -5135,6 +5223,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID); // some testing shows 524288
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xA014: // Slim BK
         passthroughHacksSet                                                       = true;
@@ -5157,6 +5246,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xA0A4: // GoFlex Desk
         passthroughHacksSet                                                       = true;
@@ -5172,6 +5262,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_SCSI_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Limited_Use_TPSIU(device, true, PH_BY_ADAPTER_ID);
         break;
     case 0xA313: // Wireless
@@ -5192,6 +5283,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xA314: // Wireless Plus
         passthroughHacksSet                                                       = true;
@@ -5210,6 +5302,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xAB00: // Slim BK
         passthroughHacksSet                                                       = true;
@@ -5227,6 +5320,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xAB01: // BUP Fast SSD
         passthroughHacksSet                                                       = true;
@@ -5246,6 +5340,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xAB02: // Fast
         passthroughHacksSet                                                     = true;
@@ -5264,6 +5359,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xAB10: // BUP Slim SL
         // rev 938h
@@ -5305,6 +5401,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xAB21: // Backup+ BL
         passthroughHacksSet                                                       = true;
@@ -5343,6 +5440,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Supported(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xAB2A: // Fast HDD
         passthroughHacksSet                                                       = true;
@@ -5363,6 +5461,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Limited_Use_TPSIU(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         // This device has 2 HDDs in a RAID inside it.
         // There is no known way to address each one separately.
         // Also, for whatever reason, it is not possible to read any logs from the drive you can get identify
@@ -5409,6 +5508,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Limited_Use_TPSIU(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xAA1A: // Another ID for firecuda gaming SSD.
     case 0xAA17: // FireCuda Gaming SSD
@@ -5449,6 +5549,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Limited_Use_TPSIU(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0xAC30: // BUP Slim
         passthroughHacksSet                                                       = true;
@@ -5469,6 +5570,7 @@ static bool set_Seagate_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Limited_Use_TPSIU(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     default: // unknown
         // setup some defaults that will most likely work for most current products
@@ -5521,6 +5623,7 @@ static bool set_Sunplus_Hacks(tDevice* M_NULLABLE device)
         // device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDOffset = 8;
         // device->drive_info.passThroughHacks.scsiHacks.scsiInq.productIDLength = 28;
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         // device->drive_info.passThroughHacks.ataPTHacks.noMultipleModeCommands = true;
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         passthroughHacksSet                                              = true;
@@ -5583,6 +5686,7 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x1064: // RuggedKey
         // One other note: For some reason, the MaxLBA that is reported is DIFFERENT between read capacty 10 and
@@ -5620,6 +5724,7 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x1072: // Fuel
         passthroughHacksSet                                                       = true;
@@ -5639,6 +5744,7 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x1091: // Rugged USB-C
         passthroughHacksSet                                                       = true;
@@ -5658,6 +5764,7 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x10CD: // Rugged SSD
         passthroughHacksSet                                                     = true;
@@ -5699,6 +5806,7 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
         set_Hack_ATA_28_Bit_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 0, PH_BY_ADAPTER_ID);
         break;
     case 0x113B: // Rugged SSD4
@@ -5719,6 +5827,7 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         // device->drive_info.passThroughHacks.ataPTHacks.useA1SATPassthroughWheneverPossible = true;
         set_Hack_ATA_28_Bit_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 0, PH_BY_ADAPTER_ID);
         set_Hack_ATA_SMART_Enabled(device, true, PH_BY_ADAPTER_ID);
@@ -5769,6 +5878,7 @@ static bool set_LaCie_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Limited_Use_TPSIU(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID); // This probably has more to do with only supporting Identify and SMART commands
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 512, PH_BY_ADAPTER_ID); // setting single sectors since this only does ID and SMART
         break;
     default:
@@ -5843,6 +5953,7 @@ static bool set_Maxtor_USB_Hacks_By_PID(tDevice* M_NONNULL device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x7410: // Basics Desktop
         passthroughHacksSet                                                       = true;
@@ -5861,6 +5972,7 @@ static bool set_Maxtor_USB_Hacks_By_PID(tDevice* M_NONNULL device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
     case 0x7550: // BlackArmor
@@ -5880,6 +5992,7 @@ static bool set_Maxtor_USB_Hacks_By_PID(tDevice* M_NONNULL device)
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Single_Sector_PIO_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     default: // unknown
         break;
@@ -5899,6 +6012,7 @@ bool set_JMicron_Legacy_PT_Hacks(tDevice* M_NONNULL device)
         set_Hack_ATA_28_Bit_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_SCT_Smart_Logs_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65024, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_No_Multiple_Mode_Commands(device, true, PH_BY_ADAPTER_ID);
         // https://github.com/Seagate/openSeaChest/issues/197#issuecomment-3008133785
         // output after implementing support shows DMA mode commands working from the automated test.
@@ -5977,6 +6091,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Retry_With_JMicron_PT(device, true, PH_BY_ADAPTER_ID);
         break;
     case 0x0562: // USB to NVMe adapter
@@ -6025,6 +6140,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Check_Condition_Empty(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     case 0x0583: // USB to NVMe adapter
         // Rev 205h
@@ -6072,6 +6188,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 122880, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Retry_With_JMicron_PT(device, true, PH_BY_ADAPTER_ID);
         break;
     case 0x2339: // MiniD2 - NOTE: This has custom firmware. If other things use this chip, additional product
@@ -6092,6 +6209,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Retry_With_JMicron_PT(device, true, PH_BY_ADAPTER_ID);
         break;
     case 0x2567: // USB3 to SATA adapter box
@@ -6114,6 +6232,7 @@ static bool set_JMicon_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Ignore_Extend_Bit(device, true, PH_BY_ADAPTER_ID);
         // device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     default: // unknown
         // set this flag by default due to some devices supporting SAT or legacy passthrough with no way to
@@ -6182,7 +6301,7 @@ static bool set_ASMedia_USB_Hacks_By_PID(tDevice* M_NONNULL device)
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_SCT_Smart_Logs_Only(device, true, PH_BY_ADAPTER_ID); // NOTE: Can use PIO read log ext just fine, but DMA is the problem. THis still works with
                   // SMART though, but a future hack may be needed.-TJE
-        set_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID);
         break;
     case 0x55AA: // ASMT 2105
@@ -6203,6 +6322,7 @@ static bool set_ASMedia_USB_Hacks_By_PID(tDevice* M_NONNULL device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         break;
     default: // unknown
         break;
@@ -6252,6 +6372,7 @@ static bool set_Realtek_USB_Hacks_By_PID(tDevice* M_NONNULL device)
                   // if we need to
         set_Hack_ATA_Single_Sector_PIO_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 4096, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Possibly_Emulated_NVMe(device, true, PH_BY_ADAPTER_ID); // no way to tell at this point. Will need to make full determination in the fill_ATA_Info
                   // function
         set_Hack_ATA_Known_Realtek_USB(device, true, PH_BY_ADAPTER_ID); // this is an actual Realtek bridge, so the Realtek NVMe passthrough discovery is safe to try
@@ -6281,6 +6402,7 @@ static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_SCT_Smart_Logs_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID); // Bytes
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         // set SCSI hacks
         set_Hack_SCSI_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID); // bytes
         set_Hack_Generic_Test_Unit_Ready_After_Failure(device, true, PH_BY_ADAPTER_ID);
@@ -6314,6 +6436,7 @@ static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Return_Response_Ignore_Extend_Bit(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 130560, PH_BY_ADAPTER_ID); // Bytes
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         // set SCSI hacks
         set_Hack_SCSI_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID); // bytes
         set_Hack_Generic_Test_Unit_Ready_After_Failure(device, true, PH_BY_ADAPTER_ID);
@@ -6342,6 +6465,7 @@ static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_SCT_Smart_Logs_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID); // Bytes
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         // set SCSI hacks
         set_Hack_SCSI_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID); // bytes
         set_Hack_Generic_Test_Unit_Ready_After_Failure(device, true, PH_BY_ADAPTER_ID);
@@ -6365,6 +6489,7 @@ static bool set_Samsung_USB_Hacks_By_PID(tDevice* device)
         set_Hack_ATA_Return_Response_Ignore_Extend_Bit(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 523776, PH_BY_ADAPTER_ID); // Bytes
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         // set SCSI hacks
         set_Hack_SCSI_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID); // bytes
         set_Hack_Generic_Test_Unit_Ready_After_Failure(device, true, PH_BY_ADAPTER_ID);
@@ -6399,6 +6524,7 @@ static bool set_Prolific_USB_Hacks_By_PID(tDevice* M_NONNULL device)
         set_Hack_Generic_Passthrough_Type(device, ATA_PASSTHROUGH_PROLIFIC, PH_BY_ADAPTER_ID);
         // Guessing 64K max
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID); // Bytes
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         // set SCSI hacks
         // Guessing 64K max
         set_Hack_SCSI_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID); // bytes
@@ -6452,6 +6578,7 @@ static bool set_Cypress_USB_Hacks_By_PID(tDevice* M_NONNULL device)
         set_Hack_SCSI_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         set_Hack_ATA_28_Bit_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID); // TODO: Cypress passthrough has a bit for UDMA mode, but didn't appear to work in testing.
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
     default: // unknown
@@ -6479,6 +6606,7 @@ static bool set_TI_USB_Hacks_By_PID(tDevice* device)
         set_Hack_SCSI_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         set_Hack_ATA_28_Bit_Only(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_No_Multiple_Mode_Commands(device, true, PH_BY_ADAPTER_ID); // mutliple mode commands don't work in passthrough.
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
         break;
@@ -6489,6 +6617,7 @@ static bool set_TI_USB_Hacks_By_PID(tDevice* device)
         // device->drive_info.passThroughHacks.turfValue                             = 14;
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
         set_Hack_ATA_Return_Response_Info_Supported(device, true, PH_BY_ADAPTER_ID);
         set_Hack_SCSI_CmdDT_Checked(device, true, PH_BY_ADAPTER_ID);
@@ -6610,6 +6739,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
+                set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
                 break;
             default: // unknown
                 break;
@@ -6647,6 +6777,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID);
+                set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_Max_Xfer_Length(device, 65536, PH_BY_ADAPTER_ID);
                 break;
             default: // unknown
@@ -6791,7 +6922,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_Return_Response_Ignore_Extend_Bit(device, true, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
-                set_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA(device, true, PH_BY_ADAPTER_ID);
+                set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_DMA, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_Max_Xfer_Length(device, 1048576, PH_BY_ADAPTER_ID);
                 break;
             case 0x5583: // Ultra Fit
@@ -6901,6 +7032,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 set_Hack_ATA_Return_Response_Info_Needs_TDIR(device, true, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_Always_Use_TPSIU_For_SAT_Passthrough(device, true, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_Max_Xfer_Length(device, 292352, PH_BY_ADAPTER_ID); // Bytes
+                set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_UDMA, PH_BY_ADAPTER_ID);
                 // set SCSI hacks
                 set_Hack_SCSI_Max_Xfer_Length(device, 524288, PH_BY_ADAPTER_ID); // bytes
                 set_Hack_Generic_Test_Unit_Ready_After_Failure(device, true, PH_BY_ADAPTER_ID);
@@ -6914,6 +7046,10 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 set_Hack_SCSI_No_Mode_Sub_Pages(device, true, PH_BY_ADAPTER_ID);
                 // NOTE: Does not handle zero length read/write commands
                 set_Hack_SCSI_No_Report_Supported_Ops(device, true, PH_BY_ADAPTER_ID);
+                // REPORT LUNS is known broken on this adapter (first adapter found that fails it). The USB default
+                // already skips it, but stamp BROKEN so it is skipped even through any future path that would
+                // issue it regardless of bridge type.
+                set_Hack_SCSI_Report_Luns_Mode(device, REPORT_LUNS_BROKEN, PH_BY_ADAPTER_ID);
                 break;
             default:
                 break;
@@ -6944,6 +7080,7 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
                 set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_ADAPTER_ID); // Attempting any DMA passthrough fails for invalid field in CDB. UDMA mode crashes the
                           // firmware entirely.
+                set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_NO_DMA, PH_BY_ADAPTER_ID);
                 set_Hack_ATA_Max_Xfer_Length(device, 125440, PH_BY_ADAPTER_ID); // Bytes
                 set_Hack_ATA_Check_Condition_Empty(device, true, PH_BY_ADAPTER_ID); // returns empty sense data in return for check condition, when a result is expected to come
                           // back
@@ -6954,6 +7091,21 @@ static bool set_USB_Passthrough_Hacks_By_PID_and_VID(tDevice* device)
             break;
         default: // unknown
             break;
+        }
+
+        // All of the SAT-passthrough adapters profiled above were measured to produce SAT-2/era
+        // (libata/ACS style) fixed-format sense data; the only known SAT-3+ compliant SATL family
+        // (HPE/PMC-Sierra based) has no entries in this USB table. The layout difference only has
+        // real consequences on ATA drives under ~2TB (28-bit LBA), where the task-file registers in
+        // the sense data are non-trivial, so stamp the prior knowledge to let every recognized SATL
+        // adapter skip the six-NOP RTFR location probe on open instead of re-discovering what is
+        // already known. Unknown adapters (no profile match) are left on the default and still run
+        // the probe. The default-value guard lets an individual profile case override the blanket
+        // rule (e.g. a USB bridge ever found to be SAT-3+ compliant).
+        if (passthroughHacksSet && get_Hack_Generic_Passthrough_Type(device) == ATA_PASSTHROUGH_SAT &&
+            get_Hack_ATA_Fixed_Sense_Format(device) == FF_FMT_TEST_WITH_NOP)
+        {
+            set_Hack_ATA_Fixed_Sense_Format(device, FF_FMT_SAT2_FIXED_FORMAT, PH_BY_ADAPTER_ID);
         }
     }
     return passthroughHacksSet;
@@ -7146,6 +7298,12 @@ bool setup_Passthrough_Hacks_By_ID(tDevice* M_NONNULL device)
     if (success)
     {
         // (provenance stamped via the PH_BY_ADAPTER_ID setter calls above)
+        if (device->deviceVerbosity >= VERBOSITY_COMMAND_NAMES)
+        {
+            // identify which known adapter profile matched, then dump the details it applied
+            print_str("\tMatching known adapter profile found - applying pre-configured profile details:\n");
+            print_Low_Level_Info(device);
+        }
     }
     else
     {

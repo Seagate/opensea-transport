@@ -1148,7 +1148,7 @@ M_PARAM_RW(2) eReturnValues get_CISS_RAID_Device(const char* M_NONNULL filename,
                     device->os_info.fd =
                         device->os_info.cissDeviceData
                             ->cissHandle; // set this just to make the upper layers that validate this happy-TJE
-                    set_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA(device, true, PH_BY_OS_DISCOVERY); // this may not be true
+                    set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_DMA, PH_BY_OS_DISCOVERY); // this may not be true
                                                             // for all CISS controllers, but will likely work with any of
                                                             // them -TJE
                     // handle opened, now get the physical device location from the C2h command

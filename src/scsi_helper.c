@@ -2428,10 +2428,16 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
         set_Hack_SCSI_No_Report_Supported_Ops(device, true, PH_BY_DEVICE_REPORTED);
         set_Hack_SCSI_Max_Xfer_Length(device, 65024, PH_BY_DEVICE_REPORTED);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_DEVICE_REPORTED);
-        set_Hack_ATA_Always_Use_DMA_Instead_Of_UDMA(device, true, PH_BY_DEVICE_REPORTED);
+        set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_DMA, PH_BY_DEVICE_REPORTED);
+        // HPE/PMCS-based SATLs are SAT-3/later compliant, so the RTFRs use the standard SAT-3+
+        // fixed-format layout; skip the NOP RTFR-location probe on open instead of re-discovering it
+        set_Hack_ATA_Fixed_Sense_Format(device, FF_FMT_SAT3_LATER_FIXED_FORMAT, PH_BY_DEVICE_REPORTED);
+        // the commented-out fixedSenseHack line below was an earlier experiment with the superseded
+        // eSATFixedFormatSenseHack field (swapped-LBA-byte-order workaround) in a RAID environment
+        // that returned odd results; the eSAT_Fixed_Sense_Format stamp above is the current mechanism
         // device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack                =
         // SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER; if (device->deviceVerbosity >=
-        // VERBOSITY_COMMAND_VERBOSE)
+        // VERBOSITY_COMMAND_VERBOSE
         // {
         //     printf(
         //         "PMCS SATL detected: Setting fixedSenseHack=FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER\n");
@@ -2462,6 +2468,11 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
         set_Hack_SCSI_Max_Xfer_Length(device, 1052160, PH_BY_DEVICE_REPORTED);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_DEVICE_REPORTED);
         set_Hack_ATA_Max_Xfer_Length(device, 1052160, PH_BY_DEVICE_REPORTED);
+        // LSI/Avago/Broadcom HBA SATLs produce the SAT-2/era fixed-format layout (same as the USB
+        // table blanket rule); skip the NOP RTFR-location probe on open. NOTE: the other stamps in
+        // this branch were validated on Windows; the fixed-format layout is SATL-firmware behavior,
+        // so the same prior knowledge is expected to hold on Linux - retest if that ever disagrees
+        set_Hack_ATA_Fixed_Sense_Format(device, FF_FMT_SAT2_FIXED_FORMAT, PH_BY_DEVICE_REPORTED);
         // device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while
         // supported, not necessary to use
     }
@@ -2487,6 +2498,11 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
         set_Hack_SCSI_Max_Xfer_Length(device, 2097152, PH_BY_DEVICE_REPORTED); // may vary with OS/kernel config etc.
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_DEVICE_REPORTED);
         set_Hack_ATA_Max_Xfer_Length(device, 2097152, PH_BY_DEVICE_REPORTED); // may vary with OS/kernel config etc.
+        // fixedSenseFormat is DELIBERATELY left at the default (FF_FMT_TEST_WITH_NOP) for the linux
+        // SATL: it is not yet known in which kernel versions the unaligned-write command response
+        // (RTFRs in the alternate fixed-format location, i.e. the UNALIGNED_WRITE_BUG workaround
+        // case) comes back, and that is the gating question here. Stamping either format would be
+        // a guess; the NOP RTFR-location probe answers it at runtime, per kernel, instead.
         // device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while
         // supported, not necessary to use
     }
@@ -3822,8 +3838,16 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
             // that the NVMe passthrough discovery below can run and correctly identify the drive in a fast scan.
         }
 
-        if (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2 && get_Device_InterfaceType(device) != USB_INTERFACE &&
-            get_Device_InterfaceType(device) != IEEE_1394_INTERFACE)
+        // Profile prior knowledge can override the default: BROKEN never issues REPORT LUNS (it is known to
+        // break on this adapter), WORKS issues it even through USB/1394 bridges where the default skips it
+        // because behavior through those bridges is unproven.
+        const bool issueReportLuns =
+            (get_Hack_SCSI_Report_Luns_Mode(device) != REPORT_LUNS_BROKEN) &&
+            (device->drive_info.scsiVersion > SCSI_VERSION_SCSI2) &&
+            ((get_Hack_SCSI_Report_Luns_Mode(device) == REPORT_LUNS_WORKS) ||
+             ((get_Device_InterfaceType(device) != USB_INTERFACE) &&
+              (get_Device_InterfaceType(device) != IEEE_1394_INTERFACE)));
+        if (issueReportLuns)
         {
             // Issue report LUNs to figure out how many logical units are present.
             DECLARE_ZERO_INIT_ARRAY(uint8_t, reportLuns,

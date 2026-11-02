@@ -1845,7 +1845,7 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
                 ret     = NOT_SUPPORTED;
                 break;
             case SCSI_SYNC_CMD:
-                set_Hack_SCSI_Sync_Cache_Cmd_Size(device, INT8_C(-1), PH_BY_PROBE);
+                set_Hack_SCSI_Sync_Cache_Mode(device, SYNC_CACHE_NONE, PH_BY_PROBE);
                 cmdSize = SCSI_CMD_SIZE_UNDETERMINED;
                 ret     = NOT_SUPPORTED;
                 break;
@@ -1911,11 +1911,11 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
                     switch (cmdSize)
                     {
                     case SCSI_CMD_SIZE_16:
-                        set_Hack_SCSI_Sync_Cache_Cmd_Size(device, INT8_C(16), PH_BY_PROBE);
+                        set_Hack_SCSI_Sync_Cache_Mode(device, SYNC_CACHE_16B, PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_12:
                     case SCSI_CMD_SIZE_10:
-                        set_Hack_SCSI_Sync_Cache_Cmd_Size(device, INT8_C(10), PH_BY_PROBE);
+                        set_Hack_SCSI_Sync_Cache_Mode(device, SYNC_CACHE_10B, PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_6:
                     case SCSI_CMD_SIZE_UNDETERMINED:
@@ -2453,15 +2453,15 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_Flush_Cache_Command(const 
 M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_Command(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
-    switch (device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize)
+    switch (device->drive_info.passThroughHacks.scsiHacks.syncCacheMode)
     {
-    case INT8_C(16):
+    case SYNC_CACHE_16B:
         ret = scsi_Synchronize_Cache_16(device, false, 0, 0, 0);
         break;
-    case INT8_C(10):
+    case SYNC_CACHE_10B:
         ret = scsi_Synchronize_Cache_10(device, false, 0, 0, 0);
         break;
-    case INT8_C(-1):
+    case SYNC_CACHE_NONE:
         ret = NOT_SUPPORTED;
         break;
     default:

@@ -3287,13 +3287,67 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
         return ret;
     }
 
-    if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
+    switch (device->drive_info.passThroughHacks.ataPTHacks.dmaModeSelection)
     {
-        if (device->drive_info.passThroughHacks.ataPTHacks.alwaysUseDMAInsteadOfUDMA)
+    case ATA_DMA_SEL_NO_DMA:
+        // PIO-only: force NO_DMA and clear the DMA support bits so the upper layers issue PIO.
+        // Defense-in-depth: honored directly from the selection so a profile that only sets the
+        // enum (not the separate dmaNotSupported hack) still lands in PIO regardless of the
+        // evaluation order of the two fields.
+        set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_NO_DMA);
+        device->drive_info.ata_Options.dmaSupported                  = false;
+        device->drive_info.ata_Options.readLogWriteLogDMASupported   = false;
+        device->drive_info.ata_Options.readBufferDMASupported        = false;
+        device->drive_info.ata_Options.writeBufferDMASupported       = false;
+        device->drive_info.ata_Options.downloadMicrocodeDMASupported = false;
+        device->drive_info.ata_Options.sataReadLogDMASameAsPIO       = false;
+        device->drive_info.ata_Options.dcoDMASupported               = false;
+        device->drive_info.ata_Options.hpaSecurityExtDMASupported    = false;
+        break;
+    case ATA_DMA_SEL_USE_DMA:
+        // forcing using DMA mode instead of UDMA since the translator doesn't like UDMA mode set
+        if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
         {
-            // forcing using DMA mode instead of UDMA since the translator doesn't like UDMA mode set
             set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_DMA);
         }
+        break;
+    case ATA_DMA_SEL_USE_UDMA:
+        // known-good adapter: keep UDMA as the SAT DMA protocol even though the library default below
+        // prefers the generic DMA protocol. Only reassert when identify actually negotiated UDMA so we
+        // never upgrade a MWDMA-only drive to UDMA.
+        if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported &&
+            get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_UDMA)
+        {
+            set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_UDMA);
+        }
+        break;
+    case ATA_DMA_SEL_USE_EITHER:
+        // either protocol is acceptable - keep the negotiated value determined by the identify path above
+        break;
+    case ATA_DMA_SEL_AUTO:
+    default:
+        // SATA default: SAT DMA commands prefer the generic DMA protocol since SATA-over-SCSI
+        // translators have been found that misbehave with the UDMA DMA-protocol bits. The drive
+        // remains DMA-capable; only the protocol field changes.
+        // PATA default: keep UDMA when the drive negotiated it (translators that handle PATA
+        // are expected to support UDMA); canonicalize SWDM/MWDM to plain DMA. Adapters verified
+        // for UDMA are profile-stamped with ATA_DMA_SEL_USE_UDMA to opt in regardless of the
+        // transport.
+        if (!device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported)
+        {
+            if (device->drive_info.ata_Options.isParallelTransport)
+            {
+                if (get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_MWDMA)
+                {
+                    set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_DMA);
+                }
+            }
+            else if (get_tDevice_ATA_DMA_Mode(device) == ATA_DMA_MODE_UDMA)
+            {
+                set_tDevice_ATA_DMA_Mode(device, ATA_DMA_MODE_DMA);
+            }
+        }
+        break;
     }
 
     // Check if we were given any force flags regarding how we talk to ATA drives.
@@ -3572,10 +3626,44 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
         }
     }
     // Test for passthrough hacks on non-data commands (e.g., Broadcom count zeroing, libata sense data misalignment)
-    // This test runs after identify succeeds to ensure it has meaning and doesn't interfere with basic device detection
+    // This test runs after identify succeeds to ensure it has meaning and doesn't interfere with basic device
+    // detection. If the adapter profile already knows where the RTFRs sit in fixed-format sense data
+    // (fixedSenseFormat != FF_FMT_TEST_WITH_NOP), the six-NOP probe sequence is skipped and the same
+    // outcomes the test would have determined are applied directly from that prior knowledge.
     if (ret == SUCCESS)
     {
-        test_Passthrough_Register_Response_NonData(device);
+        switch (get_Hack_ATA_Fixed_Sense_Format(device))
+        {
+        case FF_FMT_SAT3_LATER_FIXED_FORMAT:
+            // SAT-3 and later: the fixed-format sense response is SAT compliant, so trust all responses - the
+            // same outcome as a high-confidence PASS without spending six NOP commands discovering it.
+            set_Hack_ATA_Non_Data_Count_Broken(device, false, PH_BY_ADAPTER_ID);
+            set_Hack_ATA_Non_Data_LBA_Broken(device, false, PH_BY_ADAPTER_ID);
+            set_Hack_ATA_Fixed_Sense_Hack(device, SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED, PH_BY_ADAPTER_ID);
+            device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_ALLOW_ALL;
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                         "NOP Test: SKIPPED - adapter profile prior knowledge SAT3+ "
+                                         "fixed-format, applying compliant results\n");
+            break;
+        case FF_FMT_SAT2_FIXED_FORMAT:
+            // SAT-2 era (libata/ACS style): the same outcome as the test's libata path - COUNT is recovered
+            // from the command-specific-information offset while the LBA is misaligned, so the
+            // UNALIGNED_WRITE_BUG workaround is armed and the SAT layer extracts the RTFRs from the
+            // alternate location post-execution.
+            set_Hack_ATA_Non_Data_Count_Broken(device, false, PH_BY_ADAPTER_ID);
+            set_Hack_ATA_Non_Data_LBA_Broken(device, true, PH_BY_ADAPTER_ID);
+            set_Hack_ATA_Fixed_Sense_Hack(device, SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, PH_BY_ADAPTER_ID);
+            device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_ALLOW_ALL;
+            print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                         "NOP Test: SKIPPED - adapter profile prior knowledge SAT2/libata "
+                                         "fixed-format, applying libata workaround results\n");
+            break;
+        case FF_FMT_TEST_WITH_NOP:
+        default:
+            test_Passthrough_Register_Response_NonData(device);
+            break;
+        }
+        flush_tDevice_Verbose_Stream(device);
     }
     print_tDevice_Verbose_Formatted_String(device, VERBOSITY_COMMAND_VERBOSE, "Drive type: %d\n",
                                            get_Device_DriveType(device));
