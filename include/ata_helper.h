@@ -1004,7 +1004,10 @@ extern "C"
     {
         eAtaCmdType            commandType;
         eDataTransferDirection commandDirection;
-        eAtaProtocol           commadProtocol;
+        union {
+            eAtaProtocol           commadProtocol; // Typo...kept for compatibility currently
+            eAtaProtocol           commandProtocol;
+        };
         ataTFRBlock            tfr;
         ataReturnTFRs          rtfr; // Should we make it ataTFRBlock for easy copy?
         uint8_t* M_NULLABLE    ptrData;
