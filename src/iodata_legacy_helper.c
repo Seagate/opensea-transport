@@ -34,6 +34,7 @@ M_PARAM_WO(1)
         cdb[IO_DATA_CDB_OFFSET_LBA_MID] = ataCommandOptions->tfr.lbaMid;
         cdb[IO_DATA_CDB_OFFSET_LBA_HIGH] = ataCommandOptions->tfr.lbaHigh;
         cdb[IO_DATA_CDB_OFFSET_DEVICE] = ataCommandOptions->tfr.device;
+        cdb[IO_DATA_CDB_OFFSET_COMMAND] = ataCommandOptions->tfr.Command;
         cdb[IO_DATA_CDB_OFFSET_9_RESERVED] = RESERVED;
         cdb[IO_DATA_CDB_OFFSET_10_RESERVED] = RESERVED;
         cdb[IO_DATA_CDB_OFFSET_11_RESERVED] = RESERVED;
