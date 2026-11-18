@@ -3554,7 +3554,8 @@ M_PARAM_RO(1) static uint32_t get_Transfer_Size_For_Device_From_Hacks(const tDev
 // This looks for COMPATIBLE
 M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Transfer_Size_For_Device(const tDevice* M_NONNULL device, eCommandXferSizeType xferSizeType)
 {
-    // Default starting point of 64K because it usually is fine
+    // Default starting point of 64K because it consistently works nearly everywhere.
+    // Once OS or other limitations are better understood, then we can increase this further
     uint32_t transferSizeBytes = DATA_64K;
     switch (get_Device_InterfaceType(device))
     {
@@ -3568,10 +3569,22 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API uint32_t get_Transfer_Size_For_Device(const 
     case SD_INTERFACE:
     case IEEE_1394_INTERFACE:
     default:
-        // For these other interfaces, dropping the size due to variations in how well things work.
-        // If we have specific passthrough hacks set, then and only then, will this be increased...it
-        // may also be decreased.
-        transferSizeBytes = DATA_32K;
+        // Identity-class knowledge (adapter profile or device self-report) that this bridge
+        // path's transfer limit is characterized lets us start at the direct-attach 64K ceiling
+        // and work down from there. Deliberately never raised above the direct-attach default
+        // until the per-OS interface limits are better understood; the OS and hack clamps below
+        // still apply.
+        if (has_Reported_ID_Provenance(device) &&
+            (device->drive_info.passThroughHacks.scsiHacks.maxTransferLength != 0 ||
+             device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength != 0 ||
+             device->drive_info.passThroughHacks.nvmePTHacks.maxTransferLength != 0))
+        {
+            transferSizeBytes = DATA_64K;
+        }
+        else
+        {
+            transferSizeBytes = DATA_32K;
+        }
         break;
     }
 
@@ -4164,7 +4177,11 @@ OPENSEA_TRANSPORT_API bool set_Device_Handle_Friendly_Name(tDevice* M_NONNULL de
 
 OPENSEA_TRANSPORT_API eDriveType get_Device_DriveType(const tDevice* M_NONNULL device)
 {
-    return device->drive_info.drive_type;
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.drive_type;
+    }
+    return UNKNOWN_DRIVE;
 }
 
 OPENSEA_TRANSPORT_API void set_Device_DriveType(tDevice* M_NONNULL device, eDriveType driveType)
@@ -4175,10 +4192,33 @@ OPENSEA_TRANSPORT_API void set_Device_DriveType(tDevice* M_NONNULL device, eDriv
     }
 }
 
+M_PARAM_RO(1)
+M_NODISCARD OPENSEA_TRANSPORT_API eZonedDeviceType get_Device_Zoned_Type(const tDevice* M_NONNULL device)
+{
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.zonedType;
+    }
+    return ZONED_TYPE_NOT_ZONED;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API void set_Device_Zoned_Type(tDevice* M_NONNULL device, eZonedDeviceType zonedType)
+{
+    if (device != M_NULLPTR)
+    {
+        device->drive_info.zonedType = zonedType;
+    }
+}
+
 OPENSEA_TRANSPORT_API M_PURE_FUNC eInterfaceType get_Device_InterfaceType(const tDevice* M_NONNULL device)
     M_REPRODUCIBLE
 {
-    return device->drive_info.interface_type;
+    if (device != M_NULLPTR)
+    {
+        return device->drive_info.interface_type;
+    }
+    return UNKNOWN_INTERFACE;
 }
 
 OPENSEA_TRANSPORT_API void set_Device_InterfaceType(tDevice* M_NONNULL device, eInterfaceType interfaceType)

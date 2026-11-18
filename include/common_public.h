@@ -5283,6 +5283,12 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     OPENSEA_TRANSPORT_API void set_Device_DriveType(tDevice* M_NONNULL device, eDriveType driveType);
 
     M_PARAM_RO(1)
+    M_NODISCARD OPENSEA_TRANSPORT_API eZonedDeviceType get_Device_Zoned_Type(const tDevice* M_NONNULL device);
+
+    M_PARAM_RW(1)
+    OPENSEA_TRANSPORT_API void set_Device_Zoned_Type(tDevice* M_NONNULL device, eZonedDeviceType zonedType);
+
+    M_PARAM_RO(1)
     M_NODISCARD OPENSEA_TRANSPORT_API M_PURE_FUNC eInterfaceType
     get_Device_InterfaceType(const tDevice* M_NONNULL device) M_REPRODUCIBLE;
 
