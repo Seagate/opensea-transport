@@ -2698,6 +2698,7 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
             // second-guess the configured values
             // (provenance stamped via the PH_BY_DEVICE_REPORTED setter calls above)
             set_Hack_Generic_Test_Unit_Ready_After_Failure(device, true, PH_BY_DEVICE_REPORTED);
+            set_Hack_Generic_TURF_Value(device, UINT8_C(34), PH_BY_DEVICE_REPORTED);
             set_Hack_SCSI_RW_Available(device, true, PH_BY_DEVICE_REPORTED);
             set_Hack_SCSI_RW6(device, true, PH_BY_DEVICE_REPORTED);
             set_Hack_SCSI_RW10(device, true, PH_BY_DEVICE_REPORTED);
