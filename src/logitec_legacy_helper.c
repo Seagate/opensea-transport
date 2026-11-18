@@ -34,6 +34,7 @@ M_PARAM_WO(1)
         cdb[LOGITEC_CDB_OFFSET_LBA_MID] = ataCommandOptions->tfr.lbaMid;
         cdb[LOGITEC_CDB_OFFSET_LBA_HIGH] = ataCommandOptions->tfr.lbaHigh;
         cdb[LOGITEC_CDB_OFFSET_DEVICE] = ataCommandOptions->tfr.device;
+        cdb[LOGITEC_CDB_OFFSET_COMMAND] = ataCommandOptions->tfr.Command;
         cdb[LOGITEC_CDB_OFFSET_SIGNATURE] = LOGITEC_LEGACY_SIGNATURE;
     }
     else
