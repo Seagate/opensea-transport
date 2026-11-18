@@ -23,6 +23,7 @@
 #include "string_utils.h"
 #include "type_conversion.h"
 
+#include "adapter_info.h"
 #include "ata_helper_func.h"
 #include "cam_helper.h"
 #include "nix_mounts.h"
@@ -490,7 +491,7 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* M_NONNULL dev
                             // TODO: Actually get the VID and PID set before calling this.
                             //       This will require some more research, but we should be able to do this now that
                             //       we know the interface
-                            setup_Passthrough_Hacks_By_ID(device);
+                            adapter_Apply_Profile(device);
                         }
                         set_Device_Partition_Info(&device->os_info.fileSystemInfo, get_Device_Handle_Name(device));
                         ret = fill_Drive_Info_Data(device);

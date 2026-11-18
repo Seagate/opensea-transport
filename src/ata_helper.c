@@ -1915,6 +1915,24 @@ OPENSEA_TRANSPORT_API eReturnValues get_Identify_Data(const tDevice* M_NONNULL d
     return get_Identify_Data_impl(M_CONST_CAST(tDevice*, device), ptrData, dataSize);
 }
 
+// Maps the retry selection to the legacy passthrough the identify retry ladder flips to;
+// RETRY_NONE maps to ATA_PASSTHROUGH_UNKNOWN (the ladder gates on RETRY_NONE before this).
+static ePassthroughType retry_Passthrough_Type(const eRetryPTType retryType)
+{
+    switch (retryType)
+    {
+        case RETRY_JMICRON:
+            return ATA_PASSTHROUGH_JMICRON;
+        case RETRY_IODATA:
+            return ATA_PASSTHROUGH_IO_DATA;
+        case RETRY_NEC:
+            return ATA_PASSTHROUGH_NEC;
+        case RETRY_NONE:
+        default:
+            return ATA_PASSTHROUGH_UNKNOWN;
+    }
+}
+
 // This function attempts numerous workarounds to get working identify data (to work around SAT issues)
 M_PARAM_RW(1)
 static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
@@ -1985,19 +2003,23 @@ static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
                         set_Hack_ATA_Always_Check_Condition_Available(device, false, PH_BY_PROBE);
                         noMoreRetries                                                                = false;
                     }
-                    else if (device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT &&
-                             device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_JMICRON)
+                    else if (device->drive_info.passThroughHacks.ataPTHacks.retryPassthroughType != RETRY_NONE &&
+                             device->drive_info.passThroughHacks.passthroughType !=
+                                 retry_Passthrough_Type(device->drive_info.passThroughHacks.ataPTHacks.retryPassthroughType))
                     {
-                        set_Hack_Generic_Passthrough_Type(device, ATA_PASSTHROUGH_JMICRON, PH_BY_PROBE);
+                        set_Hack_Generic_Passthrough_Type(device, retry_Passthrough_Type(device->drive_info.passThroughHacks.ataPTHacks.retryPassthroughType),
+                                                          PH_BY_PROBE);
                         noMoreRetries                                       = false;
                     }
                 }
                 else
                 {
-                    if (device->drive_info.passThroughHacks.ataPTHacks.retryWithJMicronPT &&
-                        device->drive_info.passThroughHacks.passthroughType != ATA_PASSTHROUGH_JMICRON)
+                    if (device->drive_info.passThroughHacks.ataPTHacks.retryPassthroughType != RETRY_NONE &&
+                        device->drive_info.passThroughHacks.passthroughType !=
+                            retry_Passthrough_Type(device->drive_info.passThroughHacks.ataPTHacks.retryPassthroughType))
                     {
-                        set_Hack_Generic_Passthrough_Type(device, ATA_PASSTHROUGH_JMICRON, PH_BY_PROBE);
+                        set_Hack_Generic_Passthrough_Type(device, retry_Passthrough_Type(device->drive_info.passThroughHacks.ataPTHacks.retryPassthroughType),
+                                                          PH_BY_PROBE);
                         noMoreRetries                                       = false;
                     }
                 }
@@ -3641,6 +3663,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
             set_Hack_ATA_Non_Data_LBA_Broken(device, false, PH_BY_ADAPTER_ID);
             set_Hack_ATA_Fixed_Sense_Hack(device, SAT_FIXED_SENSE_HACK_ANY_SENSE_ALLOWED, PH_BY_ADAPTER_ID);
             device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_ALLOW_ALL;
+            device->drive_info.passThroughHacks.ataPTHacks.nonDataTestFromAdapterID = true;
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
                                          "NOP Test: SKIPPED - adapter profile prior knowledge SAT3+ "
                                          "fixed-format, applying compliant results\n");
@@ -3654,6 +3677,7 @@ OPENSEA_TRANSPORT_API eReturnValues fill_In_ATA_Drive_Info(tDevice* M_NONNULL de
             set_Hack_ATA_Non_Data_LBA_Broken(device, true, PH_BY_ADAPTER_ID);
             set_Hack_ATA_Fixed_Sense_Hack(device, SAT_FIXED_SENSE_HACK_UNALIGNED_WRITE_BUG, PH_BY_ADAPTER_ID);
             device->drive_info.passThroughHacks.ataPTHacks.nonDataTest = ATA_NON_DATA_TEST_ALLOW_ALL;
+            device->drive_info.passThroughHacks.ataPTHacks.nonDataTestFromAdapterID = true;
             print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
                                          "NOP Test: SKIPPED - adapter profile prior knowledge SAT2/libata "
                                          "fixed-format, applying libata workaround results\n");

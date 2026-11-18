@@ -1238,11 +1238,17 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
             if (device->drive_info.passThroughHacks.ataPTHacks.nonDataTest == ATA_NON_DATA_TEST_ALLOW_ALL)
             {
                 // We have a workaround (like fixedSenseHack=UNALIGNED_WRITE_BUG) that will extract values
-                // from the correct location during post-execution. Allow the command.
+                // from the correct location during post-execution. Allow the command. When the state came
+                // from adapter-profile prior knowledge the one-time "NOP Test: SKIPPED" line during open is
+                // the report of record, so stay quiet here (it would otherwise repeat for every non-data
+                // command for the session).
                 commandCanProceed = true;
-                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                             "Pre-execution: Allowing command with workaround (ALLOW_ALL mode, will "
-                                             "extract from alternate location post-execution)\n");
+                if (!device->drive_info.passThroughHacks.ataPTHacks.nonDataTestFromAdapterID)
+                {
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                 "Pre-execution: Allowing command with workaround (ALLOW_ALL mode, will "
+                                                 "extract from alternate location post-execution)\n");
+                }
             }
             // Otherwise, check if specific registers are broken and would prevent command execution
             else if (device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken)

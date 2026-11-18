@@ -2429,12 +2429,12 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
         set_Hack_SCSI_Max_Xfer_Length(device, 65024, PH_BY_DEVICE_REPORTED);
         set_Hack_ATA_Always_Check_Condition_Available(device, true, PH_BY_DEVICE_REPORTED);
         set_Hack_ATA_DMA_Mode_Selection(device, ATA_DMA_SEL_USE_DMA, PH_BY_DEVICE_REPORTED);
-        // HPE/PMCS-based SATLs are SAT-3/later compliant, so the RTFRs use the standard SAT-3+
-        // fixed-format layout; skip the NOP RTFR-location probe on open instead of re-discovering it
-        set_Hack_ATA_Fixed_Sense_Format(device, FF_FMT_SAT3_LATER_FIXED_FORMAT, PH_BY_DEVICE_REPORTED);
-        // the commented-out fixedSenseHack line below was an earlier experiment with the superseded
-        // eSATFixedFormatSenseHack field (swapped-LBA-byte-order workaround) in a RAID environment
-        // that returned odd results; the eSAT_Fixed_Sense_Format stamp above is the current mechanism
+        // fixedSenseFormat is DELIBERATELY NOT stamped here: this SATL's fixed-format RTFR behavior
+        // is DRIVE-DEPENDENT. Captured NOP results (nopResults.txt, SRC73208_01 via CISS): the 1TB
+        // STM (28-bit LBA) returns the LBA task-file registers byte-swapped (SWAPPED_LBA_BYTE_ORDER)
+        // with COUNT recovered from the alternate CSI offset, while the 10TB STM (48-bit LBA) is
+        // fully SAT-3 compliant (6/6 match, high-confidence pass). One profile stamp cannot express
+        // that, so the NOP RTFR-location probe stays authoritative for PMCS.
         // device->drive_info.passThroughHacks.ataPTHacks.fixedSenseHack                =
         // SAT_FIXED_SENSE_HACK_FIXED_FORMAT_SWAPPED_LBA_BYTE_ORDER; if (device->deviceVerbosity >=
         // VERBOSITY_COMMAND_VERBOSE
@@ -2506,6 +2506,17 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
         // device->drive_info.passThroughHacks.ataPTHacks.alwaysUseTPSIUForSATPassthrough = true;//while
         // supported, not necessary to use
     }
+    else
+    {
+        // Unknown (or blank) SAT vendor: no stampable profile exists in this code. Log the raw
+        // identity so a future -v3 capture is enough to add a profile branch here. The all-spaces
+        // case is a SATL that exposes no vendor on the VPD 89h page at all.
+        print_tDevice_Verbose_Formatted_String(
+            device, VERBOSITY_COMMAND_VERBOSE,
+            "SATL vendor '%s', product '%s', rev '%s' - not in the SATL profile list, runtime discovery applies\n",
+            device->drive_info.bridge_info.t10SATvendorID, device->drive_info.bridge_info.SATproductID,
+            device->drive_info.bridge_info.SATfwRev);
+    }
 
     if (ataInformation[SAT_ATA_VPD_SIGNATURE_OFFSET] == 0) // checking for PATA drive
     {
@@ -2543,6 +2554,11 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
 static M_INLINE void set_No_SAT_VPD(tDevice* device)
 {
     set_Hack_SCSI_No_SAT_VPD_Page(device, true, PH_BY_DEVICE_REPORTED);
+    // The SATL profiles above key off the vendor string from this page, so when the page read
+    // fails the profile cannot be applied even if the drive still works through SAT translation.
+    // Log that here: if the drive later identifies as ATA, this is an unprofilable SATL candidate.
+    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                 "SAT Information VPD page unavailable - SATL vendor unidentified, no SATL profile\n");
 }
 
 M_PARAM_RO(1) eReturnValues check_SAT_Compliance_And_Set_Drive_Type(const tDevice* M_NONNULL device)

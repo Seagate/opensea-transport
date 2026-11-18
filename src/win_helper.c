@@ -46,6 +46,7 @@ RESTORE_WARNING_4255
 #include <devpropdef.h>
 #include <winbase.h>
 
+#include "adapter_info.h"
 #include "ata_helper_func.h"
 #include "common_public.h"
 #include "sat_helper_func.h"
@@ -5987,7 +5988,7 @@ static eReturnValues get_Win_Device(const char* M_NONNULL filename, tDevice* M_N
                 if (get_Device_InterfaceType(device) == USB_INTERFACE ||
                     get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
                 {
-                    setup_Passthrough_Hacks_By_ID(device);
+                    adapter_Apply_Profile(device);
                 }
 
                 // For now force direct IO all the time to match previous functionality.

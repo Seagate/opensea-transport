@@ -911,8 +911,10 @@ extern "C"
         ATA_PASSTHROUGH_SUNPLUS,
         ATA_PASSTHROUGH_PSP, // Some PSP drives use this passthrough and others use SAT...it's not clear if this was
                              // ever even used. If testing for it, test it last.
+        ATA_PASSTHROUGH_IO_DATA  = 10,
+        ATA_PASSTHROUGH_LOGITEC  = 11,
         ATA_PASSTHROUGH_END_LEGACY_USB =
-            ATA_PASSTHROUGH_PSP, // This is set because all legacy USB passthrough's should proceed other
+            ATA_PASSTHROUGH_LOGITEC, // This is set because all legacy USB passthrough's should proceed other
                                  // driver/controller passthroughs on non-USB interfaces.
         ATA_PASSTHROUGH_BEGIN_NON_USB =
             30, // set so if we need to find a passthrough that may be available for drivers or non-USB controllers,
@@ -932,6 +934,10 @@ extern "C"
                                               // can properly find full capabilities before basic capabilities.
         NVME_PASSTHROUGH_REALTEK       = 103,
         NVME_PASSTHROUGH_REALTEK_BASIC = 104,
+        NVME_PASSTHROUGH_REALTEK_9220DP = 105, // *** UNIMPLEMENTED *** (profile-table stub, 2026; 0x0BDA dual-port
+                                               // NVMe+SAT controller with port mode switch; CDI CDB reference in
+                                               // inventory §4.C.1). NVMe-side path pending; SAT side already covered
+                                               // by the ATA_PASSTHROUGH_SAT + Realtek quirk flags today.
         // Add other vendor unique SCSI to NVMe passthrough here
         NVME_PASSTHROUGH_UNKNOWN,
         // No passthrough
@@ -1101,6 +1107,19 @@ extern "C"
         SYNC_CACHE_NONE      // not supported; do not issue SYNCHRONIZE CACHE at all
     } eSCSI_Sync_Cache_Mode;
 
+    // Legacy passthrough retry selection. RETRY_NONE = 0 is the library default (no retry).
+    // When a profile sets one of the legacy values, the initial identify retry ladder re-issues
+    // identify with that legacy USB passthrough if the SAT identify failed with an
+    // invalid-operation-code sense; any further legacy types can be added to this enum.
+    typedef enum eRetryPTType
+    {
+        RETRY_NONE  = 0, // do not retry with a different passthrough type at all
+        RETRY_JMICRON,   // retry with the ATA_PASSTHROUGH_JMICRON legacy CDB
+        RETRY_IODATA,    // retry with the ATA_PASSTHROUGH_IO_DATA legacy CDB
+        RETRY_NEC        // retry with the ATA_PASSTHROUGH_NEC legacy CDB
+                         // further legacy types can be added here as needed
+    } eRetryPTType;
+
     // Report LUNS mode. AUTO = 0 keeps the current condition exactly (allowed only for
     // direct-attached SCSI > SCSI2; force-skipped on USB/1394). WORKS issues the command even
     // on USB/1394 when the adapter is known to tolerate it; BROKEN skips it everywhere.
@@ -1111,6 +1130,27 @@ extern "C"
         REPORT_LUNS_WORKS       // issue it even through USB/1394 bridges
     } eSCSI_Report_Luns_Mode;
 
+    // READ CAPACITY command-size mode for known-broken/16B-required adapters. Stamped from the adapter
+    // profile table for the kernel US_FL_NEEDS_CAP16 class (e.g. 0x174C:55AA AS2105 - inferred from the
+    // kernel workaround, PH_DATA_UNVERIFIED until retest). AUTO = 0 keeps the current path.
+    typedef enum eSCSI_Read_Capacity_Mode
+    {
+        READ_CAPACITY_AUTO           = 0, // use whatever the current command-capability checks select
+        READ_CAPACITY_TEN_B_ONLY,         // only the 10-byte READ CAPACITY is trustworthy
+        READ_CAPACITY_SIXTEEN_B_ONLY      // only the 16-byte READ CAPACITY (10B response is bogus)
+    } eSCSI_Read_Capacity_Mode;
+
+    // FUA (Force Unit Access) handling mode. Stamped from the adapter profile table for the kernel
+    // US_FL_BROKEN_FUA class (e.g. JMicron JMS56x 0x152D:0567/2329 - inferred from the kernel workaround,
+    // PH_DATA_UNVERIFIED until retest). AUTO = 0 keeps the current path.
+    typedef enum eSCSI_FUA_Mode
+    {
+        FUA_MODE_AUTO                 = 0, // issue FUA-bearing commands on the normal path
+        FUA_MODE_NOT_SUPPORTED,           // the bridge drops/ignores FUA: issue without the bit
+        FUA_MODE_BROKEN_EMULATE_FLUSH    // FUA corrupts the transfer: strip the bit and issue an explicit
+                                         // SYNCHRONIZE CACHE afterwards when a flush is actually wanted
+    } eSCSI_FUA_Mode;
+
     // Where the task-file registers (RTFRs) appear in fixed-format sense data, based on the SAT
     // revision/implementation. TEST_WITH_NOP = 0 keeps the current behavior: run the NOP
     // discovery sequence on open. The fixed values let known devices/hardware skip that test
@@ -1120,10 +1160,14 @@ extern "C"
     // (28-bit LBA) behind a SATL (USB bridges, SAS adapters, etc.) - on 48-bit LBA drives the
     // 28-bit LBA task-file registers the workaround paths depend on go unused (all zeros), so the
     // difference between the layouts is behaviorally moot. Known SATL families:
-    //   SAT-3 compliant or later (SAT-3 layout): HPE/PMC-Sierra based SATLs
-    //   All other SATL adapters tested for the USB profile table produced the SAT-2/era layout,
-    //   so set_USB_Passthrough_Hacks_By_PID_and_VID() stamps FF_FMT_SAT2_FIXED_FORMAT across that
-    //   table as a whole (one choke point, rather than per adapter ID).
+    //   SAT-3 compliant (SAT-3 layout): none stampable from current data. HPE/PMC-Sierra SATLs
+    //   LOOK compliant on 48-bit LBA drives (10TB STM: 6/6 NOP match, nopResults.txt) but byte-swap
+    //   the LBA task-file registers on 28-bit LBA drives (1TB STM), so they stay probe-driven.
+    //   SAT-2/era layout: all SATL adapters in the USB profile table (stamped FF_FMT_SAT2_FIXED_FORMAT
+    //   at the set_USB_Passthrough_Hacks_By_PID_and_VID choke point) and LSI/Avago/Broadcom HBAs
+    //   (stamped in set_SAT_Flags_From_ATA_Info from the reported SAT vendor).
+    //   Probe-required: linux/libata (kernel-version-dependent unaligned-write behavior) and PMCS
+    //   (drive-dependent, above).
     typedef enum eSAT_Fixed_Sense_Format
     {
         FF_FMT_TEST_WITH_NOP         = 0, // run the NOP RTFR-location test on open (current behavior)
@@ -1154,7 +1198,12 @@ extern "C"
         PH_BY_OS_DISCOVERY    = 1u << 2, // known from OS-level or RAID-library discovery paths
         PH_BY_PROBE           = 1u << 3, // learned by trial-and-error commands issued to the device (probe confirmed)
         PH_BY_HEURISTIC       = 1u << 4, // inferred from observed device behavior (signature/fallback discovery)
-        PH_RUNTIME_STATE      = 1u << 5  // transient session bookkeeping (counters, one-shot state)
+        PH_RUNTIME_STATE      = 1u << 5, // transient session bookkeeping (counters, one-shot state)
+        // Data-quality marker (not a source class): OR'd in with PH_BY_ADAPTER_ID when an adapter-profile row's
+        // values are inferred (doc/kernel/tools) rather than field-tested. Deliberately excluded from both
+        // provenance masks above so transfer-size/probe-suppression guards are not affected. Cleared for a
+        // field at retest when a probe re-stamps it with PH_BY_PROBE.
+        PH_DATA_UNVERIFIED    = 1u << 6
     } ePassthroughHackSource;
 
     typedef struct s_passthroughHacks
@@ -1260,6 +1309,10 @@ extern "C"
                                // to instead directly trying a passthrough command
             eSCSI_Sync_Cache_Mode syncCacheMode; // AUTO = normal path, 10B/16B fixed, or NONE (never issue SYNC CACHE)
             eSCSI_Report_Luns_Mode reportLunsMode; // how to deal with REPORT LUNS (AUTO = current USB/1394-skip behavior)
+            eSCSI_Read_Capacity_Mode readCapacityMode; // command-size quirk for READ CAPACITY (AUTO = normal path)
+            eSCSI_FUA_Mode fuaMode;                    // FUA handling quirk (AUTO = normal path)
+            bool readCapacityOffByOne;   // READ CAPACITY LBA count is off by one; compensate (reserved; FreeBSD UQ class)
+            bool rbcCapacityPadTo12;     // RBC capacity values must be padded to 12 bytes (reserved; FreeBSD UQ class)
             int8_t writeAndVerifyCmdSize; // 0 = not set, <0 = not supported, 10 = 10B version, 12 = 12B version, 16 =
                                           // 16B version
             int8_t writeBufferCmdSize;    // 0 = not set, <0 = not supported, 10 = 10B, 16 = 16B
@@ -1343,8 +1396,12 @@ extern "C"
                                   // ATA path RTL9210 heuristic). Separate from possilbyEmulatedNVMe because branded
                                   // adapters (e.g. Seagate) also set that flag and still need SAT.
             bool smartEnabled;    // Override check of ATA word 85, bit0 since some USB adapters don't set this.
-            bool retryWithJMicronPT; // Needed for some JMicron adapters. Newer may support SAT, older support their
-                                     // lagacy passthrough, so this is to retry on these devices.
+            eRetryPTType retryPassthroughType; // legacy-USB retry: if SAT identify fails with an
+                                                // invalid-operation-code sense, re-issue identify
+                                                // with the selected legacy passthrough instead of
+                                                // exiting (RETRY_NONE = never retry). Needed for
+                                                // some JMicron and IO Data adapters: newer ones may
+                                                // support SAT, older only their legacy CDB.
             bool jmPTDevSet; // for JMicron's passthrough we need to set dev 0 or 1. This gets turned to true once set
             bool nonDataCountBroken;  // Implemented due to Broadcom HBA firmware bug. When issuing a non-data command
                                       // with non-zero count, it zeroes it to the drive. So this creates unexpected
@@ -1355,11 +1412,22 @@ extern "C"
                                       // above hacks are set. 1 is to allow overriding and accept that things may not
                                       // work quite as expected on this device/adapter for any pass-through non-data
                                       // command. when above hacks are set or everything is working properly
+            bool nonDataTestFromAdapterID; // nonDataTest was stamped from adapter-profile prior knowledge at open
+                                           // (the fixed-sense-format skip path) instead of the six-NOP discovery
+                                           // probe; per-command SAT messages may stay quiet for it
+                                      // and only allow zero values through when things work as we expect them to when
+                                      // above hacks are set. 1 is to allow overriding and accept that things may not
+                                      // work quite as expected on this device/adapter for any pass-through non-data
+                                      // command. when above hacks are set or everything is working properly
             eSATFixedFormatSenseHack fixedSenseHack; // Various methods to handle fixed format sense data responses from
                                                      // SATLs which may or may not implement the standard correctly.
             eSAT_Fixed_Sense_Format fixedSenseFormat; // Prior knowledge of the RTFR location in fixed-format sense data.
                                                       // TEST_WITH_NOP (default) runs the NOP test on open; the fixed values
                                                       // skip it for known devices/hardware.
+            bool identAndSmartOnly;     // IDSM: IDENTIFY + SMART-class commands are all this adapter reliably
+                                        // forwards; keep every other passthrough in its probe-driven state
+            uint8_t satPortProtocolOverride; // per-port SAT 12B CDB[1] PROTOCOL override (e.g. ASM1352R: port0 0Dh /
+                                             // port1 0Eh). 0 = no override; PT stays SAT.
         } ataPTHacks;
         // NVMe Hacks
         struct
@@ -2038,6 +2106,12 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     }
 
     M_PARAM_RO(1)
+    static M_INLINE bool has_Unverified_Provenance(const tDevice* M_NONNULL device)
+    {
+        return (device->drive_info.passThroughHacks.hackSources & PH_DATA_UNVERIFIED) != PH_NONE;
+    }
+
+    M_PARAM_RO(1)
     static M_INLINE bool has_Any_Provenance(const tDevice* M_NONNULL device)
     {
         return device->drive_info.passThroughHacks.hackSources != PH_NONE;
@@ -2541,6 +2615,48 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //! \param device pointer to the tDevice to read
     //! \returns the current value of the field
     TDEV_ACCESSOR_ENUM_GETTER(get_Hack_SCSI_Sync_Cache_Mode, eSCSI_Sync_Cache_Mode);
+
+    //! \fn void set_Hack_SCSI_Read_Capacity_Mode(tDevice* M_NONNULL device, const eSCSI_Read_Capacity_Mode val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.readCapacityMode field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_ENUM_SETTER(set_Hack_SCSI_Read_Capacity_Mode, eSCSI_Read_Capacity_Mode);
+
+    //! \fn eSCSI_Read_Capacity_Mode get_Hack_SCSI_Read_Capacity_Mode(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.readCapacityMode field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_ENUM_GETTER(get_Hack_SCSI_Read_Capacity_Mode, eSCSI_Read_Capacity_Mode);
+
+    //! \fn void set_Hack_SCSI_FUA_Mode(tDevice* M_NONNULL device, const eSCSI_FUA_Mode val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.fuaMode field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \param device pointer to the tDevice to update
+    //! \param val value to store
+    //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
+    TDEV_ACCESSOR_ENUM_SETTER(set_Hack_SCSI_FUA_Mode, eSCSI_FUA_Mode);
+
+    //! \fn eSCSI_FUA_Mode get_Hack_SCSI_FUA_Mode(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.fuaMode field of the tDevice passThroughHacks structure.
+    //! \param device pointer to the tDevice to read
+    //! \returns the current value of the field
+    TDEV_ACCESSOR_ENUM_GETTER(get_Hack_SCSI_FUA_Mode, eSCSI_FUA_Mode);
+
+    //! \fn void set_Hack_SCSI_Read_Capacity_Off_By_One(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.readCapacityOffByOne field; assigns both provenance flags from source.
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_Read_Capacity_Off_By_One);
+
+    //! \fn bool get_Hack_SCSI_Read_Capacity_Off_By_One(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.readCapacityOffByOne field.
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_Read_Capacity_Off_By_One);
+
+    //! \fn void set_Hack_SCSI_RBC_Capacity_Pad_12(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.scsiHacks.rbcCapacityPad12 field; assigns both provenance flags from source.
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_SCSI_RBC_Capacity_Pad_12);
+
+    //! \fn bool get_Hack_SCSI_RBC_Capacity_Pad_12(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.scsiHacks.rbcCapacityPad12 field.
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_SCSI_RBC_Capacity_Pad_12);
 
     //! \fn void set_Hack_SCSI_Report_Luns_Mode(tDevice* M_NONNULL device, const eSCSI_Report_Luns_Mode val, const ePassthroughHackSource source)
     //! \brief Sets the passThroughHacks.scsiHacks.reportLunsMode field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
@@ -3078,18 +3194,18 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //! \returns the current value of the field
     TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_SMART_Enabled);
 
-    //! \fn void set_Hack_ATA_Retry_With_JMicron_PT(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
-    //! \brief Sets the passThroughHacks.ataPTHacks.retryWithJMicronPT field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
+    //! \fn void set_Hack_ATA_Retry_Passthrough_Type(tDevice* M_NONNULL device, const eRetryPTType val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.retryPassthroughType field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
     //! \param device pointer to the tDevice to update
     //! \param val value to store
     //! \param source provenance of how this hack value was determined (ePassthroughHackSource)
-    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Retry_With_JMicron_PT);
+    TDEV_ACCESSOR_ENUM_SETTER(set_Hack_ATA_Retry_Passthrough_Type, eRetryPTType);
 
-    //! \fn bool get_Hack_ATA_Retry_With_JMicron_PT(const tDevice* M_NONNULL device)
-    //! \brief Gets the passThroughHacks.ataPTHacks.retryWithJMicronPT field of the tDevice passThroughHacks structure.
+    //! \fn eRetryPTType get_Hack_ATA_Retry_Passthrough_Type(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.retryPassthroughType field of the tDevice passThroughHacks structure.
     //! \param device pointer to the tDevice to read
     //! \returns the current value of the field
-    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Retry_With_JMicron_PT);
+    TDEV_ACCESSOR_ENUM_GETTER(get_Hack_ATA_Retry_Passthrough_Type, eRetryPTType);
 
     //! \fn void set_Hack_ATA_JM_PT_Dev_Set(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
     //! \brief Sets the passThroughHacks.ataPTHacks.jmPTDevSet field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
@@ -3155,6 +3271,22 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     //! \param device pointer to the tDevice to read
     //! \returns the current value of the field
     TDEV_ACCESSOR_ENUM_GETTER(get_Hack_ATA_Fixed_Sense_Format, eSAT_Fixed_Sense_Format);
+
+    //! \fn void set_Hack_ATA_Ident_And_Smart_Only(tDevice* M_NONNULL device, const bool val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.identAndSmartOnly field; assigns both provenance flags from source.
+    TDEV_ACCESSOR_BOOL_SETTER(set_Hack_ATA_Ident_And_Smart_Only);
+
+    //! \fn bool get_Hack_ATA_Ident_And_Smart_Only(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.identAndSmartOnly field.
+    TDEV_ACCESSOR_BOOL_GETTER(get_Hack_ATA_Ident_And_Smart_Only);
+
+    //! \fn void set_Hack_ATA_SAT_Port_Protocol_Override(tDevice* M_NONNULL device, const uint8_t val, const ePassthroughHackSource source)
+    //! \brief Sets the passThroughHacks.ataPTHacks.satPortProtocolOverride field; assigns both provenance flags from source.
+    TDEV_ACCESSOR_U8_SETTER(set_Hack_ATA_SAT_Port_Protocol_Override);
+
+    //! \fn uint8_t get_Hack_ATA_SAT_Port_Protocol_Override(const tDevice* M_NONNULL device)
+    //! \brief Gets the passThroughHacks.ataPTHacks.satPortProtocolOverride field (0 = no override).
+    TDEV_ACCESSOR_U8_GETTER(get_Hack_ATA_SAT_Port_Protocol_Override);
 
     //! \fn void set_Hack_NVMe_Max_Xfer_Length(tDevice* M_NONNULL device, const uint32_t val, const ePassthroughHackSource source)
     //! \brief Sets the passThroughHacks.nvmePTHacks.maxTransferLength field of the tDevice passThroughHacks structure; assigns both provenance flags from source.
@@ -3877,9 +4009,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         USB_Vendor_Adaptec                            = 0x03F3,
         USB_Vendor_Buffalo                            = 0x0411,
         USB_Vendor_TI                                 = 0x0451,
+        USB_Vendor_Logitec_Inc                        = 0x046D,
         USB_Vendor_Seagate                            = 0x0477,
         USB_Vendor_Integrated_Techonology_Express_Inc = 0x048D,
         USB_Vendor_Cypress                            = 0x04B4,
+        USB_Vendor_IO_DATA                            = 0x04BB,
         USB_Vendor_Samsung                            = 0x04E8,
         USB_Vendor_Sunplus                            = 0x04FC,
         USB_Vendor_Alcor_Micro_Corp                   = 0x058F,
@@ -3887,6 +4021,7 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
         USB_Vendor_GenesysLogic                       = 0x05E3,
         USB_Vendor_Prolific                           = 0x067B,
         USB_Vendor_SanDisk_Corp                       = 0x0781,
+        USB_Vendor_Logitec_Corp                       = 0x0789,
         USB_Vendor_Silicon_Motion                     = 0x090C,
         USB_Vendor_Oxford                             = 0x0928,
         USB_Vendor_Seagate_RSS                        = 0x0BC2,
@@ -5071,11 +5206,11 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
 
     M_PARAM_RO(1) M_NODISCARD OPENSEA_TRANSPORT_API bool is_Removable_Media(const tDevice* M_NONNULL device);
 
+    // Compatibility forwarder for the legacy per-vendor passthrough hacks; the profile
+    // table (adapter_info.h) replaced it. The SAT-to-legacy runtime retry is driven by the
+    // profile's retryPassthroughType value (eRetryPTType), not by a call out of this table.
+    M_DEPRECATED_REASON("Switch to adapter_Apply_Profile() from adapter_info.h; legacy per-vendor passthrough hacks are now data from the adapter profile table")
     M_PARAM_RW(1) OPENSEA_TRANSPORT_API bool setup_Passthrough_Hacks_By_ID(tDevice* M_NONNULL device);
-
-    // This is exposed for retrying from SAT to Jmicron passthrough - TJE
-    M_PARAM_RW(1)
-    M_NODISCARD bool set_JMicron_Legacy_PT_Hacks(tDevice* M_NONNULL device);
 
     // helper functions to make tDevice structure opaque
     //-----------------------------------------------------------------------------

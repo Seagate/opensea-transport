@@ -453,6 +453,7 @@ if not (target_machine.system() == 'sunos') and c.get_id().contains('gcc')
 endif
 
 src_files = [
+    'src/adapter_info.c',
     'src/asmedia_nvme_helper.c',
     'src/ata_cmds.c',
     'src/ata_helper.c',
@@ -460,8 +461,10 @@ src_files = [
     'src/cmds.c',
     'src/common_public.c',
     'src/cypress_legacy_helper.c',
+    'src/iodata_legacy_helper.c',
     'src/jmicron_legacy_helper.c',
     'src/jmicron_nvme_helper.c',
+    'src/logitec_legacy_helper.c',
     'src/realtek_nvme_helper.c',
     'src/nec_legacy_helper.c',
     'src/nvme_cmds.c',
