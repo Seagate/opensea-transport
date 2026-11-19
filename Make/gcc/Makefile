@@ -127,6 +127,10 @@ LIB_SRC_FILES = \
 	$(SRC_DIR)sunplus_legacy_helper.c\
 	$(SRC_DIR)ti_legacy_helper.c\
 	$(SRC_DIR)nec_legacy_helper.c\
+	$(SRC_DIR)adapter_info.c\
+	$(SRC_DIR)tdevice_accessors.c\
+	$(SRC_DIR)iodata_legacy_helper.c\
+	$(SRC_DIR)logitec_legacy_helper.c\
 	${SRC_DIR}posix_common_lowlevel.c\
 	${SRC_DIR}nix_mounts.c\
 	$(SRC_DIR)prolific_legacy_helper.c\
