@@ -1155,7 +1155,8 @@ eReturnValues build_SAT_CDB(const tDevice* M_NONNULL         device,
 M_PARAM_RO(1)
 M_PARAM_RW(2)
 eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         device,
-                                           ataPassthroughCommand* M_NONNULL ataCommandOptions)
+                                           ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                           const bool            allowProtocolFallbackRetry)
 {
     eReturnValues ret            = UNKNOWN;
     uint8_t*      satCDB         = M_NULLPTR;
@@ -1656,11 +1657,16 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                     }
                     else if (asc == 0x24 && ascq == 0x00) // invalid field in CDB
                     {
-                        if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA)
+                        // Bounded protocol fallback: the DMA<->UDMA flip is the only retry in this
+                        // function and the retry call below passes allowProtocolFallbackRetry=false,
+                        // so each top-level invocation makes at most ONE alternate-protocol attempt;
+                        // a repeat rejection is returned as an error instead of recursing.
+                        if (allowProtocolFallbackRetry && ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA)
                         {
                             dmaRetry = true;
                         }
-                        else if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA)
+                        else if (allowProtocolFallbackRetry &&
+                                 ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA)
                         {
                             // reverse direction: some translators dislike the generic DMA protocol (the library
                             // default for SAT devices) - retry the other way with the UDMA protocol.
@@ -1898,9 +1904,10 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
     {
         // if the sense data says "NOT_SUPPORTED", it's highly likely that the SATL didn't like something in the
         // command. Local testing shows that sometimes a SATL likes the mode set to DMA instead of UDMA, so retry
-        // the command with the protocol set to DMA.
+        // the command with the protocol set to DMA. The false argument bounds the fallback to this one
+        // alternate-protocol attempt - a rejection here is returned, not flipped back to UDMA.
         ataCommandOptions->commadProtocol = ATA_PROTOCOL_DMA;
-        ret                               = send_SAT_Passthrough_Command(device, ataCommandOptions);
+        ret                               = send_SAT_Passthrough_Command(device, ataCommandOptions, false);
         if (ret == SUCCESS)
         {
             // if changing back to DMA worked, then we're changing some flags in the ataOptions struct to make sure
@@ -1912,9 +1919,10 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
     {
         // reverse direction of the retry above: the SATL rejected the generic DMA protocol field, so it likely
         // prefers the explicit UDMA protocol. If the retry with UDMA works, persist the mode so future commands
-        // use it without another round of trial and error.
+        // use it without another round of trial and error. The false argument bounds the fallback to this one
+        // alternate-protocol attempt - a rejection here is returned, not flipped back to DMA.
         ataCommandOptions->commadProtocol = ATA_PROTOCOL_UDMA;
-        ret                               = send_SAT_Passthrough_Command(device, ataCommandOptions);
+        ret                               = send_SAT_Passthrough_Command(device, ataCommandOptions, false);
         if (ret == SUCCESS)
         {
             M_CONST_CAST(tDevice*, device)->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
