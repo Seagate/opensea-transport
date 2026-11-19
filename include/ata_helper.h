@@ -1004,7 +1004,10 @@ extern "C"
     {
         eAtaCmdType            commandType;
         eDataTransferDirection commandDirection;
-        eAtaProtocol           commadProtocol;
+        union {
+            eAtaProtocol           commadProtocol; // Typo...kept for compatibility currently
+            eAtaProtocol           commandProtocol;
+        };
         ataTFRBlock            tfr;
         ataReturnTFRs          rtfr; // Should we make it ataTFRBlock for easy copy?
         uint8_t* M_NULLABLE    ptrData;
@@ -1035,8 +1038,12 @@ extern "C"
 
 // When a transfer length is set to this in ATA, the sector count gets set to zero.
 // It is recommended to avoid setting zero in sector count since it can confuse some translators
-#define ATA_MAX_READ_WRITE_EXT_XFER_LEN UINT32_C(65536)
-#define ATA_MAX_READ_WRITE_XFER_LEN     UINT32_C(256)
+enum {
+    /*!< Maximum transfer length for extended (48bit) read/write commands in ATA as a 1's indexed value */
+    ATA_MAX_READ_WRITE_EXT_XFER_LEN = UINT32_C(65536),
+    /*!< Maximum transfer length for standard (28bit) read/write commands in ATA as a 1's indexed value */
+    ATA_MAX_READ_WRITE_XFER_LEN     = UINT32_C(256)
+};
 
     // This helps set the sector count register for ATA read/write commands
     static M_INLINE uint16_t get_Sector_Count_From_Buffer_Size_For_RW(uint32_t bufferSize,

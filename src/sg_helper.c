@@ -39,6 +39,7 @@
 #include "type_conversion.h"
 #include "warning_ctl.h"
 
+#include "adapter_info.h"
 #include "ata_helper_func.h"
 #include "cmds.h"
 #include "nix_mounts.h"
@@ -2719,7 +2720,7 @@ static eReturnValues linux_Get_SCSI_Device(tDevice* M_NONNULL device, const char
     print_str("Setting interface, drive type, secondary handles\n");
 #endif
     set_Device_Fields_From_Handle(deviceHandle, device);
-    setup_Passthrough_Hacks_By_ID(device);
+    adapter_Apply_Profile(device);
 
 #if defined(_DEBUG)
     printf("name = %s\t friendly name = %s\n2ndName = %s\t2ndFName = %s\n3rdName = %s\t3rdFName = %s\n",
@@ -2949,7 +2950,7 @@ static eReturnValues set_Drive_Details_With_Handle(tDevice* M_NONNULL device, co
             set_Device_MediaType(device, MEDIA_HDD);
         }
         set_Device_Fields_From_Handle(deviceHandle, device);
-        setup_Passthrough_Hacks_By_ID(device);
+        adapter_Apply_Profile(device);
         set_Device_Partition_Info(&device->os_info.fileSystemInfo, device->os_info.secondHandleValid
                                                                        ? device->os_info.secondName
                                                                        : get_Device_Handle_Name(device));

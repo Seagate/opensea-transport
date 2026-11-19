@@ -23,6 +23,7 @@
 #include "string_utils.h"
 #include "type_conversion.h"
 
+#include "adapter_info.h"
 #include "ata_helper_func.h"
 #include "cmds.h"
 #include "nix_mounts.h"
@@ -173,7 +174,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
             get_Device_InterfaceType(device) == IEEE_1394_INTERFACE)
         {
             // TODO: Actually get the VID and PID set before calling this.
-            setup_Passthrough_Hacks_By_ID(device);
+            adapter_Apply_Profile(device);
         }
         // fill in the device info
         ret = fill_Drive_Info_Data(device);

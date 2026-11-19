@@ -277,14 +277,22 @@ extern "C"
 
     //-----------------------------------------------------------------------------
     //
-    //  send_SAT_Passthrough_Command(const tDevice *device, ataPassthroughCommand  *ataCommandOptions)
+    //  send_SAT_Passthrough_Command(const tDevice *device, ataPassthroughCommand *ataCommandOptions,
+    //                               bool allowProtocolFallbackRetry)
     //
     //! \brief   Description:  Function to send a SAT Pass-through command. This will automatically call the function to
-    //! build the command, then send it to the drive.
+    //! build the command, then send it to the drive. On a 24/00 invalid-field-in-CDB sense with a
+    //! DMA/UDMA protocol field, the command is retried once with the alternate protocol - the call
+    //! that performs that retry always passes false for allowProtocolFallbackRetry, bounding the
+    //! fallback to one alternate-protocol attempt per top-level invocation so a hostile SATL cannot
+    //! loop between the two protocols.
     //
     //  Entry:
     //!   \param[in] device = pointer to the device structure for the device to issue the command to.
     //!   \param[in] ataCommandOptions = ATA command options
+    //!   \param[in] allowProtocolFallbackRetry = when false, an invalid-field-in-CDB sense on a
+    //!               DMA/UDMA protocol must not trigger the one-shot alternate-protocol retry (used by
+    //!               the retry call itself).
     //!
     //  Exit:
     //!   \return SUCCESS = pass, !SUCCESS = something when wrong
@@ -293,7 +301,8 @@ extern "C"
     M_PARAM_RO(1)
     M_PARAM_RW(2)
     eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         device,
-                                               ataPassthroughCommand* M_NONNULL ataCommandOptions);
+                                               ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                               const bool            allowProtocolFallbackRetry);
 
     //-----------------------------------------------------------------------------
     //

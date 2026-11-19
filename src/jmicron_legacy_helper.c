@@ -136,11 +136,11 @@ eReturnValues set_JM_Dev(tDevice* M_NONNULL device)
         switch (M_STATIC_CAST(eJMicronConnectedPorts, jmport))
         {
         case JM_PORT_DEV0:
-            device->drive_info.passThroughHacks.ataPTHacks.jmPTDevSet = true;
+            set_Hack_ATA_JM_PT_Dev_Set(device, true, PH_RUNTIME_STATE);
             break;
         case JM_PORT_DEV1:
-            device->drive_info.passThroughHacks.ataPTHacks.jmPTDevSet = true;
-            device->drive_info.ata_Options.isDevice1                  = true;
+            set_Hack_ATA_JM_PT_Dev_Set(device, true, PH_RUNTIME_STATE);
+            device->drive_info.ata_Options.isDevice1 = true;
             break;
         case JM_PORT_BOTH:
             ret = FAILURE; // don't know how to set the correct port for the command to route for this handle.
