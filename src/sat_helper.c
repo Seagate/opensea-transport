@@ -1666,6 +1666,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                             dmaRetry = true;
                         }
                         else if (allowProtocolFallbackRetry &&
+                                 (device->dFlags & FORCE_ATA_DMA_SAT_MODE) == 0 &&
                                  ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA)
                         {
                             // reverse direction: some translators dislike the generic DMA protocol (the library
