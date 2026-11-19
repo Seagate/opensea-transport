@@ -2230,12 +2230,15 @@ static void adapter_Apply_Entry_Overrides(tDevice* M_NONNULL device, const tAdap
 //! profiles carry exactly what the legacy per-PID data said. noVPDPages is
 //! never defaulted — some USB bridges DO expose VPD pages. If a future
 //! exception to these defaults is found, add a new opposite (inhibit) hack
-//! field rather than re-adding per-PID rows.
+//! field rather than re-adding per-PID rows. Stamps PH_BY_ADAPTER_DEFAULT, a non-identity source,
+//! so the identity-class provenance gate (has_Reported_ID_Provenance) stays false after a miss and
+//! inquiry-based identification (the Realtek 9210 and the legacy Cypress/NEC fallbacks) still runs
+//! for unlisted adapters.
 //! \param device
 static void adapter_Apply_USB_Defaults(tDevice* M_NONNULL device)
 {
-    set_Hack_SCSI_No_SAT_VPD_Page(device, true, PH_BY_ADAPTER_ID);
-    set_Hack_Generic_Test_Unit_Ready_After_Failure(device, true, PH_BY_ADAPTER_ID);
+    set_Hack_SCSI_No_SAT_VPD_Page(device, true, PH_BY_ADAPTER_DEFAULT);
+    set_Hack_Generic_Test_Unit_Ready_After_Failure(device, true, PH_BY_ADAPTER_DEFAULT);
 }
 
 static void adapter_Apply_Entry(tDevice* M_NONNULL device, const tAdapterEntry* M_NONNULL entry)

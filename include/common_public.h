@@ -1203,7 +1203,12 @@ extern "C"
         // values are inferred (doc/kernel/tools) rather than field-tested. Deliberately excluded from both
         // provenance masks above so transfer-size/probe-suppression guards are not affected. Cleared for a
         // field at retest when a probe re-stamps it with PH_BY_PROBE.
-        PH_DATA_UNVERIFIED    = 1u << 6
+        PH_DATA_UNVERIFIED    = 1u << 6,
+        // Not an identity source. Used only by the USB lookup-miss safety net (adapter_Apply_USB_Defaults):
+        // the interface class is known (USB) but the adapter's identity is not, so these defaults must not
+        // trip the identity-class provenance gate (inquiry-based identification, probe suppression,
+        // transfer-size start). Deliberately excluded from both provenance masks below.
+        PH_BY_ADAPTER_DEFAULT = 1u << 7
     } ePassthroughHackSource;
 
     typedef struct s_passthroughHacks
@@ -2092,6 +2097,8 @@ typedef errno_t lasterror_t; // errno in POSIX OSs
     // consumers can use these masks without any cast at the usage sites.
     #define PH_REPORTED_ID_MASK (PH_BY_ADAPTER_ID | PH_BY_DEVICE_REPORTED | PH_BY_HEURISTIC)
     #define PH_OS_DISCOVERY_MASK (PH_BY_OS_DISCOVERY | PH_BY_PROBE | PH_RUNTIME_STATE)
+    // PH_DATA_UNVERIFIED (data-quality marker) and PH_BY_ADAPTER_DEFAULT (USB lookup-miss safety net -
+    // identity unknown) sit in neither mask on purpose: a safety-net stamp is not identity knowledge.
 
     M_PARAM_RO(1)
     static M_INLINE bool has_Reported_ID_Provenance(const tDevice* M_NONNULL device)
