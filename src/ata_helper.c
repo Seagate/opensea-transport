@@ -1942,10 +1942,15 @@ static eReturnValues initial_Identify_Device(tDevice* M_NONNULL device)
     DECLARE_ZERO_INIT_ARRAY(uint8_t, iddata, LEGACY_DRIVE_SEC_SIZE);
     if ((get_Device_DriveType(device) == ATAPI_DRIVE || get_Device_DriveType(device) == LEGACY_TAPE_DRIVE ||
          get_Device_MediaType(device) == MEDIA_OPTICAL || get_Device_MediaType(device) == MEDIA_TAPE) &&
-        !has_Any_Provenance(device))
+        !has_Reported_ID_Provenance(device) &&
+        (device->drive_info.passThroughHacks.hackSources & PH_BY_OS_DISCOVERY) == PH_NONE)
     {
         // make sure we disable sending the A1h SAT CDB or we could accidentally send a "blank" command due to how most
         // of these devices receive commands under different OSs or through translators.
+        // This exemption is granted only for a recognized identity (reported ID / adapter profile) or OS-discovery
+        // knowledge. An unlisted USB adapter's fallback default (PH_BY_ADAPTER_DEFAULT) or an incidental probe/runtime
+        // stamp must NOT count here: such devices still reach this point unidentified, and the A1h command (which most
+        // optical/tape transports mis-read as a "blank"/erase) must stay disabled for them.
         set_Hack_ATA_A1_Never_Supported(device, true, PH_BY_PROBE);
     }
     do
