@@ -1314,6 +1314,339 @@ OPENSEA_TRANSPORT_API void get_Sense_Key_Specific_Information(const uint8_t* M_N
     }
 }
 
+// legacy non-extended sense data format
+typedef struct s_legacysenseDataFields
+{
+    bool validStructure; // Set to true if the rest of this structure was able to be parsed/filled in.
+    bool addressValid;//!< Indicates if the logical block address is valid
+    uint8_t errorClass;//!< Vendor unique error class
+    uint8_t errorCode;//!< Vendor unique error code
+    uint8_t vendorSpecific;//!< Vendor specific information
+    uint32_t logicalBlockAddress;//!< Logical block address associated with the sense data (only if addressValid is true)
+} legacySenseDataFields;
+
+static M_INLINE void get_Legacy_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSenseData,
+                                  uint32_t                 senseDataLength,
+                                  legacySenseDataFields*  legacySenseFields)
+{
+    if (ptrSenseData != M_NULLPTR && senseDataLength > 0 && legacySenseFields != M_NULLPTR)
+    {
+        M_INITIALIZE_STRUCTURE(legacySenseFields, sizeof(legacySenseDataFields));
+        legacySenseFields->validStructure = true;
+        legacySenseFields->addressValid   = ptrSenseData[0] & BIT7;
+        legacySenseFields->errorClass     = get_bit_range_uint8(ptrSenseData[0], 6, 4);
+        legacySenseFields->errorCode      = get_bit_range_uint8(ptrSenseData[0], 3, 0);
+        legacySenseFields->vendorSpecific = get_bit_range_uint8(ptrSenseData[1], 7, 5);
+        legacySenseFields->logicalBlockAddress =
+            bytes_To_Uint32(ptrSenseData[1] & 0x1F, ptrSenseData[2], ptrSenseData[3], ptrSenseData[4]);
+    }
+}
+
+static M_INLINE void translate_Legacy_Sense_To_Fixed_Format(const uint8_t* M_NONNULL ptrSenseData,
+                                                 uint32_t                 senseDataLength,
+                                                 ptrSenseDataFields       senseFields)
+{
+    if (ptrSenseData != M_NULLPTR && senseDataLength > 0 && senseFields != M_NULLPTR)
+    {
+        legacySenseDataFields legacySense;
+        M_INITIALIZE_STRUCTURE(&legacySense, sizeof(legacySenseDataFields));
+        get_Legacy_Sense_Data_Fields(ptrSenseData, senseDataLength, &legacySense);
+        if (legacySense.validStructure)
+        {
+            senseFields->validStructure = true;
+            senseFields->fixedFormat              = true;
+            senseFields->deferredError                 = false;
+            senseFields->scsiStatusCodes.format = nibbles_To_Byte(legacySense.errorClass, legacySense.errorCode);
+            senseFields->scsiStatusCodes.senseKey = SENSE_KEY_ABORTED_COMMAND;
+            senseFields->valid = legacySense.addressValid;
+            senseFields->fixedInformation = legacySense.logicalBlockAddress;
+            senseFields->fixedCommandSpecificInformation = bytes_To_Uint32(0, legacySense.errorClass, legacySense.errorCode, legacySense.vendorSpecific);
+        }
+    }
+}
+
+enum {
+    SCSI_SENSE_KEY_SPECIFIC_MSB_OFFSET = 0,
+    SCSI_SENSE_KEY_SPECIFIC_MID_OFFSET = 1,
+    SCSI_SENSE_KEY_SPECIFIC_LSB_OFFSET = 2,
+    SCSI_SENSE_KEY_SPECIFIC_DATA_LEN = 3
+};
+
+static void fill_Sense_Key_Specific(const uint8_t sksBytes[M_NONNULL_ARRAY SCSI_SENSE_KEY_SPECIFIC_DATA_LEN], eSenseKeyValues senseKey, senseKeySpecific* senseKeySpecific)
+{
+    DISABLE_NONNULL_COMPARE
+    if (sksBytes != M_NULLPTR && senseKeySpecific != M_NULLPTR)
+    {
+        RESTORE_NONNULL_COMPARE
+        senseKeySpecific->senseKeySpecificValid = sksBytes[SCSI_SENSE_KEY_SPECIFIC_MSB_OFFSET] & BIT7;
+        if (senseKeySpecific->senseKeySpecificValid)
+        {
+            switch (senseKey)
+            {
+            case SENSE_KEY_NO_ERROR:
+            case SENSE_KEY_NOT_READY:
+                senseKeySpecific->type = SENSE_KEY_SPECIFIC_PROGRESS_INDICATION;
+                senseKeySpecific->progress.progressIndication =
+                    bytes_To_Uint16(sksBytes[SCSI_SENSE_KEY_SPECIFIC_MID_OFFSET], sksBytes[SCSI_SENSE_KEY_SPECIFIC_LSB_OFFSET]);
+                break;
+            case SENSE_KEY_ILLEGAL_REQUEST:
+                senseKeySpecific->type            = SENSE_KEY_SPECIFIC_FIELD_POINTER;
+                senseKeySpecific->field.cdbOrData = sksBytes[SCSI_SENSE_KEY_SPECIFIC_MSB_OFFSET] & BIT6;
+                senseKeySpecific->field.bitPointerValid = sksBytes[SCSI_SENSE_KEY_SPECIFIC_MSB_OFFSET] & BIT3;
+                senseKeySpecific->field.bitPointer =
+                    get_bit_range_uint8(sksBytes[SCSI_SENSE_KEY_SPECIFIC_MSB_OFFSET], 2, 0);
+                senseKeySpecific->field.fieldPointer =
+                    bytes_To_Uint16(sksBytes[SCSI_SENSE_KEY_SPECIFIC_MID_OFFSET], sksBytes[SCSI_SENSE_KEY_SPECIFIC_LSB_OFFSET]);
+                break;
+            case SENSE_KEY_HARDWARE_ERROR:
+            case SENSE_KEY_RECOVERED_ERROR:
+            case SENSE_KEY_MEDIUM_ERROR:
+                senseKeySpecific->type = SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT;
+                senseKeySpecific->retryCount.actualRetryCount =
+                    bytes_To_Uint16(sksBytes[SCSI_SENSE_KEY_SPECIFIC_MID_OFFSET], sksBytes[SCSI_SENSE_KEY_SPECIFIC_LSB_OFFSET]);
+                break;
+            case SENSE_KEY_COPY_ABORTED:
+                senseKeySpecific->type = SENSE_KEY_SPECIFIC_SEGMENT_POINTER;
+                senseKeySpecific->segment.segmentDescriptor =
+                    sksBytes[SCSI_SENSE_KEY_SPECIFIC_MSB_OFFSET] & BIT5;
+                senseKeySpecific->segment.bitPointerValid = sksBytes[SCSI_SENSE_KEY_SPECIFIC_MSB_OFFSET] & BIT3;
+                senseKeySpecific->segment.bitPointer =
+                    get_bit_range_uint8(sksBytes[SCSI_SENSE_KEY_SPECIFIC_MSB_OFFSET], 2, 0);
+                senseKeySpecific->segment.fieldPointer =
+                    bytes_To_Uint16(sksBytes[SCSI_SENSE_KEY_SPECIFIC_MID_OFFSET], sksBytes[SCSI_SENSE_KEY_SPECIFIC_LSB_OFFSET]);
+                break;
+            case SENSE_KEY_UNIT_ATTENTION:
+                senseKeySpecific->type =
+                    SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW;
+                senseKeySpecific->unitAttention.overflow = sksBytes[SCSI_SENSE_KEY_SPECIFIC_MSB_OFFSET] & BIT0;
+                break;
+            default:
+                senseKeySpecific->type = SENSE_KEY_SPECIFIC_UNKNOWN;
+                if (0 != safe_memcpy(&senseKeySpecific->unknownDataType, 3,
+                                        &sksBytes[SCSI_SENSE_KEY_SPECIFIC_MSB_OFFSET], 3))
+                    M_UNLIKELY
+                    {
+                        perror("Error copying unknown sense key specific data");
+                    }
+                break;
+            }
+        }
+    }
+}
+
+M_PARAM_RO_SIZE(1, 2)
+M_PARAM_WO(3)
+static void fill_Fixed_Format_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSenseData,
+                                                 uint32_t                 senseDataLength,
+                                                 ptrSenseDataFields       senseFields)
+{
+    uint8_t  format = ptrSenseData[0] & 0x7F;
+    uint16_t returnedLength =
+            ptrSenseData[7] + 8; // offset 7 has additional length. +8 is number of bytes to get to a total length
+    M_USE_UNUSED(senseDataLength);
+    if (format == SCSI_SENSE_DEFER_ERR_FIXED)
+    {
+        senseFields->deferredError = true;
+    }
+    else
+    {
+        senseFields->deferredError = false;
+    }
+    senseFields->fixedFormat              = true;
+    senseFields->validStructure           = true;
+    senseFields->valid                    = ptrSenseData[0] & BIT7;
+    senseFields->filemark                 = ptrSenseData[2] & BIT7;
+    senseFields->endOfMedia               = ptrSenseData[2] & BIT6;
+    senseFields->illegalLengthIndication  = ptrSenseData[2] & BIT5;
+    senseFields->senseDataOverflow        = ptrSenseData[2] & BIT4;
+    senseFields->scsiStatusCodes.format   = format;
+    senseFields->scsiStatusCodes.senseKey = M_Nibble0(ptrSenseData[2]);
+
+    // IMPORTANT: Always extract Information field bytes [3-6] regardless of valid bit
+    // Some SATLs (e.g., PMCS HPE controllers) populate this field with ATA register data
+    // (COUNT, STATUS, ERROR, DEVICE) but don't set the valid bit (bit 7 of byte 0).
+    // sat_helper.c will use fixedSenseHack flags to decide whether to trust this field.
+    senseFields->fixedInformation =
+        bytes_To_Uint32(ptrSenseData[3], ptrSenseData[4], ptrSenseData[5], ptrSenseData[6]);
+
+    if (returnedLength > 8)
+    {
+        if (returnedLength >= 11)
+        {
+            senseFields->fixedCommandSpecificInformation =
+                bytes_To_Uint32(ptrSenseData[8], ptrSenseData[9], ptrSenseData[10], ptrSenseData[11]);
+        }
+        senseFields->scsiStatusCodes.asc  = ptrSenseData[12];
+        senseFields->scsiStatusCodes.ascq = ptrSenseData[13];
+        senseFields->scsiStatusCodes.fru  = ptrSenseData[14];
+        if (returnedLength >= 18)
+        {
+            fill_Sense_Key_Specific(&ptrSenseData[15], senseFields->scsiStatusCodes.senseKey, &senseFields->senseKeySpecificInformation);
+        }
+        if (returnedLength > 18)
+        {
+            senseFields->additionalDataAvailable = true;
+            senseFields->additionalDataOffset    = UINT8_C(18);
+        }
+    }
+}
+
+M_PARAM_RO_SIZE(1, 2)
+M_PARAM_WO(3)
+static void fill_Descriptor_Format_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSenseData,
+                                                 uint32_t                 senseDataLength,
+                                                 ptrSenseDataFields       senseFields)
+{
+    uint8_t  format = ptrSenseData[0] & 0x7F;
+    uint16_t returnedLength =
+            ptrSenseData[7] + 8; // offset 7 has additional length. +8 is number of bytes to get to a total length
+    uint8_t descriptorLength         = UINT8_C(0); // for descriptor format sense data
+    uint8_t numOfProgressIndications = UINT8_C(0);
+    uint8_t numOfForwardedSenseData  = UINT8_C(0);
+    if (format == SCSI_SENSE_DEFER_ERR_DESC)
+    {
+        senseFields->deferredError = true;
+    }
+    else
+    {
+        senseFields->deferredError = false;
+    }
+    senseFields->fixedFormat              = false;
+    senseFields->validStructure           = true;
+    senseFields->scsiStatusCodes.format   = format;
+    senseFields->scsiStatusCodes.senseKey = M_Nibble0(ptrSenseData[1]);
+    senseFields->scsiStatusCodes.asc      = ptrSenseData[2];
+    senseFields->scsiStatusCodes.ascq     = ptrSenseData[3];
+    senseFields->senseDataOverflow        = ptrSenseData[4] & BIT7;
+    // now we need to loop through the returned descriptors
+    for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX;
+            offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength;
+            offset += descriptorLength + 2)
+    {
+        uint8_t descriptorType = ptrSenseData[offset];
+        descriptorLength       = ptrSenseData[offset + 1];
+        switch (descriptorType)
+        {
+        case SENSE_DESCRIPTOR_INFORMATION:
+            senseFields->valid                 = ptrSenseData[offset + 2] & BIT7;
+            senseFields->descriptorInformation = M_BytesTo8ByteValue(
+                ptrSenseData[offset + 4], ptrSenseData[offset + 5], ptrSenseData[offset + 6],
+                ptrSenseData[offset + 7], ptrSenseData[offset + 8], ptrSenseData[offset + 9],
+                ptrSenseData[offset + 10], ptrSenseData[offset + 11]);
+            break;
+        case SENSE_DESCRIPTOR_COMMAND_SPECIFIC_INFORMATION:
+            senseFields->descriptorCommandSpecificInformation = M_BytesTo8ByteValue(
+                ptrSenseData[offset + 4], ptrSenseData[offset + 5], ptrSenseData[offset + 6],
+                ptrSenseData[offset + 7], ptrSenseData[offset + 8], ptrSenseData[offset + 9],
+                ptrSenseData[offset + 10], ptrSenseData[offset + 11]);
+            break;
+        case SENSE_DESCRIPTOR_SENSE_KEY_SPECIFIC:
+            fill_Sense_Key_Specific(&ptrSenseData[offset + 4], senseFields->scsiStatusCodes.senseKey, &senseFields->senseKeySpecificInformation);
+            break;
+        case SENSE_DESCRIPTOR_FIELD_REPLACEABLE_UNIT:
+            senseFields->scsiStatusCodes.fru = ptrSenseData[offset + 3];
+            break;
+        case SENSE_DESCRIPTOR_STREAM_COMMANDS:
+            senseFields->filemark                = ptrSenseData[offset + 3] & BIT7;
+            senseFields->endOfMedia              = ptrSenseData[offset + 3] & BIT6;
+            senseFields->illegalLengthIndication = ptrSenseData[offset + 3] & BIT5;
+            break;
+        case SENSE_DESCRIPTOR_BLOCK_COMMANDS:
+            senseFields->illegalLengthIndication = ptrSenseData[offset + 3] & BIT5;
+            break;
+        case SENSE_DESCRIPTOR_OSD_OBJECT_IDENTIFICATION:
+            senseFields->osdObjectIdentificationDescriptorOffset =
+                C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger than
+                                            // 252 in the first place.
+            break;
+        case SENSE_DESCRIPTOR_OSD_RESPONSE_INTEGRITY_CHECK_VALUE:
+            senseFields->osdResponseIntegrityCheckValueDescriptorOffset =
+                C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger than
+                                            // 252 in the first place.
+            break;
+        case SENSE_DESCRIPTOR_OSD_ATTRIBUTE_IDENTIFICATION:
+            senseFields->osdAttributeIdentificationDescriptorOffset =
+                C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger than
+                                            // 252 in the first place.
+            break;
+        case SENSE_DESCRIPTOR_ATA_STATUS_RETURN:
+            senseFields->ataStatusReturnDescriptor.valid          = true;
+            senseFields->ataStatusReturnDescriptor.extend         = ptrSenseData[offset + 2] & BIT0;
+            senseFields->ataStatusReturnDescriptor.error          = ptrSenseData[offset + 3];
+            senseFields->ataStatusReturnDescriptor.sectorCountExt = ptrSenseData[offset + 4];
+            senseFields->ataStatusReturnDescriptor.sectorCount    = ptrSenseData[offset + 5];
+            senseFields->ataStatusReturnDescriptor.lbaLowExt      = ptrSenseData[offset + 6];
+            senseFields->ataStatusReturnDescriptor.lbaLow         = ptrSenseData[offset + 7];
+            senseFields->ataStatusReturnDescriptor.lbaMidExt      = ptrSenseData[offset + 8];
+            senseFields->ataStatusReturnDescriptor.lbaMid         = ptrSenseData[offset + 9];
+            senseFields->ataStatusReturnDescriptor.lbaHiExt       = ptrSenseData[offset + 10];
+            senseFields->ataStatusReturnDescriptor.lbaHi          = ptrSenseData[offset + 11];
+            senseFields->ataStatusReturnDescriptor.device         = ptrSenseData[offset + 12];
+            senseFields->ataStatusReturnDescriptor.status         = ptrSenseData[offset + 13];
+            break;
+        case SENSE_DESCRIPTOR_ANOTHER_PROGRESS_INDICATION:
+            if (numOfProgressIndications < MAX_PROGRESS_INDICATION_DESCRIPTORS)
+            {
+                senseFields->anotherProgressIndicationDescriptorOffset[numOfProgressIndications] =
+                    C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger
+                                                // than 252 in the first place.;
+                ++numOfProgressIndications;
+            }
+            break;
+        case SENSE_DESCRIPTOR_USER_DATA_SEGMENT_REFERRAL:
+            senseFields->userDataSegmentReferralDescriptorOffset =
+                C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger than
+                                            // 252 in the first place.
+            break;
+        case SENSE_DESCRIPTOR_FORWARDED_SENSE_DATA:
+            if (numOfForwardedSenseData < MAX_FORWARDED_SENSE_DATA_DESCRIPTORS)
+            {
+                senseFields->forwardedSenseDataDescriptorOffset[numOfForwardedSenseData] =
+                    C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger
+                                                // than 252 in the first place.;
+                ++numOfForwardedSenseData;
+            }
+            break;
+        case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
+            senseFields->valid                                             = ptrSenseData[offset + 2] & BIT7;
+            senseFields->illegalLengthIndication                           = ptrSenseData[offset + 2] & BIT5;
+            fill_Sense_Key_Specific(&ptrSenseData[offset + 4], senseFields->scsiStatusCodes.senseKey, &senseFields->senseKeySpecificInformation);
+            senseFields->scsiStatusCodes.fru   = ptrSenseData[offset + 7];
+            senseFields->descriptorInformation = M_BytesTo8ByteValue(
+                ptrSenseData[offset + 8], ptrSenseData[offset + 9], ptrSenseData[offset + 10],
+                ptrSenseData[offset + 11], ptrSenseData[offset + 12], ptrSenseData[offset + 13],
+                ptrSenseData[offset + 14], ptrSenseData[offset + 15]);
+            senseFields->descriptorCommandSpecificInformation = M_BytesTo8ByteValue(
+                ptrSenseData[offset + 16], ptrSenseData[offset + 17], ptrSenseData[offset + 18],
+                ptrSenseData[offset + 19], ptrSenseData[offset + 20], ptrSenseData[offset + 21],
+                ptrSenseData[offset + 22], ptrSenseData[offset + 23]);
+            break;
+        case SENSE_DESCRIPTOR_DEVICE_DESIGNATION:
+            senseFields->deviceDesignationDescriptorOffset =
+                C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger than
+                                            // 252 in the first place.
+            break;
+        case SENSE_DESCRIPTOR_MICROCODE_ACTIVATION:
+            senseFields->microCodeActivation.valid = true;
+            senseFields->microCodeActivation.microcodeActivationTimeSeconds =
+                M_BytesTo2ByteValue(ptrSenseData[offset + 6], ptrSenseData[offset + 7]);
+            break;
+        default: // not a known descriptor
+            if (!senseFields->additionalDataAvailable && offset < UINT8_MAX)
+            {
+                senseFields->additionalDataOffset = C_CAST(uint8_t, offset);
+            }
+            senseFields->additionalDataAvailable = true;
+            break;
+        }
+        if (descriptorLength == 0)
+        {
+            break;
+        }
+    }
+}
+
+// Extended format (modern)
 OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSenseData,
                                                  uint32_t                 senseDataLength,
                                                  ptrSenseDataFields       senseFields)
@@ -1322,11 +1655,6 @@ OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSen
     if (ptrSenseData != M_NULLPTR && senseDataLength > 0 && senseFields != M_NULLPTR)
     {
         uint8_t  format = ptrSenseData[0] & 0x7F; // Stripping the last bit so we just get the format
-        uint16_t returnedLength =
-            ptrSenseData[7] + 8; // offset 7 has additional length. +8 is number of bytes to get to a total length
-        uint8_t descriptorLength         = UINT8_C(0); // for descriptor format sense data
-        uint8_t numOfProgressIndications = UINT8_C(0);
-        uint8_t numOfForwardedSenseData  = UINT8_C(0);
         M_INITIALIZE_STRUCTURE(senseFields, sizeof(senseDataFields));
         switch (format)
         {
@@ -1334,355 +1662,20 @@ OPENSEA_TRANSPORT_API void get_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSen
             senseFields->validStructure = true;
             break;
         case SCSI_SENSE_DEFER_ERR_FIXED:
-            senseFields->deferredError = true;
-            M_FALLTHROUGH;
         case SCSI_SENSE_CUR_INFO_FIXED:
-            senseFields->fixedFormat              = true;
-            senseFields->validStructure           = true;
-            senseFields->valid                    = ptrSenseData[0] & BIT7;
-            senseFields->filemark                 = ptrSenseData[2] & BIT7;
-            senseFields->endOfMedia               = ptrSenseData[2] & BIT6;
-            senseFields->illegalLengthIndication  = ptrSenseData[2] & BIT5;
-            senseFields->senseDataOverflow        = ptrSenseData[2] & BIT4;
-            senseFields->scsiStatusCodes.format   = format;
-            senseFields->scsiStatusCodes.senseKey = M_Nibble0(ptrSenseData[2]);
-
-            // IMPORTANT: Always extract Information field bytes [3-6] regardless of valid bit
-            // Some SATLs (e.g., PMCS HPE controllers) populate this field with ATA register data
-            // (COUNT, STATUS, ERROR, DEVICE) but don't set the valid bit (bit 7 of byte 0).
-            // sat_helper.c will use fixedSenseHack flags to decide whether to trust this field.
-            senseFields->fixedInformation =
-                M_BytesTo4ByteValue(ptrSenseData[3], ptrSenseData[4], ptrSenseData[5], ptrSenseData[6]);
-
-            if (returnedLength > 8)
-            {
-                if (returnedLength >= 11)
-                {
-                    senseFields->fixedCommandSpecificInformation =
-                        M_BytesTo4ByteValue(ptrSenseData[8], ptrSenseData[9], ptrSenseData[10], ptrSenseData[11]);
-                }
-                senseFields->scsiStatusCodes.asc  = ptrSenseData[12];
-                senseFields->scsiStatusCodes.ascq = ptrSenseData[13];
-                senseFields->scsiStatusCodes.fru  = ptrSenseData[14];
-                if (returnedLength >= 18)
-                {
-                    // sense key specific information
-                    senseFields->senseKeySpecificInformation.senseKeySpecificValid = ptrSenseData[15] & BIT7;
-                    if (senseFields->senseKeySpecificInformation.senseKeySpecificValid)
-                    {
-                        switch (senseFields->scsiStatusCodes.senseKey)
-                        {
-                        case SENSE_KEY_NO_ERROR:
-                        case SENSE_KEY_NOT_READY:
-                            senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_PROGRESS_INDICATION;
-                            senseFields->senseKeySpecificInformation.progress.progressIndication =
-                                M_BytesTo2ByteValue(ptrSenseData[16], ptrSenseData[17]);
-                            break;
-                        case SENSE_KEY_ILLEGAL_REQUEST:
-                            senseFields->senseKeySpecificInformation.type            = SENSE_KEY_SPECIFIC_FIELD_POINTER;
-                            senseFields->senseKeySpecificInformation.field.cdbOrData = ptrSenseData[15] & BIT6;
-                            senseFields->senseKeySpecificInformation.field.bitPointerValid = ptrSenseData[15] & BIT3;
-                            senseFields->senseKeySpecificInformation.field.bitPointer =
-                                get_bit_range_uint8(ptrSenseData[15], 2, 0);
-                            senseFields->senseKeySpecificInformation.field.fieldPointer =
-                                M_BytesTo2ByteValue(ptrSenseData[16], ptrSenseData[17]);
-                            break;
-                        case SENSE_KEY_HARDWARE_ERROR:
-                        case SENSE_KEY_RECOVERED_ERROR:
-                        case SENSE_KEY_MEDIUM_ERROR:
-                            senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT;
-                            senseFields->senseKeySpecificInformation.retryCount.actualRetryCount =
-                                M_BytesTo2ByteValue(ptrSenseData[16], ptrSenseData[17]);
-                            break;
-                        case SENSE_KEY_COPY_ABORTED:
-                            senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_SEGMENT_POINTER;
-                            senseFields->senseKeySpecificInformation.segment.segmentDescriptor =
-                                ptrSenseData[15] & BIT5;
-                            senseFields->senseKeySpecificInformation.segment.bitPointerValid = ptrSenseData[15] & BIT3;
-                            senseFields->senseKeySpecificInformation.segment.bitPointer =
-                                get_bit_range_uint8(ptrSenseData[15], 2, 0);
-                            senseFields->senseKeySpecificInformation.segment.fieldPointer =
-                                M_BytesTo2ByteValue(ptrSenseData[16], ptrSenseData[17]);
-                            break;
-                        case SENSE_KEY_UNIT_ATTENTION:
-                            senseFields->senseKeySpecificInformation.type =
-                                SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW;
-                            senseFields->senseKeySpecificInformation.unitAttention.overflow = ptrSenseData[15] & BIT0;
-                            break;
-                        default:
-                            senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNKNOWN;
-                            if (0 != safe_memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, 3,
-                                                 &ptrSenseData[15], 3))
-                                M_UNLIKELY
-                                {
-                                    perror("Error copying unknown sense key specific data");
-                                }
-                            break;
-                        }
-                    }
-                }
-                if (returnedLength > 18)
-                {
-                    senseFields->additionalDataAvailable = true;
-                    senseFields->additionalDataOffset    = UINT8_C(18);
-                }
-            }
+            fill_Fixed_Format_Sense_Data_Fields(ptrSenseData, senseDataLength, senseFields);
             break;
         case SCSI_SENSE_DEFER_ERR_DESC:
-            senseFields->deferredError = true;
-            M_FALLTHROUGH;
         case SCSI_SENSE_CUR_INFO_DESC:
-            senseFields->fixedFormat              = false;
-            senseFields->validStructure           = true;
-            senseFields->scsiStatusCodes.format   = format;
-            senseFields->scsiStatusCodes.senseKey = M_Nibble0(ptrSenseData[1]);
-            senseFields->scsiStatusCodes.asc      = ptrSenseData[2];
-            senseFields->scsiStatusCodes.ascq     = ptrSenseData[3];
-            senseFields->senseDataOverflow        = ptrSenseData[4] & BIT7;
-            // now we need to loop through the returned descriptors
-            for (uint32_t offset = SCSI_DESC_FORMAT_DESC_INDEX;
-                 offset < SPC3_SENSE_LEN && offset < returnedLength && offset < senseDataLength;
-                 offset += descriptorLength + 2)
-            {
-                uint8_t descriptorType = ptrSenseData[offset];
-                descriptorLength       = ptrSenseData[offset + 1];
-                switch (descriptorType)
-                {
-                case SENSE_DESCRIPTOR_INFORMATION:
-                    senseFields->valid                 = ptrSenseData[offset + 2] & BIT7;
-                    senseFields->descriptorInformation = M_BytesTo8ByteValue(
-                        ptrSenseData[offset + 4], ptrSenseData[offset + 5], ptrSenseData[offset + 6],
-                        ptrSenseData[offset + 7], ptrSenseData[offset + 8], ptrSenseData[offset + 9],
-                        ptrSenseData[offset + 10], ptrSenseData[offset + 11]);
-                    break;
-                case SENSE_DESCRIPTOR_COMMAND_SPECIFIC_INFORMATION:
-                    senseFields->descriptorCommandSpecificInformation = M_BytesTo8ByteValue(
-                        ptrSenseData[offset + 4], ptrSenseData[offset + 5], ptrSenseData[offset + 6],
-                        ptrSenseData[offset + 7], ptrSenseData[offset + 8], ptrSenseData[offset + 9],
-                        ptrSenseData[offset + 10], ptrSenseData[offset + 11]);
-                    break;
-                case SENSE_DESCRIPTOR_SENSE_KEY_SPECIFIC:
-                    senseFields->senseKeySpecificInformation.senseKeySpecificValid = ptrSenseData[offset + 4] & BIT7;
-                    // Need at least 17 bytes to read this field
-                    switch (senseFields->scsiStatusCodes.senseKey)
-                    {
-                    case SENSE_KEY_NO_ERROR:
-                    case SENSE_KEY_NOT_READY:
-                        senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_PROGRESS_INDICATION;
-                        senseFields->senseKeySpecificInformation.progress.progressIndication =
-                            M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
-                        break;
-                    case SENSE_KEY_ILLEGAL_REQUEST:
-                        senseFields->senseKeySpecificInformation.type            = SENSE_KEY_SPECIFIC_FIELD_POINTER;
-                        senseFields->senseKeySpecificInformation.field.cdbOrData = ptrSenseData[offset + 4] & BIT6;
-                        senseFields->senseKeySpecificInformation.field.bitPointerValid =
-                            ptrSenseData[offset + 4] & BIT3;
-                        senseFields->senseKeySpecificInformation.field.bitPointer =
-                            get_bit_range_uint8(ptrSenseData[offset + 4], 2, 0);
-                        senseFields->senseKeySpecificInformation.field.fieldPointer =
-                            M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
-                        break;
-                    case SENSE_KEY_HARDWARE_ERROR:
-                    case SENSE_KEY_RECOVERED_ERROR:
-                    case SENSE_KEY_MEDIUM_ERROR:
-                        senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT;
-                        senseFields->senseKeySpecificInformation.retryCount.actualRetryCount =
-                            M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
-                        break;
-                    case SENSE_KEY_COPY_ABORTED:
-                        senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_SEGMENT_POINTER;
-                        senseFields->senseKeySpecificInformation.segment.segmentDescriptor =
-                            ptrSenseData[offset + 4] & BIT5;
-                        senseFields->senseKeySpecificInformation.segment.bitPointerValid =
-                            ptrSenseData[offset + 4] & BIT3;
-                        senseFields->senseKeySpecificInformation.segment.bitPointer =
-                            get_bit_range_uint8(ptrSenseData[offset + 4], 2, 0);
-                        senseFields->senseKeySpecificInformation.segment.fieldPointer =
-                            M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
-                        break;
-                    case SENSE_KEY_UNIT_ATTENTION:
-                        senseFields->senseKeySpecificInformation.type =
-                            SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW;
-                        senseFields->senseKeySpecificInformation.unitAttention.overflow =
-                            ptrSenseData[offset + 4] & BIT0;
-                        break;
-                    default:
-                        senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNKNOWN;
-                        if (0 != safe_memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, 3,
-                                             &ptrSenseData[offset + 4], 3))
-                        {
-                            perror("Error copying unknown sense key specific data to buffer");
-                        }
-                        break;
-                    }
-                    break;
-                case SENSE_DESCRIPTOR_FIELD_REPLACEABLE_UNIT:
-                    senseFields->scsiStatusCodes.fru = ptrSenseData[offset + 3];
-                    break;
-                case SENSE_DESCRIPTOR_STREAM_COMMANDS:
-                    senseFields->filemark                = ptrSenseData[offset + 3] & BIT7;
-                    senseFields->endOfMedia              = ptrSenseData[offset + 3] & BIT6;
-                    senseFields->illegalLengthIndication = ptrSenseData[offset + 3] & BIT5;
-                    break;
-                case SENSE_DESCRIPTOR_BLOCK_COMMANDS:
-                    senseFields->illegalLengthIndication = ptrSenseData[offset + 3] & BIT5;
-                    break;
-                case SENSE_DESCRIPTOR_OSD_OBJECT_IDENTIFICATION:
-                    senseFields->osdObjectIdentificationDescriptorOffset =
-                        C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger than
-                                                 // 252 in the first place.
-                    break;
-                case SENSE_DESCRIPTOR_OSD_RESPONSE_INTEGRITY_CHECK_VALUE:
-                    senseFields->osdResponseIntegrityCheckValueDescriptorOffset =
-                        C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger than
-                                                 // 252 in the first place.
-                    break;
-                case SENSE_DESCRIPTOR_OSD_ATTRIBUTE_IDENTIFICATION:
-                    senseFields->osdAttributeIdentificationDescriptorOffset =
-                        C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger than
-                                                 // 252 in the first place.
-                    break;
-                case SENSE_DESCRIPTOR_ATA_STATUS_RETURN:
-                    senseFields->ataStatusReturnDescriptor.valid          = true;
-                    senseFields->ataStatusReturnDescriptor.extend         = ptrSenseData[offset + 2] & BIT0;
-                    senseFields->ataStatusReturnDescriptor.error          = ptrSenseData[offset + 3];
-                    senseFields->ataStatusReturnDescriptor.sectorCountExt = ptrSenseData[offset + 4];
-                    senseFields->ataStatusReturnDescriptor.sectorCount    = ptrSenseData[offset + 5];
-                    senseFields->ataStatusReturnDescriptor.lbaLowExt      = ptrSenseData[offset + 6];
-                    senseFields->ataStatusReturnDescriptor.lbaLow         = ptrSenseData[offset + 7];
-                    senseFields->ataStatusReturnDescriptor.lbaMidExt      = ptrSenseData[offset + 8];
-                    senseFields->ataStatusReturnDescriptor.lbaMid         = ptrSenseData[offset + 9];
-                    senseFields->ataStatusReturnDescriptor.lbaHiExt       = ptrSenseData[offset + 10];
-                    senseFields->ataStatusReturnDescriptor.lbaHi          = ptrSenseData[offset + 11];
-                    senseFields->ataStatusReturnDescriptor.device         = ptrSenseData[offset + 12];
-                    senseFields->ataStatusReturnDescriptor.status         = ptrSenseData[offset + 13];
-                    break;
-                case SENSE_DESCRIPTOR_ANOTHER_PROGRESS_INDICATION:
-                    if (numOfProgressIndications < MAX_PROGRESS_INDICATION_DESCRIPTORS)
-                    {
-                        senseFields->anotherProgressIndicationDescriptorOffset[numOfProgressIndications] =
-                            C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger
-                                                     // than 252 in the first place.;
-                        ++numOfProgressIndications;
-                    }
-                    break;
-                case SENSE_DESCRIPTOR_USER_DATA_SEGMENT_REFERRAL:
-                    senseFields->userDataSegmentReferralDescriptorOffset =
-                        C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger than
-                                                 // 252 in the first place.
-                    break;
-                case SENSE_DESCRIPTOR_FORWARDED_SENSE_DATA:
-                    if (numOfForwardedSenseData < MAX_FORWARDED_SENSE_DATA_DESCRIPTORS)
-                    {
-                        senseFields->forwardedSenseDataDescriptorOffset[numOfForwardedSenseData] =
-                            C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger
-                                                     // than 252 in the first place.;
-                        ++numOfForwardedSenseData;
-                    }
-                    break;
-                case SENSE_DESCRIPTOR_DIRECT_ACCESS_BLOCK_DEVICE:
-                    senseFields->valid                                             = ptrSenseData[offset + 2] & BIT7;
-                    senseFields->illegalLengthIndication                           = ptrSenseData[offset + 2] & BIT5;
-                    senseFields->senseKeySpecificInformation.senseKeySpecificValid = ptrSenseData[offset + 4] & BIT7;
-                    // Need at least 17 bytes to read this field
-                    switch (senseFields->scsiStatusCodes.senseKey)
-                    {
-                    case SENSE_KEY_NO_ERROR:
-                    case SENSE_KEY_NOT_READY:
-                        senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_PROGRESS_INDICATION;
-                        senseFields->senseKeySpecificInformation.progress.progressIndication =
-                            M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
-                        break;
-                    case SENSE_KEY_ILLEGAL_REQUEST:
-                        senseFields->senseKeySpecificInformation.type            = SENSE_KEY_SPECIFIC_FIELD_POINTER;
-                        senseFields->senseKeySpecificInformation.field.cdbOrData = ptrSenseData[offset + 4] & BIT6;
-                        senseFields->senseKeySpecificInformation.field.bitPointerValid =
-                            ptrSenseData[offset + 4] & BIT3;
-                        senseFields->senseKeySpecificInformation.field.bitPointer =
-                            get_bit_range_uint8(ptrSenseData[offset + 4], 2, 0);
-                        senseFields->senseKeySpecificInformation.field.fieldPointer =
-                            M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
-                        break;
-                    case SENSE_KEY_HARDWARE_ERROR:
-                    case SENSE_KEY_RECOVERED_ERROR:
-                    case SENSE_KEY_MEDIUM_ERROR:
-                        senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_ACTUAL_RETRY_COUNT;
-                        senseFields->senseKeySpecificInformation.retryCount.actualRetryCount =
-                            M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
-                        break;
-                    case SENSE_KEY_COPY_ABORTED:
-                        senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_SEGMENT_POINTER;
-                        senseFields->senseKeySpecificInformation.segment.segmentDescriptor =
-                            ptrSenseData[offset + 4] & BIT5;
-                        senseFields->senseKeySpecificInformation.segment.bitPointerValid =
-                            ptrSenseData[offset + 4] & BIT3;
-                        senseFields->senseKeySpecificInformation.segment.bitPointer =
-                            get_bit_range_uint8(ptrSenseData[offset + 4], 2, 0);
-                        senseFields->senseKeySpecificInformation.segment.fieldPointer =
-                            M_BytesTo2ByteValue(ptrSenseData[offset + 5], ptrSenseData[offset + 6]);
-                        break;
-                    case SENSE_KEY_UNIT_ATTENTION:
-                        senseFields->senseKeySpecificInformation.type =
-                            SENSE_KEY_SPECIFIC_UNIT_ATTENTION_CONDITION_QUEUE_OVERFLOW;
-                        senseFields->senseKeySpecificInformation.unitAttention.overflow =
-                            ptrSenseData[offset + 4] & BIT0;
-                        break;
-                    default:
-                        senseFields->senseKeySpecificInformation.type = SENSE_KEY_SPECIFIC_UNKNOWN;
-                        if (0 != safe_memcpy(&senseFields->senseKeySpecificInformation.unknownDataType, 3,
-                                             &ptrSenseData[offset + 4], 3))
-                            M_UNLIKELY
-                            {
-                                perror("Error copying unknown sense kep specific data to buffer");
-                            }
-                        break;
-                    }
-                    senseFields->scsiStatusCodes.fru   = ptrSenseData[offset + 7];
-                    senseFields->descriptorInformation = M_BytesTo8ByteValue(
-                        ptrSenseData[offset + 8], ptrSenseData[offset + 9], ptrSenseData[offset + 10],
-                        ptrSenseData[offset + 11], ptrSenseData[offset + 12], ptrSenseData[offset + 13],
-                        ptrSenseData[offset + 14], ptrSenseData[offset + 15]);
-                    senseFields->descriptorCommandSpecificInformation = M_BytesTo8ByteValue(
-                        ptrSenseData[offset + 16], ptrSenseData[offset + 17], ptrSenseData[offset + 18],
-                        ptrSenseData[offset + 19], ptrSenseData[offset + 20], ptrSenseData[offset + 21],
-                        ptrSenseData[offset + 22], ptrSenseData[offset + 23]);
-                    break;
-                case SENSE_DESCRIPTOR_DEVICE_DESIGNATION:
-                    senseFields->deviceDesignationDescriptorOffset =
-                        C_CAST(uint8_t, offset); // This shouldn't be a problem as offset should never be larger than
-                                                 // 252 in the first place.
-                    break;
-                case SENSE_DESCRIPTOR_MICROCODE_ACTIVATION:
-                    senseFields->microCodeActivation.valid = true;
-                    senseFields->microCodeActivation.microcodeActivationTimeSeconds =
-                        M_BytesTo2ByteValue(ptrSenseData[offset + 6], ptrSenseData[offset + 7]);
-                    break;
-                default: // not a known descriptor
-                    if (!senseFields->additionalDataAvailable && offset < UINT8_MAX)
-                    {
-                        senseFields->additionalDataOffset = C_CAST(uint8_t, offset);
-                    }
-                    senseFields->additionalDataAvailable = true;
-                    break;
-                }
-                if (descriptorLength == 0)
-                {
-                    break;
-                }
-            }
+            fill_Descriptor_Format_Sense_Data_Fields(ptrSenseData, senseDataLength, senseFields);
             break;
         case SCSI_SENSE_VENDOR_SPECIFIC:
             // vendor specific format and meaning. Nothing we can do here
+            break;
         default:
-            // this is either unknown format or possible SASI format.
-            // for this, there is no real translation. For these formats everything in scsi says "Vendor unique" however
-            // one really old copy of SASI does
-            //  define some error codes....so maybe set "sense key" to error class, asq to "error code" and a bool to
-            //  say "possibly SASI" somewhere. if the valid bit is set, then an LBA is reported that we can put into the
-            //  information field like fixed format sense data typically does.
-            // for SASI and SCSI, the definition is simple. in byte 0, bit 7 is "valid" for LBA address, bits 6-4 is
-            // error class, bits 3-0 are error code. In byte 1, bits 7:4 are vendor unique, then all remaiing bits (20)
-            // are the LBA
+            // early SCSI and SASI drives may not return anything but vendor specific sense data.
+            // This "translates" it to aborted command to keep it easy for us.
+            translate_Legacy_Sense_To_Fixed_Format(ptrSenseData, senseDataLength, senseFields);
             break;
         }
     }
@@ -2553,7 +2546,10 @@ static void set_SAT_Flags_From_ATA_Info(tDevice* M_NONNULL       device,
 
 static M_INLINE void set_No_SAT_VPD(tDevice* device)
 {
-    set_Hack_SCSI_No_SAT_VPD_Page(device, true, PH_BY_DEVICE_REPORTED);
+    // A failed/missing SAT VPD page is probe-level evidence, not a device-reported identity: stamping it
+    // PH_BY_DEVICE_REPORTED would make has_Reported_ID_Provenance() true for an unidentifiable bridge and
+    // suppress the ATA-identify retries that such translators rely on.
+    set_Hack_SCSI_No_SAT_VPD_Page(device, true, PH_BY_PROBE);
     // The SATL profiles above key off the vendor string from this page, so when the page read
     // fails the profile cannot be applied even if the drive still works through SAT translation.
     // Log that here: if the drive later identifies as ATA, this is an unprofilable SATL candidate.
@@ -2686,7 +2682,10 @@ static bool set_Passthrough_Hacks_By_Inquiry_Data(tDevice* M_NONNULL device)
         if (strcmp(vendorID, "ATA") == 0)
         {
             passthroughTypeSet                                  = true;
-            set_Hack_Generic_Passthrough_Type(device, ATA_PASSTHROUGH_SAT, PH_BY_DEVICE_REPORTED);
+            // A generic "ATA" vendor string is probe-level, not a recognized bridge identity: use PH_BY_PROBE so the
+            // identity-class provenance gates stay open for the ATA-identify retries/return-register recovery. (The
+            // Realtek 9210 block below is a recognized identity and deliberately keeps PH_BY_DEVICE_REPORTED.)
+            set_Hack_Generic_Passthrough_Type(device, ATA_PASSTHROUGH_SAT, PH_BY_PROBE);
         }
         else if (strcmp(vendorID, "Realtek") == 0 && strstr(productID, "9210"))
         {
@@ -3103,6 +3102,43 @@ OPENSEA_TRANSPORT_API void seagate_Serial_Number_Cleanup(const char* M_NONNULL t
     }
 }
 
+M_PARAM_RO_SIZE(1, 2)
+M_NONNULL_IF_NONZERO_SIZE(1, 2)
+OPENSEA_TRANSPORT_API eSCSIVersion get_SCSI_Version_From_Raw_Inquiry(const uint8_t *M_NULLABLE inquiryData, size_t inquiryDataLen)
+{
+    eSCSIVersion version = SCSI_VERSION_NO_STANDARD;
+    if (inquiryData && inquiryDataLen >= 2)
+    {
+        const uint8_t versionCode = inquiryData[2];
+        // 08h - 0Ch, 40h to 44h, 48h to 4Ch, 80h to 84h, & 88h to 8Ch are obsolete version numbers that need to be converted
+        if ((versionCode >= 0x08 && versionCode <= 0x0C) || // ECMA = 001b (SCSI-1)
+            (versionCode >= 0x40 && versionCode <= 0x44) || // ISO = 01b (SCSI-1)
+            (versionCode >= 0x48 && versionCode <= 0x4C) || // ISO = 01b (SCSI-1) & ECMA = 001b (SCSI-1)
+            (versionCode >= 0x88 && versionCode <= 0x8C))   // ECMA = 001b (SCSI-1)
+        {
+            version = SCSI_VERSION_SCSI;
+        }
+        else if (versionCode >= 0x80 && versionCode <= 0x82) // ISO/IEC 9316:1995 or SCSI-2
+        {
+            version = SCSI_VERSION_SCSI2;
+
+        }
+        else if (versionCode == 0x83) // ISO/IEC 9316:1995 & ANSI X3.131:1997 or SPC
+        {
+            version = SCSI_VERSION_SPC;
+        }
+        else if (versionCode == 0x84) // ISO/IEC 9316:1995 & T10's SPC-2
+        {
+            version = SCSI_VERSION_SPC_2;
+        }
+        else
+        {
+            version = M_STATIC_CAST(eSCSIVersion, versionCode);
+        }
+    }
+    return version;
+}
+
 // \fn fill_In_Device_Info(device M_NONNULL device)
 // \brief Sends a set of INQUIRY commands & fills in the device information
 // \param device device struture
@@ -3171,11 +3207,8 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
             // certain scenarios
             set_Passthrough_Hacks_By_Inquiry_Data(device);
         }
-        switch (version) // convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO
-                         // standard numbers
+        if (version == 0 || version == 0x81)
         {
-        case 0:
-            version = SCSI_VERSION_NO_STANDARD;
             if (get_Device_InterfaceType(device) != USB_INTERFACE &&
                 !has_Reported_ID_Provenance(device))
             {
@@ -3184,42 +3217,10 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
                            // way to work around this, is to make sure the low level for the OS detects it on USB
                            // interface and it can be run through the usb_hacks file instead.
             }
-            break;
-        case 0x81:
-            version = SCSI_VERSION_SCSI; // changing to 1 for SCSI
-            if (get_Device_InterfaceType(device) != USB_INTERFACE &&
-                !has_Reported_ID_Provenance(device))
-            {
-                checkForSAT =
-                    false; // NOTE: some cheap USB to SATA/PATA adapters will set this version or no version. The only
-                           // way to work around this, is to make sure the low level for the OS detects it on USB
-                           // interface and it can be run through the usb_hacks file instead.
-            }
-            break;
-        case 0x80:
-        case 0x82:
-            version = SCSI_VERSION_SCSI2; // changing to 2 for SCSI 2
-            break;
-        case 0x83:
-            version = SCSI_VERSION_SPC; // changing to 3 for SPC
-            break;
-        case 0x84:
-            version = SCSI_VERSION_SPC_2; // changing to 4 for SPC2
-            break;
-        default:
-            // convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard
-            // numbers
-            if ((version >= 0x08 && version <= 0x0C) || (version >= 0x40 && version <= 0x44) ||
-                (version >= 0x48 && version <= 0x4C) || (version >= 0x80 && version <= 0x84) ||
-                (version >= 0x88 && version <= 0x8C))
-            {
-                // these are obsolete version numbers
-                version = get_bit_range_uint8(version, 3, 0);
-            }
-            break;
         }
-        device->drive_info.scsiVersion = version; // changing this to one of these version numbers to keep the rest of
-                                                  // the library code that would use this simple. - TJE
+        
+        device->drive_info.scsiVersion = get_SCSI_Version_From_Raw_Inquiry(inq_buf, INQ_RETURN_DATA_LENGTH);
+
         // set the media type as best we can
         switch (peripheralDeviceType)
         {
@@ -4227,8 +4228,9 @@ M_PARAM_RW(1) OPENSEA_TRANSPORT_API eReturnValues fill_In_Device_Info(tDevice* d
             {
                 // This device returned a list of pages already, so we know what it supports.
                 // Since we did not find it in it's list of supported pages, set this to skip trying to read SAT VPD
-                // since it is definitely not supported.
-                set_Hack_SCSI_No_SAT_VPD_Page(device, true, PH_BY_DEVICE_REPORTED);
+                // since it is definitely not supported. Probe-provenance: this is observed capability, not a
+                // device-reported identity, so the identity-class provenance gates stay open for the retries.
+                set_Hack_SCSI_No_SAT_VPD_Page(device, true, PH_BY_PROBE);
             }
         }
         else

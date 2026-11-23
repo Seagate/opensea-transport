@@ -23,22 +23,64 @@ extern "C"
 {
 #endif
 
+//! \def INQ_RETURN_DATA_LENGTH_SCSI2
+//! \brief The standardized response length for SCSI-2 inquiry data
+//! \note Actual response length from the device may vary
 #define INQ_RETURN_DATA_LENGTH_SCSI2 (36)
+
+//! \def INQ_RETURN_DATA_LENGTH
+//! \brief The standardized response length for modern SCSI inquiry data
+//! \note Actual response length from the device may vary. All fields beyond byte 96 are vendor unique
 #define INQ_RETURN_DATA_LENGTH       (96)
-#define INQ_DATA_T10_VENDOR_ID_LEN   (8) // bytes
+
+//! \def INQ_DATA_T10_VENDOR_ID_LEN
+//! \brief Length of the T10 vendor ID field in the inquiry data, in bytes
+//! \details This is defined to 8 for the 8bytes for this string in the standard.
+//! This does NOT include space for null termination!
+#define INQ_DATA_T10_VENDOR_ID_LEN   (8)
+
+//! \def INQ_DATA_PRODUCT_ID_LEN
+//! \brief Length of the product ID field in the inquiry data, in bytes. Also called the model number.
+//! \details This is defined to 16 for the 16 bytes for this string in the standard.
+//! This does NOT include space for null termination!
 #define INQ_DATA_PRODUCT_ID_LEN      (16)
+
+//! \def INQ_DATA_PRODUCT_REV_LEN
+//! \brief Length of the product revision field in the inquiry data, in bytes
+//! \details This is defined to 4 for the 4 bytes for this string in the standard.
+//! This does NOT include space for null termination!
 #define INQ_DATA_PRODUCT_REV_LEN     (4)
 
+//! \enum eInquiryResponseFormat
+//! \brief Enumerates the possible response formats for SCSI inquiry data.
+//! \details The format of the response affects parsing and what drive capabilities
+//! are expected. SCSI (SCSI-1) uses a very basic format with most data being vendor specific.
+//! CCS (Common Command Set) format was nearly identical to the modern format. It is a good way to
+//! identify when additional capabilities are supported by the device.
+//! The current response format (2) is found in all modern devices and most likely to be used to parse 
+//! the returned inquiry data today.
     enum eInquiryResponseFormat
     {
-        INQ_RESPONSE_FMT_SCSI    = 0, // original response format - basically all vendor unique information
-        INQ_RESPONSE_FMT_CCS     = 1, // SCSI common command set definition. More or less meets modern requirements
-        INQ_RESPONSE_FMT_CURRENT = 2, // SCSI2 and later all use this format to report inquiry data
+        INQ_RESPONSE_FMT_SCSI    = 0, //!< original SCSI & SASI response format - basically all vendor unique information
+        INQ_RESPONSE_FMT_CCS     = 1, //!< SCSI common command set definition. More or less meets modern requirements
+        INQ_RESPONSE_FMT_CURRENT = 2, //!< SCSI2 and later all use this format to report inquiry data
     };
 
+    //! \def INQ_MAX_VERSION_DESCRIPTORS
+    //! \brief Maximum number of version descriptors in the inquiry data in SCSI-3 standards family
 #define INQ_MAX_VERSION_DESCRIPTORS (8)
 
-    typedef enum eSCSIVersionEnum
+    //! \enum eSCSIVersionEnum
+    //! \brief Enumerates the various SCSI versions from inquiry, but translated
+    //! into a convenient enum. Do not use this to compare with raw inquiry data
+    //! directly.
+    //! \details The old EMCA/ISO/ANSI version number bit field is changed to the corresponding 
+    //! SCSI standard version to simplify these comparisons and usage.
+    //! \note Most raw enum values match the value you will see in the T10 standards exactly, so a raw
+    //! enum to int comparison should largely work, however it is not recommended. 
+    //! As mentioned above, only the old bitfield style  representation that set values like 80h or 81h,
+    //! etc are mapped to the closest SCSI (ansi) version and are not represented in the enum.
+    typedef enum M_CLOSED_ENUM eSCSIVersionEnum
     {
         SCSI_VERSION_SASI        = 0,
         SCSI_VERSION_NO_STANDARD = 0,
@@ -49,10 +91,252 @@ extern "C"
         SCSI_VERSION_SPC_3       = 5,
         SCSI_VERSION_SPC_4       = 6,
         SCSI_VERSION_SPC_5       = 7,
-        // jump past 08-0C as these were used for asni, iso, emca combination value standard identification and are
-        // obsolete.
-        SCSI_VERSION_SPC_6 = 0x0D,
+        SCSI_VERSION_SPC_6       = 0x0D,
+        SCSI_VERSION_SPC_7       = 0x0E,
+        // 0Fh to 3Fh Reserved
+        SCSI_VERSION_RESERVED_0F = 0x0F,
+        SCSI_VERSION_RESERVED_10 = 0x10,
+        SCSI_VERSION_RESERVED_11 = 0x11,
+        SCSI_VERSION_RESERVED_12 = 0x12,
+        SCSI_VERSION_RESERVED_13 = 0x13,
+        SCSI_VERSION_RESERVED_14 = 0x14,
+        SCSI_VERSION_RESERVED_15 = 0x15,
+        SCSI_VERSION_RESERVED_16 = 0x16,
+        SCSI_VERSION_RESERVED_17 = 0x17,
+        SCSI_VERSION_RESERVED_18 = 0x18,
+        SCSI_VERSION_RESERVED_19 = 0x19,
+        SCSI_VERSION_RESERVED_1A = 0x1A,
+        SCSI_VERSION_RESERVED_1B = 0x1B,
+        SCSI_VERSION_RESERVED_1C = 0x1C,
+        SCSI_VERSION_RESERVED_1D = 0x1D,
+        SCSI_VERSION_RESERVED_1E = 0x1E,
+        SCSI_VERSION_RESERVED_1F = 0x1F,
+        SCSI_VERSION_RESERVED_20 = 0x20,
+        SCSI_VERSION_RESERVED_21 = 0x21,
+        SCSI_VERSION_RESERVED_22 = 0x22,
+        SCSI_VERSION_RESERVED_23 = 0x23,
+        SCSI_VERSION_RESERVED_24 = 0x24,
+        SCSI_VERSION_RESERVED_25 = 0x25,
+        SCSI_VERSION_RESERVED_26 = 0x26,
+        SCSI_VERSION_RESERVED_27 = 0x27,
+        SCSI_VERSION_RESERVED_28 = 0x28,
+        SCSI_VERSION_RESERVED_29 = 0x29,
+        SCSI_VERSION_RESERVED_2A = 0x2A,
+        SCSI_VERSION_RESERVED_2B = 0x2B,
+        SCSI_VERSION_RESERVED_2C = 0x2C,
+        SCSI_VERSION_RESERVED_2D = 0x2D,
+        SCSI_VERSION_RESERVED_2E = 0x2E,
+        SCSI_VERSION_RESERVED_2F = 0x2F,
+        SCSI_VERSION_RESERVED_30 = 0x30,
+        SCSI_VERSION_RESERVED_31 = 0x31,
+        SCSI_VERSION_RESERVED_32 = 0x32,
+        SCSI_VERSION_RESERVED_33 = 0x33,
+        SCSI_VERSION_RESERVED_34 = 0x34,
+        SCSI_VERSION_RESERVED_35 = 0x35,
+        SCSI_VERSION_RESERVED_36 = 0x36,
+        SCSI_VERSION_RESERVED_37 = 0x37,
+        SCSI_VERSION_RESERVED_38 = 0x38,
+        SCSI_VERSION_RESERVED_39 = 0x39,
+        SCSI_VERSION_RESERVED_3A = 0x3A,
+        SCSI_VERSION_RESERVED_3B = 0x3B,
+        SCSI_VERSION_RESERVED_3C = 0x3C,
+        SCSI_VERSION_RESERVED_3D = 0x3D,
+        SCSI_VERSION_RESERVED_3E = 0x3E,
+        SCSI_VERSION_RESERVED_3F = 0x3F,
+        // 45h to 47h Reserved
+        SCSI_VERSION_RESERVED_45 = 0x45,
+        SCSI_VERSION_RESERVED_46 = 0x46,
+        SCSI_VERSION_RESERVED_47 = 0x47,
+        // 4Dh to 7Fh Reserved
+        SCSI_VERSION_RESERVED_4D = 0x4D,
+        SCSI_VERSION_RESERVED_4E = 0x4E,
+        SCSI_VERSION_RESERVED_4F = 0x4F,
+        SCSI_VERSION_RESERVED_50 = 0x50,
+        SCSI_VERSION_RESERVED_51 = 0x51,
+        SCSI_VERSION_RESERVED_52 = 0x52,
+        SCSI_VERSION_RESERVED_53 = 0x53,
+        SCSI_VERSION_RESERVED_54 = 0x54,
+        SCSI_VERSION_RESERVED_55 = 0x55,
+        SCSI_VERSION_RESERVED_56 = 0x56,
+        SCSI_VERSION_RESERVED_57 = 0x57,
+        SCSI_VERSION_RESERVED_58 = 0x58,
+        SCSI_VERSION_RESERVED_59 = 0x59,
+        SCSI_VERSION_RESERVED_5A = 0x5A,
+        SCSI_VERSION_RESERVED_5B = 0x5B,
+        SCSI_VERSION_RESERVED_5C = 0x5C,
+        SCSI_VERSION_RESERVED_5D = 0x5D,
+        SCSI_VERSION_RESERVED_5E = 0x5E,
+        SCSI_VERSION_RESERVED_5F = 0x5F,
+        SCSI_VERSION_RESERVED_60 = 0x60,
+        SCSI_VERSION_RESERVED_61 = 0x61,
+        SCSI_VERSION_RESERVED_62 = 0x62,
+        SCSI_VERSION_RESERVED_63 = 0x63,
+        SCSI_VERSION_RESERVED_64 = 0x64,
+        SCSI_VERSION_RESERVED_65 = 0x65,
+        SCSI_VERSION_RESERVED_66 = 0x66,
+        SCSI_VERSION_RESERVED_67 = 0x67,
+        SCSI_VERSION_RESERVED_68 = 0x68,
+        SCSI_VERSION_RESERVED_69 = 0x69,
+        SCSI_VERSION_RESERVED_6A = 0x6A,
+        SCSI_VERSION_RESERVED_6B = 0x6B,
+        SCSI_VERSION_RESERVED_6C = 0x6C,
+        SCSI_VERSION_RESERVED_6D = 0x6D,
+        SCSI_VERSION_RESERVED_6E = 0x6E,
+        SCSI_VERSION_RESERVED_6F = 0x6F,
+        SCSI_VERSION_RESERVED_70 = 0x70,
+        SCSI_VERSION_RESERVED_71 = 0x71,
+        SCSI_VERSION_RESERVED_72 = 0x72,
+        SCSI_VERSION_RESERVED_73 = 0x73,
+        SCSI_VERSION_RESERVED_74 = 0x74,
+        SCSI_VERSION_RESERVED_75 = 0x75,
+        SCSI_VERSION_RESERVED_76 = 0x76,
+        SCSI_VERSION_RESERVED_77 = 0x77,
+        SCSI_VERSION_RESERVED_78 = 0x78,
+        SCSI_VERSION_RESERVED_79 = 0x79,
+        SCSI_VERSION_RESERVED_7A = 0x7A,
+        SCSI_VERSION_RESERVED_7B = 0x7B,
+        SCSI_VERSION_RESERVED_7C = 0x7C,
+        SCSI_VERSION_RESERVED_7D = 0x7D,
+        SCSI_VERSION_RESERVED_7E = 0x7E,
+        SCSI_VERSION_RESERVED_7F = 0x7F,
+        // 85h to 87h Reserved
+        SCSI_VERSION_RESERVED_85 = 0x85,
+        SCSI_VERSION_RESERVED_86 = 0x86,
+        SCSI_VERSION_RESERVED_87 = 0x87,
+        // 8Dh to FFh Reserved
+        SCSI_VERSION_RESERVED_8D = 0x8D,
+        SCSI_VERSION_RESERVED_8E = 0x8E,
+        SCSI_VERSION_RESERVED_8F = 0x8F,
+        SCSI_VERSION_RESERVED_90 = 0x90,
+        SCSI_VERSION_RESERVED_91 = 0x91,
+        SCSI_VERSION_RESERVED_92 = 0x92,
+        SCSI_VERSION_RESERVED_93 = 0x93,
+        SCSI_VERSION_RESERVED_94 = 0x94,
+        SCSI_VERSION_RESERVED_95 = 0x95,
+        SCSI_VERSION_RESERVED_96 = 0x96,
+        SCSI_VERSION_RESERVED_97 = 0x97,
+        SCSI_VERSION_RESERVED_98 = 0x98,
+        SCSI_VERSION_RESERVED_99 = 0x99,
+        SCSI_VERSION_RESERVED_9A = 0x9A,
+        SCSI_VERSION_RESERVED_9B = 0x9B,
+        SCSI_VERSION_RESERVED_9C = 0x9C,
+        SCSI_VERSION_RESERVED_9D = 0x9D,
+        SCSI_VERSION_RESERVED_9E = 0x9E,
+        SCSI_VERSION_RESERVED_9F = 0x9F,
+        SCSI_VERSION_RESERVED_A0 = 0xA0,
+        SCSI_VERSION_RESERVED_A1 = 0xA1,
+        SCSI_VERSION_RESERVED_A2 = 0xA2,
+        SCSI_VERSION_RESERVED_A3 = 0xA3,
+        SCSI_VERSION_RESERVED_A4 = 0xA4,
+        SCSI_VERSION_RESERVED_A5 = 0xA5,
+        SCSI_VERSION_RESERVED_A6 = 0xA6,
+        SCSI_VERSION_RESERVED_A7 = 0xA7,
+        SCSI_VERSION_RESERVED_A8 = 0xA8,
+        SCSI_VERSION_RESERVED_A9 = 0xA9,
+        SCSI_VERSION_RESERVED_AA = 0xAA,
+        SCSI_VERSION_RESERVED_AB = 0xAB,
+        SCSI_VERSION_RESERVED_AC = 0xAC,
+        SCSI_VERSION_RESERVED_AD = 0xAD,
+        SCSI_VERSION_RESERVED_AE = 0xAE,
+        SCSI_VERSION_RESERVED_AF = 0xAF,
+        SCSI_VERSION_RESERVED_B0 = 0xB0,
+        SCSI_VERSION_RESERVED_B1 = 0xB1,
+        SCSI_VERSION_RESERVED_B2 = 0xB2,
+        SCSI_VERSION_RESERVED_B3 = 0xB3,
+        SCSI_VERSION_RESERVED_B4 = 0xB4,
+        SCSI_VERSION_RESERVED_B5 = 0xB5,
+        SCSI_VERSION_RESERVED_B6 = 0xB6,
+        SCSI_VERSION_RESERVED_B7 = 0xB7,
+        SCSI_VERSION_RESERVED_B8 = 0xB8,
+        SCSI_VERSION_RESERVED_B9 = 0xB9,
+        SCSI_VERSION_RESERVED_BA = 0xBA,
+        SCSI_VERSION_RESERVED_BB = 0xBB,
+        SCSI_VERSION_RESERVED_BC = 0xBC,
+        SCSI_VERSION_RESERVED_BD = 0xBD,
+        SCSI_VERSION_RESERVED_BE = 0xBE,
+        SCSI_VERSION_RESERVED_BF = 0xBF,
+        SCSI_VERSION_RESERVED_C0 = 0xC0,
+        SCSI_VERSION_RESERVED_C1 = 0xC1,
+        SCSI_VERSION_RESERVED_C2 = 0xC2,
+        SCSI_VERSION_RESERVED_C3 = 0xC3,
+        SCSI_VERSION_RESERVED_C4 = 0xC4,
+        SCSI_VERSION_RESERVED_C5 = 0xC5,
+        SCSI_VERSION_RESERVED_C6 = 0xC6,
+        SCSI_VERSION_RESERVED_C7 = 0xC7,
+        SCSI_VERSION_RESERVED_C8 = 0xC8,
+        SCSI_VERSION_RESERVED_C9 = 0xC9,
+        SCSI_VERSION_RESERVED_CA = 0xCA,
+        SCSI_VERSION_RESERVED_CB = 0xCB,
+        SCSI_VERSION_RESERVED_CC = 0xCC,
+        SCSI_VERSION_RESERVED_CD = 0xCD,
+        SCSI_VERSION_RESERVED_CE = 0xCE,
+        SCSI_VERSION_RESERVED_CF = 0xCF,
+        SCSI_VERSION_RESERVED_D0 = 0xD0,
+        SCSI_VERSION_RESERVED_D1 = 0xD1,
+        SCSI_VERSION_RESERVED_D2 = 0xD2,
+        SCSI_VERSION_RESERVED_D3 = 0xD3,
+        SCSI_VERSION_RESERVED_D4 = 0xD4,
+        SCSI_VERSION_RESERVED_D5 = 0xD5,
+        SCSI_VERSION_RESERVED_D6 = 0xD6,
+        SCSI_VERSION_RESERVED_D7 = 0xD7,
+        SCSI_VERSION_RESERVED_D8 = 0xD8,
+        SCSI_VERSION_RESERVED_D9 = 0xD9,
+        SCSI_VERSION_RESERVED_DA = 0xDA,
+        SCSI_VERSION_RESERVED_DB = 0xDB,
+        SCSI_VERSION_RESERVED_DC = 0xDC,
+        SCSI_VERSION_RESERVED_DD = 0xDD,
+        SCSI_VERSION_RESERVED_DE = 0xDE,
+        SCSI_VERSION_RESERVED_DF = 0xDF,
+        SCSI_VERSION_RESERVED_E0 = 0xE0,
+        SCSI_VERSION_RESERVED_E1 = 0xE1,
+        SCSI_VERSION_RESERVED_E2 = 0xE2,
+        SCSI_VERSION_RESERVED_E3 = 0xE3,
+        SCSI_VERSION_RESERVED_E4 = 0xE4,
+        SCSI_VERSION_RESERVED_E5 = 0xE5,
+        SCSI_VERSION_RESERVED_E6 = 0xE6,
+        SCSI_VERSION_RESERVED_E7 = 0xE7,
+        SCSI_VERSION_RESERVED_E8 = 0xE8,
+        SCSI_VERSION_RESERVED_E9 = 0xE9,
+        SCSI_VERSION_RESERVED_EA = 0xEA,
+        SCSI_VERSION_RESERVED_EB = 0xEB,
+        SCSI_VERSION_RESERVED_EC = 0xEC,
+        SCSI_VERSION_RESERVED_ED = 0xED,
+        SCSI_VERSION_RESERVED_EE = 0xEE,
+        SCSI_VERSION_RESERVED_EF = 0xEF,
+        SCSI_VERSION_RESERVED_F0 = 0xF0,
+        SCSI_VERSION_RESERVED_F1 = 0xF1,
+        SCSI_VERSION_RESERVED_F2 = 0xF2,
+        SCSI_VERSION_RESERVED_F3 = 0xF3,
+        SCSI_VERSION_RESERVED_F4 = 0xF4,
+        SCSI_VERSION_RESERVED_F5 = 0xF5,
+        SCSI_VERSION_RESERVED_F6 = 0xF6,
+        SCSI_VERSION_RESERVED_F7 = 0xF7,
+        SCSI_VERSION_RESERVED_F8 = 0xF8,
+        SCSI_VERSION_RESERVED_F9 = 0xF9,
+        SCSI_VERSION_RESERVED_FA = 0xFA,
+        SCSI_VERSION_RESERVED_FB = 0xFB,
+        SCSI_VERSION_RESERVED_FC = 0xFC,
+        SCSI_VERSION_RESERVED_FD = 0xFD,
+        SCSI_VERSION_RESERVED_FE = 0xFE,
+        SCSI_VERSION_RESERVED_FF = 0xFF
     } eSCSIVersion;
+
+    //! \brief Get the SCSI version from raw inquiry data.
+    //! \details This extracts the SCSI version field from the raw inquiry data and sets it to a value
+    //! in the eSCSIVersion enumeration. If the device is an older SCSI/SCSI-2 device, it maps the
+    //! ISO/IEC|ECMA|ANSI bitfield to the most appropriate SCSI version in the eSCSIVersion enumeration.
+    //! The goal is to keep version comparisons simple and easy to implement without handling these
+    //! odd and deprecated bitfield representations.
+    //! \note Most raw enum values match the value you will see in the T10 standards exactly, so a raw
+    //! enum to int comparison should largely work. As mentioned above, only the old bitfield style 
+    //! representation that set values like 80h or 81h, etc are mapped to the closest SCSI (ansi) version
+    //! and are not represented in the enum.
+    //! \param[in] inquiryData Pointer to the raw inquiry data buffer.
+    //! \param[in] inquiryDataLen Length of the inquiry data buffer.
+    //! \return The SCSI version as an eSCSIVersion enumeration value.
+    M_PARAM_RO_SIZE(1, 2)
+    M_NONNULL_IF_NONZERO_SIZE(1, 2)
+    OPENSEA_TRANSPORT_API eSCSIVersion get_SCSI_Version_From_Raw_Inquiry(const uint8_t * M_NULLABLE inquiryData, size_t inquiryDataLen);
 
     typedef enum eCDBLenEnum
     {
