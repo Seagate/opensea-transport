@@ -18,11 +18,18 @@
 #
 
 [Sources]
+  include/adapter_info.h
+  include/asmedia_nvme_helper.h
   include/ata_helper.h
   include/ata_helper_func.h
   include/cmds.h
   include/common_public.h
+  include/csmi_legacy_pt_cdb_helper.h
   include/cypress_legacy_helper.h
+  include/iodata_legacy_helper.h
+  include/jmicron_legacy_helper.h
+  include/jmicron_nvme_helper.h
+  include/logitec_legacy_helper.h
   include/nec_legacy_helper.h
   include/nvme_helper.h
   include/nvme_helper_func.h
@@ -31,9 +38,12 @@
   include/psp_legacy_helper.h
   include/sat_helper.h
   include/sat_helper_func.h
+  include/sata_helper_func.h
+  include/sata_types.h
   include/scsi_helper.h
   include/scsi_helper_func.h
   include/sntl_helper.h
+  include/sunplus_legacy_helper.h
   include/ti_legacy_helper.h
   include/uefi_helper.h
   include/usb_hacks.h
@@ -41,35 +51,40 @@
   include/vendor/seagate/seagate_common_types.h
   include/vendor/seagate/seagate_ata_types.h
   include/vendor/seagate/seagate_scsi_types.h
-  include/asmedia_nvme_helper.h
-  include/jmicron_nvme_helper.h
-  include/csmi_legacy_pt_cdb_helper.h
   include/sata_types.h
   include/sata_helper_func.h
   include/raid_scan_helper.h
+  src/adapter_info.c
   src/ata_cmds.c
   src/ata_helper.c
   src/ata_legacy_cmds.c
+  src/asmedia_nvme_helper.c
   src/cmds.c
   src/common_public.c
+  src/csmi_legacy_pt_cdb_helper.c
   src/cypress_legacy_helper.c
+  src/iodata_legacy_helper.c
+  src/jmicron_legacy_helper.c
+  src/jmicron_nvme_helper.c
+  src/logitec_legacy_helper.c
   src/nec_legacy_helper.c
   src/nvme_cmds.c
   src/nvme_helper.c
   src/prolific_legacy_helper.c
   src/psp_legacy_helper.c
+  src/raid_scan_helper.c
+  src/realtek_nvme_helper.c
   src/sat_helper.c
+  src/sata_helper_func.c
   src/scsi_cmds.c
   src/scsi_helper.c
   src/sntl_helper.c
+  src/sunplus_legacy_helper.c
+  src/tdevice_accessors_impl.c
+  src/tdevice_accessors.c
   src/ti_legacy_helper.c
   src/uefi_helper.c
   src/usb_hacks.c
-  src/asmedia_nvme_helper.c
-  src/jmicron_nvme_helper.c
-  src/csmi_legacy_pt_cdb_helper.c
-  src/sata_helper_func.c
-  src/raid_scan_helper.c
   
 [Packages]
   StdLib/StdLib.dec
