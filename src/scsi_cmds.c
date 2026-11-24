@@ -1760,38 +1760,10 @@ static void set_inq_version(tDevice* M_NONNULL device, const uint8_t* M_NONNULL 
             return;
         }
     }
-    version = pdata[2];
-    switch (version) // convert some versions since old standards broke the version number into ANSI vs ECMA vs
-                     // ISO standard numbers
-    {
-    case 0x81:
-        version = SCSI_VERSION_SCSI; // changing to 1 for SCSI
-        break;
-    case 0x80:
-    case 0x82:
-        version = SCSI_VERSION_SCSI2; // changing to 2 for SCSI 2
-        break;
-    case 0x83:
-        version = SCSI_VERSION_SPC; // changing to 3 for SPC
-        break;
-    case 0x84:
-        version = SCSI_VERSION_SPC_2; // changing to 4 for SPC2
-        break;
-    default:
-        // convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard
-        // numbers
-        if ((version >= 0x08 && version <= 0x0C) || (version >= 0x40 && version <= 0x44) ||
-            (version >= 0x48 && version <= 0x4C) || (version >= 0x80 && version <= 0x84) ||
-            (version >= 0x88 && version <= 0x8C))
-        {
-            // these are obsolete version numbers
-            version = get_bit_range_uint8(version, 3, 0);
-        }
-        break;
-    }
+    
     // changing this to one of these version numbers to keep the rest
     // of the library code that would use this simple. - TJE
-    M_CONST_CAST(tDevice*, device)->drive_info.scsiVersion = version;
+    M_CONST_CAST(tDevice*, device)->drive_info.scsiVersion = get_SCSI_Version_From_Raw_Inquiry(pdata, dataLength);
 }
 
 OPENSEA_TRANSPORT_API eReturnValues scsi_Inquiry(const tDevice* M_NONNULL device,
