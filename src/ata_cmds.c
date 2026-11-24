@@ -36,6 +36,8 @@
 #include "scsi_helper_func.h"
 #include "sunplus_legacy_helper.h"
 #include "ti_legacy_helper.h"
+#include "iodata_legacy_helper.h"
+#include "logitec_legacy_helper.h"
 
 OPENSEA_TRANSPORT_API eReturnValues ata_Passthrough_Command(const tDevice* M_NONNULL               device,
                                                             const ataPassthroughCommand* M_NONNULL ataCommandOptions)
@@ -59,7 +61,7 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Passthrough_Command(const tDevice* M_NON
         ret = send_NEC_Legacy_Passthrough_Command(device, M_CONST_CAST(ataPassthroughCommand*, ataCommandOptions));
         break;
     case ATA_PASSTHROUGH_SAT:
-        ret = send_SAT_Passthrough_Command(device, M_CONST_CAST(ataPassthroughCommand*, ataCommandOptions));
+        ret = send_SAT_Passthrough_Command(device, M_CONST_CAST(ataPassthroughCommand*, ataCommandOptions), true);
         break;
     case ATA_PASSTHROUGH_CSMI:
         ret = send_CSMI_Legacy_ATA_Passthrough(device, M_CONST_CAST(ataPassthroughCommand*, ataCommandOptions));
@@ -71,6 +73,12 @@ OPENSEA_TRANSPORT_API eReturnValues ata_Passthrough_Command(const tDevice* M_NON
         break;
     case ATA_PASSTHROUGH_SUNPLUS:
         ret = send_Sunplus_Legacy_Passthrough_Command(device, M_CONST_CAST(ataPassthroughCommand*, ataCommandOptions));
+        break;
+    case ATA_PASSTHROUGH_IO_DATA:
+        ret = send_Iodata_Legacy_Passthrough_Command(device, M_CONST_CAST(ataPassthroughCommand*, ataCommandOptions));
+        break;
+    case ATA_PASSTHROUGH_LOGITEC:
+        ret = send_Logitec_Legacy_Passthrough_Command(device, M_CONST_CAST(ataPassthroughCommand*, ataCommandOptions));
         break;
     default:
         ret = BAD_PARAMETER;

@@ -55,12 +55,18 @@ eReturnValues build_NEC_Legacy_CDB(uint8_t                          cdb[M_NONNUL
     if (ataCommandOptions->multipleCount > 0)
     {
         cdb[CDB_13] |= NEC_MULTIPLE_BIT;
-        // set the multiple count in the "number of long data bytes"? I guess...-TJE
-        cdb[CDB_14] |= M_Nibble0(ataCommandOptions->multipleCount);
+    }
+    if (ataCommandOptions->tfr.Command == ATA_READ_LONG_NORETRY || 
+        ataCommandOptions->tfr.Command == ATA_READ_LONG_RETRY_CMD ||
+        ataCommandOptions->tfr.Command == ATA_WRITE_LONG_NORETRY ||
+        ataCommandOptions->tfr.Command == ATA_WRITE_LONG_RETRY_CMD)
+    {
+        cdb[CDB_14] |= ataCommandOptions->dataSize - LEGACY_DRIVE_SEC_SIZE;
     }
     // set the protocol
-    switch (ataCommandOptions->commadProtocol)
+    switch (ataCommandOptions->commandProtocol)
     {
+    case ATA_PROTOCOL_NO_DATA: //NOTE: If this does not work, try dev diag instead
     case ATA_PROTOCOL_PIO:
         break;
     case ATA_PROTOCOL_DEV_DIAG:
@@ -77,7 +83,7 @@ eReturnValues build_NEC_Legacy_CDB(uint8_t                          cdb[M_NONNUL
     case ATA_PROTOCOL_PACKET_DMA:
         cdb[CDB_13] |= BIT4;
         break;
-    case ATA_PROTOCOL_HARD_RESET:
+    case ATA_PROTOCOL_DEV_RESET:
         cdb[CDB_13] |= BIT4 | BIT2;
         break;
     default:
@@ -97,8 +103,24 @@ eReturnValues build_NEC_Legacy_CDB(uint8_t                          cdb[M_NONNUL
     default:
         return NOT_SUPPORTED;
     }
-    // set the sector count option (add force flag or something for this later if we ever find out what it means since
-    // the documentation doesn't make much sense - TJE)
+    // set the sector count option (similar to SAT in a lot of ways)
+    // Default to zero and only change for specific cases
+    if (((ataCommandOptions->tfr.Command == ATA_DOWNLOAD_MICROCODE_CMD ||
+        ataCommandOptions->tfr.Command == ATA_DOWNLOAD_MICROCODE_DMA) && ataCommandOptions->commandProtocol != ATA_PROTOCOL_NO_DATA) ||
+        ataCommandOptions->tfr.Command == ATA_TRUSTED_RECEIVE ||
+        ataCommandOptions->tfr.Command == ATA_TRUSTED_SEND ||
+        ataCommandOptions->tfr.Command == ATA_TRUSTED_RECEIVE_DMA ||
+        ataCommandOptions->tfr.Command == ATA_TRUSTED_SEND_DMA)
+    {
+        // sector count is found in sector count low and lba low
+        cdb[CDB_14] |= BIT5;
+    }
+    else if (ataCommandOptions->tfr.sectorCount == 0 && ataCommandOptions->tfr.sectorCountExt == 0 && ataCommandOptions->dataSize > 0)
+    {
+        // sector count value of 0 means transfer 256 sectors
+        cdb[CDB_14] |= BIT4;
+    }
+    // sector count option 11b is reserved
     return ret;
 }
 
@@ -113,13 +135,13 @@ eReturnValues get_RTFRs_From_NEC_Legacy(const tDevice* M_NONNULL         device,
     {
         return commandRet;
     }
-    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_16);
+    DECLARE_ZERO_INIT_ARRAY(uint8_t, cdb, CDB_LEN_6);// Doc shows 6B. Code previously used 16B. Should not affect anything
     DECLARE_ZERO_INIT_ARRAY(uint8_t, returnData, 11);
     DECLARE_ZERO_INIT_ARRAY(uint8_t, senseData, SPC3_SENSE_LEN);
     cdb[CDB_OPERATION_CODE] = NEC_READ_OPCODE;
     cdb[CDB_1]              = NEC_WRAPPER_SIGNATURE;
     // send the command
-    ret = scsi_Send_Cdb(device, cdb, CDB_LEN_16, returnData, 11, XFER_DATA_IN, senseData, SPC3_SENSE_LEN, 0);
+    ret = scsi_Send_Cdb(device, cdb, CDB_LEN_6, returnData, 11, XFER_DATA_IN, senseData, SPC3_SENSE_LEN, 0);
     // now get the RTFRs
     if (ret == SUCCESS)
     {

@@ -911,8 +911,8 @@ static eReturnValues determine_scsi_write_same_cmd(
                     }
                     else
                     {
-                        cmdSize                                                        = SCSI_CMD_SIZE_UNDETERMINED;
-                        device->drive_info.passThroughHacks.scsiHacks.writeSameCmdSize = INT8_C(-1);
+                        cmdSize                                                  = SCSI_CMD_SIZE_UNDETERMINED;
+                        set_Hack_SCSI_Write_Same_Cmd_Size(device, INT8_C(-1), PH_BY_PROBE);
                     }
                 }
                 else if (is_Invalid_Field_In_CDB(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN) &&
@@ -921,7 +921,7 @@ static eReturnValues determine_scsi_write_same_cmd(
                     // possibly NDOB not supported, so try again without it.
                     // Note, this could be a error if the number of logical blocks is zero and the device doesn't
                     // support that as well!
-                    device->drive_info.passThroughHacks.scsiHacks.writeSameDataOutRequired = true;
+                    set_Hack_SCSI_Write_Same_Data_Out_Required(device, true, PH_BY_PROBE);
                 }
                 else
                 {
@@ -935,16 +935,16 @@ static eReturnValues determine_scsi_write_same_cmd(
                 switch (cmdSize)
                 {
                 case SCSI_CMD_SIZE_16:
-                    device->drive_info.passThroughHacks.scsiHacks.writeSameCmdSize = INT8_C(16);
+                    set_Hack_SCSI_Write_Same_Cmd_Size(device, INT8_C(16), PH_BY_PROBE);
                     break;
                 case SCSI_CMD_SIZE_10:
-                    device->drive_info.passThroughHacks.scsiHacks.writeSameCmdSize         = INT8_C(10);
-                    device->drive_info.passThroughHacks.scsiHacks.writeSameDataOutRequired = true;
+                    set_Hack_SCSI_Write_Same_Cmd_Size(device, INT8_C(10), PH_BY_PROBE);
+                    set_Hack_SCSI_Write_Same_Data_Out_Required(device, true, PH_BY_PROBE);
                     break;
                 case SCSI_CMD_SIZE_12:
                 case SCSI_CMD_SIZE_6:
                 case SCSI_CMD_SIZE_UNDETERMINED:
-                    device->drive_info.passThroughHacks.scsiHacks.writeSameCmdSize = INT8_C(-1);
+                    set_Hack_SCSI_Write_Same_Cmd_Size(device, INT8_C(-1), PH_BY_PROBE);
                     break;
                 }
                 break;
@@ -1836,18 +1836,18 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
                 ret = scsi_Write_6(device, C_CAST(uint32_t, lba), C_CAST(uint8_t, sectors), ptrData, dataSize);
                 break;
             case SCSI_WRITE_VERIFY_CMD:
-                device->drive_info.passThroughHacks.scsiHacks.writeAndVerifyCmdSize = INT8_C(-1);
-                cmdSize                                                             = SCSI_CMD_SIZE_UNDETERMINED;
-                ret                                                                 = NOT_SUPPORTED;
+                set_Hack_SCSI_Write_And_Verify_Cmd_Size(device, INT8_C(-1), PH_BY_PROBE);
+                cmdSize = SCSI_CMD_SIZE_UNDETERMINED;
+                ret     = NOT_SUPPORTED;
                 break;
             case SCSI_VERIFY_CMD:
                 cmdSize = SCSI_CMD_SIZE_UNDETERMINED;
                 ret     = NOT_SUPPORTED;
                 break;
             case SCSI_SYNC_CMD:
-                device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize = INT8_C(-1);
-                cmdSize                                                        = SCSI_CMD_SIZE_UNDETERMINED;
-                ret                                                            = NOT_SUPPORTED;
+                set_Hack_SCSI_Sync_Cache_Mode(device, SYNC_CACHE_NONE, PH_BY_PROBE);
+                cmdSize = SCSI_CMD_SIZE_UNDETERMINED;
+                ret     = NOT_SUPPORTED;
                 break;
             }
             break;
@@ -1886,20 +1886,20 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
                     switch (cmdSize)
                     {
                     case SCSI_CMD_SIZE_16:
-                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw16      = true;
+                        set_Hack_SCSI_RW_Available(device, true, PH_BY_PROBE);
+                        set_Hack_SCSI_RW16(device, true, PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_12:
-                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw12      = true;
+                        set_Hack_SCSI_RW_Available(device, true, PH_BY_PROBE);
+                        set_Hack_SCSI_RW12(device, true, PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_10:
-                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw10      = true;
+                        set_Hack_SCSI_RW_Available(device, true, PH_BY_PROBE);
+                        set_Hack_SCSI_RW10(device, true, PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_6:
-                        device->drive_info.passThroughHacks.scsiHacks.readWrite.available = true;
-                        device->drive_info.passThroughHacks.scsiHacks.readWrite.rw6       = true;
+                        set_Hack_SCSI_RW_Available(device, true, PH_BY_PROBE);
+                        set_Hack_SCSI_RW6(device, true, PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_UNDETERMINED:
                         // shouldn't happen
@@ -1911,11 +1911,11 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
                     switch (cmdSize)
                     {
                     case SCSI_CMD_SIZE_16:
-                        device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize = INT8_C(16);
+                        set_Hack_SCSI_Sync_Cache_Mode(device, SYNC_CACHE_16B, PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_12:
                     case SCSI_CMD_SIZE_10:
-                        device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize = INT8_C(10);
+                        set_Hack_SCSI_Sync_Cache_Mode(device, SYNC_CACHE_10B, PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_6:
                     case SCSI_CMD_SIZE_UNDETERMINED:
@@ -1928,13 +1928,13 @@ static eReturnValues determine_scsi_read_write_cmd(tDevice* M_NONNULL  device,
                     switch (cmdSize)
                     {
                     case SCSI_CMD_SIZE_16:
-                        device->drive_info.passThroughHacks.scsiHacks.writeAndVerifyCmdSize = INT8_C(16);
+                        set_Hack_SCSI_Write_And_Verify_Cmd_Size(device, INT8_C(16), PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_12:
-                        device->drive_info.passThroughHacks.scsiHacks.writeAndVerifyCmdSize = INT8_C(12);
+                        set_Hack_SCSI_Write_And_Verify_Cmd_Size(device, INT8_C(12), PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_10:
-                        device->drive_info.passThroughHacks.scsiHacks.writeAndVerifyCmdSize = INT8_C(10);
+                        set_Hack_SCSI_Write_And_Verify_Cmd_Size(device, INT8_C(10), PH_BY_PROBE);
                         break;
                     case SCSI_CMD_SIZE_6:
                     case SCSI_CMD_SIZE_UNDETERMINED:
@@ -2312,7 +2312,7 @@ static eReturnValues scsi_Compare(const tDevice* device, uint64_t lba, uint8_t* 
             is_Invalid_Field_In_CDB(device->drive_info.lastCommandSenseData, SPC3_SENSE_LEN))
         {
             ret = generic_Compare(device, lba, ptrData, dataSize);
-            M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.scsiHacks.noCompareLogicalBlocks = true;
+            set_Hack_SCSI_No_Compare_Logical_Blocks(M_CONST_CAST(tDevice*, device), true, PH_BY_PROBE);
         }
     }
     else
@@ -2453,15 +2453,15 @@ M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues ata_Flush_Cache_Command(const 
 M_PARAM_RO(1) OPENSEA_TRANSPORT_API eReturnValues scsi_Synchronize_Cache_Command(const tDevice* M_NONNULL device)
 {
     eReturnValues ret = SUCCESS;
-    switch (device->drive_info.passThroughHacks.scsiHacks.syncCacheCmdSize)
+    switch (device->drive_info.passThroughHacks.scsiHacks.syncCacheMode)
     {
-    case INT8_C(16):
+    case SYNC_CACHE_16B:
         ret = scsi_Synchronize_Cache_16(device, false, 0, 0, 0);
         break;
-    case INT8_C(10):
+    case SYNC_CACHE_10B:
         ret = scsi_Synchronize_Cache_10(device, false, 0, 0, 0);
         break;
-    case INT8_C(-1):
+    case SYNC_CACHE_NONE:
         ret = NOT_SUPPORTED;
         break;
     default:

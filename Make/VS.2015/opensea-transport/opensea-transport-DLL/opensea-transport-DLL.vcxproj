@@ -461,6 +461,10 @@
     <ClCompile Include="..\..\..\..\src\jmicron_nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\jmicron_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\nec_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\adapter_info.c" />
+    <ClCompile Include="..\..\..\..\src\tdevice_accessors.c" />
+    <ClCompile Include="..\..\..\..\src\iodata_legacy_helper.c" />
+    <ClCompile Include="..\..\..\..\src\logitec_legacy_helper.c" />
     <ClCompile Include="..\..\..\..\src\nvme_cmds.c" />
     <ClCompile Include="..\..\..\..\src\nvme_helper.c" />
     <ClCompile Include="..\..\..\..\src\of_nvme_helper.c" />

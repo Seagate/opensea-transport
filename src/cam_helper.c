@@ -23,6 +23,7 @@
 #include "string_utils.h"
 #include "type_conversion.h"
 
+#include "adapter_info.h"
 #include "ata_helper_func.h"
 #include "cam_helper.h"
 #include "nix_mounts.h"
@@ -166,8 +167,8 @@ static eReturnValues get_Legacy_ATA_Device(const char* filename, tDevice* device
     device->os_info.osType = OS_FREEBSD;
 #    endif
 
-    device->drive_info.passThroughHacks.ataPTHacks.dmaNotSupported   = true;
-    device->drive_info.passThroughHacks.ataPTHacks.maxTransferLength = INT_MAX;
+    set_Hack_ATA_DMA_Not_Supported(device, true, PH_BY_OS_DISCOVERY);
+    set_Hack_ATA_Max_Xfer_Length(device, INT_MAX, PH_BY_OS_DISCOVERY);
 
     if (device->dFlags == OPEN_HANDLE_ONLY)
     {
@@ -490,7 +491,7 @@ static eReturnValues get_CAM_Device(const char* filename, tDevice* M_NONNULL dev
                             // TODO: Actually get the VID and PID set before calling this.
                             //       This will require some more research, but we should be able to do this now that
                             //       we know the interface
-                            setup_Passthrough_Hacks_By_ID(device);
+                            adapter_Apply_Profile(device);
                         }
                         set_Device_Partition_Info(&device->os_info.fileSystemInfo, get_Device_Handle_Name(device));
                         ret = fill_Drive_Info_Data(device);

@@ -23,6 +23,7 @@
 #include "string_utils.h"
 #include "type_conversion.h"
 
+#include "adapter_info.h"
 #include "ata_helper_func.h"
 #include "cmds.h"
 #include "nvme_helper_func.h"
@@ -307,7 +308,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
             set_Device_InterfaceType(device, SCSI_INTERFACE);
             set_Device_MediaType(device, MEDIA_HDD);
             set_Device_Fields_From_Handle(deviceHandle, device);
-            setup_Passthrough_Hacks_By_ID(device);
+            adapter_Apply_Profile(device);
             safe_free(&deviceHandle);
             return ret;
         }
@@ -360,7 +361,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
 #endif
 
             set_Device_Fields_From_Handle(deviceHandle, device);
-            setup_Passthrough_Hacks_By_ID(device);
+            adapter_Apply_Profile(device);
             // set_Device_InterfaceType(device, SCSI_INTERFACE);
             // set_Device_DriveType(device, UNKNOWN_DRIVE);
             // set_Device_MediaType(device, MEDIA_UNKNOWN);

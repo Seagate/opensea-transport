@@ -122,8 +122,7 @@ OPENSEA_TRANSPORT_API eReturnValues get_Device(const char* M_NONNULL filename, t
     {
         set_Device_DriveType(device, ATA_DRIVE);
         set_Device_InterfaceType(device, IDE_INTERFACE);
-        device->drive_info.passThroughHacks.ataPTHacks.ata28BitOnly   = true;
-        device->drive_info.passThroughHacks.someHacksSetByOSDiscovery = true;
+        set_Hack_ATA_28_Bit_Only(device, true, PH_BY_OS_DISCOVERY);
         // TODO: See if there is some other method available to get some kind of ATA address
         device->os_info.addresstype = 0;
         device->os_info.bus         = 0;

@@ -28,6 +28,209 @@
 #include "platform_helper.h"
 #include "scsi_helper_func.h"
 
+// SCSI probe counter wrappers. Clamping keeps the uint8_t fields in passThroughHacks.scsiHacks
+// overflow/underflow free; the attempt counters only feed the >= MAX_*_ATTEMPTS comparisons, so
+// stopping them at those limits is the natural ceiling. Returning whether the value changed
+// (rather than the new value) means a future version can hang hack-trigger decisions off the
+// returned flag without changing these signatures.
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_MP6_SP0_Success(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.mp6sp0Success < UINT8_MAX)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.mp6sp0Success += 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_MP6_SP0_Success(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.mp6sp0Success > 0)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.mp6sp0Success -= 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Attempted_MP6s(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s < MAX_MP6_ATTEMPTS)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s += 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Attempted_MP6s(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s > 0)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s -= 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Successful_MP6s(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s < UINT8_MAX)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.successfulMP6s += 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Successful_MP6s(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s > 0)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.successfulMP6s -= 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Attempted_MP10s(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s < MAX_MP10_ATTEMPTS)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s += 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Attempted_MP10s(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s > 0)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s -= 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Successful_MP10s(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s < UINT8_MAX)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.successfulMP10s += 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Successful_MP10s(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s > 0)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.successfulMP10s -= 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Attempted_LPs(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.attemptedLPs < MAX_LP_ATTEMPTS)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.attemptedLPs += 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Attempted_LPs(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.attemptedLPs > 0)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.attemptedLPs -= 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Successful_LPs(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.successfulLPs < UINT8_MAX)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.successfulLPs += 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Successful_LPs(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.successfulLPs > 0)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.successfulLPs -= 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Attempted_VPDs(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.attemptedVPDs < MAX_VPD_ATTEMPTS)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.attemptedVPDs += 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Attempted_VPDs(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.attemptedVPDs > 0)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.attemptedVPDs -= 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool increment_Hack_SCSI_Successful_VPDs(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.successfulVPDs < UINT8_MAX)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.successfulVPDs += 1;
+        return true;
+    }
+    return false;
+}
+
+M_PARAM_RW(1)
+OPENSEA_TRANSPORT_API bool decrement_Hack_SCSI_Successful_VPDs(tDevice* M_NONNULL device)
+{
+    if (device->drive_info.passThroughHacks.scsiHacks.successfulVPDs > 0)
+    {
+        device->drive_info.passThroughHacks.scsiHacks.successfulVPDs -= 1;
+        return true;
+    }
+    return false;
+}
+
 // NOTE: Flag and link are obsolete and should probably not be used.
 //       NACA requires device support. Can be found in Inquiry
 static M_INLINE uint8_t set_Control_Field(bool naca, bool flag, bool link)
@@ -361,7 +564,7 @@ static void set_report_supported_op_codes_hacks(tDevice* M_NONNULL device, bool 
         if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST &&
             senseFields.scsiStatusCodes.asc == 0x20 && senseFields.scsiStatusCodes.ascq == 0x00)
         {
-            device->drive_info.passThroughHacks.scsiHacks.noReportSupportedOperations = true;
+            set_Hack_SCSI_No_Report_Supported_Ops(device, true, PH_BY_PROBE);
         }
         else if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST &&
                  senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
@@ -382,12 +585,12 @@ static void set_report_supported_op_codes_hacks(tDevice* M_NONNULL device, bool 
                         // reporting options is not liked.
                         if (reportingOptions == REPORT_ALL)
                         {
-                            device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = false;
+                            set_Hack_SCSI_Report_All_Op_Codes(device, false, PH_BY_PROBE);
                         }
                         else // assume all other report types are not supported for single operation codes being
                              // requested.
                         {
-                            device->drive_info.passThroughHacks.scsiHacks.reportSingleOpCodes = false;
+                            set_Hack_SCSI_Report_Single_Op_Codes(device, false, PH_BY_PROBE);
                         }
                     }
                 }
@@ -398,11 +601,11 @@ static void set_report_supported_op_codes_hacks(tDevice* M_NONNULL device, bool 
                 // should give the field pointer.
                 if (reportingOptions == REPORT_ALL)
                 {
-                    device->drive_info.passThroughHacks.scsiHacks.reportAllOpCodes = false;
+                    set_Hack_SCSI_Report_All_Op_Codes(device, false, PH_BY_PROBE);
                 }
                 else // assume all other report types are not supported for single operation codes being requested.
                 {
-                    device->drive_info.passThroughHacks.scsiHacks.reportSingleOpCodes = false;
+                    set_Hack_SCSI_Report_Single_Op_Codes(device, false, PH_BY_PROBE);
                 }
             }
         }
@@ -607,15 +810,15 @@ static bool check_inq_cmddt(tDevice* M_NONNULL device)
             // While it is a good idea to check the data response, it is also not necessary.
             // Inquiry is a required command and if CMD DT is not supported a check condition with invalid field
             // in CDB is provided as the response so getting a good response means this is supported. - TJE
-            device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked   = true;
-            device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported = true;
+            set_Hack_SCSI_CmdDT_Checked(device, true, PH_BY_PROBE);
+            set_Hack_SCSI_CmdDT_Supported(device, true, PH_BY_PROBE);
             cmddtSupported                                               = true;
         }
         else
         {
             // if this is rejected, consider this checked and not supported
-            device->drive_info.passThroughHacks.scsiHacks.cmdDTchecked   = true;
-            device->drive_info.passThroughHacks.scsiHacks.cmdDTSupported = false;
+            set_Hack_SCSI_CmdDT_Checked(device, true, PH_BY_PROBE);
+            set_Hack_SCSI_CmdDT_Supported(device, false, PH_BY_PROBE);
         }
         safe_free_aligned(&inqDT);
     }
@@ -849,7 +1052,7 @@ static void set_log_sense_hacks(tDevice* M_NONNULL device, uint8_t pageCode, uin
         if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST &&
             senseFields.scsiStatusCodes.asc == 0x20 && senseFields.scsiStatusCodes.ascq == 0x00)
         {
-            device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+            set_Hack_SCSI_No_Log_Pages(device, true, PH_BY_PROBE);
         }
         else if (senseFields.scsiStatusCodes.senseKey == SENSE_KEY_ILLEGAL_REQUEST &&
                  senseFields.scsiStatusCodes.asc == 0x24 && senseFields.scsiStatusCodes.ascq == 0x00)
@@ -863,17 +1066,14 @@ static void set_log_sense_hacks(tDevice* M_NONNULL device, uint8_t pageCode, uin
                 if (senseFields.senseKeySpecificInformation.field.cdbOrData &&
                     senseFields.senseKeySpecificInformation.field.fieldPointer == 3)
                 {
-                    device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                    set_Hack_SCSI_No_Log_Sub_Pages(device, true, PH_BY_PROBE);
                 }
             }
             else
             {
                 // no sense key specific information, so we need to check a few other things to decide when this is
                 // not supported.
-                if (device->drive_info.passThroughHacks.scsiHacks.attemptedLPs < UINT8_MAX)
-                {
-                    device->drive_info.passThroughHacks.scsiHacks.attemptedLPs += 1;
-                }
+                increment_Hack_SCSI_Attempted_LPs(device);
                 // only come into here if we have not previously read a log page page successfully.
                 if (device->drive_info.passThroughHacks.scsiHacks.successfulLPs == 0)
                 {
@@ -881,7 +1081,7 @@ static void set_log_sense_hacks(tDevice* M_NONNULL device, uint8_t pageCode, uin
                     {
                         // since list of page and subpages supported returned an error, assume subpages are not
                         // supported.
-                        device->drive_info.passThroughHacks.scsiHacks.noLogSubPages = true;
+                        set_Hack_SCSI_No_Log_Sub_Pages(device, true, PH_BY_PROBE);
                     }
                     else if ((pageCode == 0 && subpageCode == 0) ||
                              (device->drive_info.passThroughHacks.scsiHacks.attemptedLPs >= MAX_LP_ATTEMPTS))
@@ -891,7 +1091,7 @@ static void set_log_sense_hacks(tDevice* M_NONNULL device, uint8_t pageCode, uin
                         // USB drives
                         // we've attempted at least MAX_LP_ATTEMPTS to read a log page page and it has not been
                         // successful, so assume this device does not support log pages.
-                        device->drive_info.passThroughHacks.scsiHacks.noLogPages = true;
+                        set_Hack_SCSI_No_Log_Pages(device, true, PH_BY_PROBE);
                     }
                 }
             }
@@ -949,10 +1149,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Log_Sense_Cmd(const tDevice* M_NONNULL 
     }
     else if (ret == SUCCESS)
     {
-        if (device->drive_info.passThroughHacks.scsiHacks.successfulLPs < UINT8_MAX)
-        {
-            M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.scsiHacks.successfulLPs += 1;
-        }
+        increment_Hack_SCSI_Successful_LPs(M_CONST_CAST(tDevice*, device));
     }
     return ret;
 }
@@ -1150,7 +1347,7 @@ static void set_mode_sense_hacks(tDevice* M_NONNULL    device,
             {
                 if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0)
                 {
-                    device->drive_info.passThroughHacks.scsiHacks.mode6bytes = true;
+                    set_Hack_SCSI_Mode6_Bytes(device, true, PH_BY_PROBE);
                 }
             }
             else
@@ -1158,7 +1355,7 @@ static void set_mode_sense_hacks(tDevice* M_NONNULL    device,
                 if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s == 0 &&
                     device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP6_ATTEMPTS)
                 {
-                    device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                    set_Hack_SCSI_No_Mode_Pages(device, true, PH_BY_PROBE);
                 }
             }
         }
@@ -1174,7 +1371,7 @@ static void set_mode_sense_hacks(tDevice* M_NONNULL    device,
                 if (senseFields.senseKeySpecificInformation.field.cdbOrData &&
                     senseFields.senseKeySpecificInformation.field.fieldPointer == 3)
                 {
-                    device->drive_info.passThroughHacks.scsiHacks.noModeSubPages = true;
+                    set_Hack_SCSI_No_Mode_Sub_Pages(device, true, PH_BY_PROBE);
                 }
             }
             else
@@ -1183,10 +1380,7 @@ static void set_mode_sense_hacks(tDevice* M_NONNULL    device,
                 // not supported.
                 if (tenByte)
                 {
-                    if (device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s < UINT8_MAX)
-                    {
-                        device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s += 1;
-                    }
+                    increment_Hack_SCSI_Attempted_MP10s(device);
                     // only come into here if we have not previously read a log page page successfully.
                     if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0 &&
                         device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s >= MAX_MP10_ATTEMPTS &&
@@ -1195,34 +1389,31 @@ static void set_mode_sense_hacks(tDevice* M_NONNULL    device,
                     {
                         // we've attempted at least MAX_MP_ATTEMPTS to read a log page page and it has not been
                         // successful, so assume this device does not support log pages.
-                        device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                        set_Hack_SCSI_No_Mode_Pages(device, true, PH_BY_PROBE);
                     }
                     else if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0 &&
                              device->drive_info.passThroughHacks.scsiHacks.mp6sp0Success > 0 && subpageCode == 0)
                     {
-                        device->drive_info.passThroughHacks.scsiHacks.useMode6BForSubpageZero = true;
+                        set_Hack_SCSI_Mode6B_For_Subpage_Zero(device, true, PH_BY_PROBE);
                     }
                     else if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s == 0 &&
                              device->drive_info.passThroughHacks.scsiHacks.attemptedMP10s >= MAX_MP10_ATTEMPTS &&
                              device->drive_info.passThroughHacks.scsiHacks.successfulMP6s > 0 &&
                              !device->drive_info.passThroughHacks.scsiHacks.useMode6BForSubpageZero)
                     {
-                        device->drive_info.passThroughHacks.scsiHacks.mode6bytes = true;
+                        set_Hack_SCSI_Mode6_Bytes(device, true, PH_BY_PROBE);
                     }
                 }
                 else
                 {
-                    if (device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s < UINT8_MAX)
-                    {
-                        device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s += 1;
-                    }
+                    increment_Hack_SCSI_Attempted_MP6s(device);
                     // only come into here if we have not previously read a log page page successfully.
                     if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s == 0 &&
                         device->drive_info.passThroughHacks.scsiHacks.attemptedMP6s >= MAX_MP6_ATTEMPTS)
                     {
                         // we've attempted at least MAX_MP_ATTEMPTS to read a log page page and it has not been
                         // successful, so assume this device does not support log pages.
-                        device->drive_info.passThroughHacks.scsiHacks.noModePages = true;
+                        set_Hack_SCSI_No_Mode_Pages(device, true, PH_BY_PROBE);
                     }
                 }
             }
@@ -1268,20 +1459,17 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_6(const tDevice* M_NONNULL d
                             DEFAULT_COMMAND_TIMEOUT);
     }
     print_tDevice_Return_Enum(device, "Mode Sense 6", ret);
-    if (ret != SUCCESS) // && !device->drive_info.passThroughHacks.hacksSetByReportedID)//only setup these hacks if the
+    if (ret != SUCCESS) // && !has_Reported_ID_Provenance(device))//only setup these hacks if the
                         // device has not been looked up for results in our internal database-TJE
     {
         set_mode_sense_hacks(M_CONST_CAST(tDevice*, device), pageCode, subPageCode, false);
     }
     else
     {
-        if (device->drive_info.passThroughHacks.scsiHacks.successfulMP6s < UINT8_MAX)
+        increment_Hack_SCSI_Successful_MP6s(M_CONST_CAST(tDevice*, device));
+        if (subPageCode == 0)
         {
-            M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.scsiHacks.successfulMP6s += 1;
-        }
-        if (subPageCode == 0 && device->drive_info.passThroughHacks.scsiHacks.mp6sp0Success < UINT8_MAX)
-        {
-            M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.scsiHacks.mp6sp0Success += 1;
+            increment_Hack_SCSI_MP6_SP0_Success(M_CONST_CAST(tDevice*, device));
         }
     }
     return ret;
@@ -1341,10 +1529,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Mode_Sense_10(const tDevice* M_NONNULL 
     }
     else
     {
-        if (device->drive_info.passThroughHacks.scsiHacks.successfulMP10s < UINT8_MAX)
-        {
-            M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.scsiHacks.successfulMP10s += 1;
-        }
+        increment_Hack_SCSI_Successful_MP10s(M_CONST_CAST(tDevice*, device));
     }
     return ret;
 }
@@ -1526,7 +1711,7 @@ static void set_vpd_hacks(tDevice* M_NONNULL device, uint8_t pageCode, bool cmdD
                 // assume it did not like the evpd bit
                 if (!cmdDt)
                 {
-                    device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                    set_Hack_SCSI_No_VPD_Pages(device, true, PH_BY_PROBE);
                 }
             }
         }
@@ -1538,34 +1723,34 @@ static void set_vpd_hacks(tDevice* M_NONNULL device, uint8_t pageCode, bool cmdD
             // pages first, then only read those pages. However, it is possible that some code will just request a
             // VPD page. If there has been at least 1 successful read before and the no VPD hack is not set, then do
             // not turn off VPD pages for no reason.
-            if (device->drive_info.passThroughHacks.scsiHacks.attemptedVPDs < UINT8_MAX)
-            {
-                device->drive_info.passThroughHacks.scsiHacks.attemptedVPDs += 1;
-            }
+            increment_Hack_SCSI_Attempted_VPDs(device);
             // only come into here if we have not previously read a VPD page successfully.
             if (device->drive_info.passThroughHacks.scsiHacks.successfulVPDs == 0 && pageCode == 0 &&
                 !device->drive_info.passThroughHacks.scsiHacks.unitSNAvailable)
             {
                 // assume that since the list of supported pages was requested that this device does not
                 // support VPD pages at all. This is a reasonable assumption to make and should help with USB drives
-                device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                set_Hack_SCSI_No_VPD_Pages(device, true, PH_BY_PROBE);
             }
             if (device->drive_info.passThroughHacks.scsiHacks.successfulVPDs == 0 &&
                 device->drive_info.passThroughHacks.scsiHacks.attemptedVPDs >= MAX_VPD_ATTEMPTS)
             {
                 // we've attempted at least MAX_VPD_ATTEMPTS to read a VPD page and it has not been successful,
                 // so assume this device does not support VPD pages.
-                device->drive_info.passThroughHacks.scsiHacks.noVPDPages = true;
+                set_Hack_SCSI_No_VPD_Pages(device, true, PH_BY_PROBE);
             }
         }
     }
 }
 
+//! \brief copies inquiry data to tDevice and updates SCSI version from this data.
+//! \param device the device structure to update
+//! \param pdata pointer to the inquiry data
+//! \param dataLength length of the inquiry data
 M_PARAM_RW(1)
 M_PARAM_RO_SIZE(2, 3)
 static void set_inq_version(tDevice* M_NONNULL device, const uint8_t* M_NONNULL pdata, uint32_t dataLength)
 {
-    uint8_t version = UINT8_C(0);
     if (pdata != device->drive_info.scsiVpdData.inquiryData)
     {
         // this should only be copying std inquiry data to thislocation in the device struct to keep it up to
@@ -1578,38 +1763,10 @@ static void set_inq_version(tDevice* M_NONNULL device, const uint8_t* M_NONNULL 
             return;
         }
     }
-    version = pdata[2];
-    switch (version) // convert some versions since old standards broke the version number into ANSI vs ECMA vs
-                     // ISO standard numbers
-    {
-    case 0x81:
-        version = SCSI_VERSION_SCSI; // changing to 1 for SCSI
-        break;
-    case 0x80:
-    case 0x82:
-        version = SCSI_VERSION_SCSI2; // changing to 2 for SCSI 2
-        break;
-    case 0x83:
-        version = SCSI_VERSION_SPC; // changing to 3 for SPC
-        break;
-    case 0x84:
-        version = SCSI_VERSION_SPC_2; // changing to 4 for SPC2
-        break;
-    default:
-        // convert some versions since old standards broke the version number into ANSI vs ECMA vs ISO standard
-        // numbers
-        if ((version >= 0x08 && version <= 0x0C) || (version >= 0x40 && version <= 0x44) ||
-            (version >= 0x48 && version <= 0x4C) || (version >= 0x80 && version <= 0x84) ||
-            (version >= 0x88 && version <= 0x8C))
-        {
-            // these are obsolete version numbers
-            version = get_bit_range_uint8(version, 3, 0);
-        }
-        break;
-    }
+    
     // changing this to one of these version numbers to keep the rest
     // of the library code that would use this simple. - TJE
-    M_CONST_CAST(tDevice*, device)->drive_info.scsiVersion = version;
+    M_CONST_CAST(tDevice*, device)->drive_info.scsiVersion = get_SCSI_Version_From_Raw_Inquiry(pdata, dataLength);
 }
 
 OPENSEA_TRANSPORT_API eReturnValues scsi_Inquiry(const tDevice* M_NONNULL device,
@@ -1678,10 +1835,7 @@ OPENSEA_TRANSPORT_API eReturnValues scsi_Inquiry(const tDevice* M_NONNULL device
     {
         // increment this since we got a successful command completion.
         // NOTE: This does not validate the page code is correct, but that should be added at some point-TJE
-        if (device->drive_info.passThroughHacks.scsiHacks.successfulVPDs < UINT8_MAX)
-        {
-            M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.scsiHacks.successfulVPDs += 1;
-        }
+        increment_Hack_SCSI_Successful_VPDs(M_CONST_CAST(tDevice*, device));
     }
 
     return ret;

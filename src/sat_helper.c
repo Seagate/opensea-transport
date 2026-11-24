@@ -1159,7 +1159,8 @@ eReturnValues build_SAT_CDB(const tDevice* M_NONNULL         device,
 M_PARAM_RO(1)
 M_PARAM_RW(2)
 eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         device,
-                                           ataPassthroughCommand* M_NONNULL ataCommandOptions)
+                                           ataPassthroughCommand* M_NONNULL ataCommandOptions,
+                                           const bool            allowProtocolFallbackRetry)
 {
     eReturnValues ret            = UNKNOWN;
     uint8_t*      satCDB         = M_NULLPTR;
@@ -1167,6 +1168,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
     uint8_t*      senseData      = M_NULLPTR; // only allocate if the pointer in the ataCommandOptions is M_NULLPTR
     bool          localSenseData = false;
     bool          dmaRetry       = false;
+    bool          udmaRetry      = false;
     if (ataCommandOptions->ptrSenseData == M_NULLPTR)
     {
         senseData = M_REINTERPRET_CAST(
@@ -1241,11 +1243,17 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
             if (device->drive_info.passThroughHacks.ataPTHacks.nonDataTest == ATA_NON_DATA_TEST_ALLOW_ALL)
             {
                 // We have a workaround (like fixedSenseHack=UNALIGNED_WRITE_BUG) that will extract values
-                // from the correct location during post-execution. Allow the command.
+                // from the correct location during post-execution. Allow the command. When the state came
+                // from adapter-profile prior knowledge the one-time "NOP Test: SKIPPED" line during open is
+                // the report of record, so stay quiet here (it would otherwise repeat for every non-data
+                // command for the session).
                 commandCanProceed = true;
-                print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
-                                             "Pre-execution: Allowing command with workaround (ALLOW_ALL mode, will "
-                                             "extract from alternate location post-execution)\n");
+                if (!device->drive_info.passThroughHacks.ataPTHacks.nonDataTestFromAdapterID)
+                {
+                    print_tDevice_Verbose_String(device, VERBOSITY_COMMAND_VERBOSE,
+                                                 "Pre-execution: Allowing command with workaround (ALLOW_ALL mode, will "
+                                                 "extract from alternate location post-execution)\n");
+                }
             }
             // Otherwise, check if specific registers are broken and would prevent command execution
             else if (device->drive_info.passThroughHacks.ataPTHacks.nonDataCountBroken)
@@ -1550,8 +1558,7 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                             ataReturnTFRs tempRtfrs = initialize_ATA_RTFRs();
                             if (NOT_SUPPORTED == request_Return_TFRs_From_Device(device, &tempRtfrs))
                             {
-                                M_CONST_CAST(tDevice*, device)
-                                    ->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported = false;
+                                set_Hack_ATA_Return_Response_Info_Supported(M_CONST_CAST(tDevice*, device), false, PH_BY_PROBE);
                             }
                             else if (SUCCESS == ret)
                             {
@@ -1654,9 +1661,21 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                     }
                     else if (asc == 0x24 && ascq == 0x00) // invalid field in CDB
                     {
-                        if (ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA)
+                        // Bounded protocol fallback: the DMA<->UDMA flip is the only retry in this
+                        // function and the retry call below passes allowProtocolFallbackRetry=false,
+                        // so each top-level invocation makes at most ONE alternate-protocol attempt;
+                        // a repeat rejection is returned as an error instead of recursing.
+                        if (allowProtocolFallbackRetry && ataCommandOptions->commadProtocol == ATA_PROTOCOL_UDMA)
                         {
                             dmaRetry = true;
+                        }
+                        else if (allowProtocolFallbackRetry &&
+                                 (device->dFlags & FORCE_ATA_DMA_SAT_MODE) == 0 &&
+                                 ataCommandOptions->commadProtocol == ATA_PROTOCOL_DMA)
+                        {
+                            // reverse direction: some translators dislike the generic DMA protocol (the library
+                            // default for SAT devices) - retry the other way with the UDMA protocol.
+                            udmaRetry = true;
                         }
                         // TODO: Check condition bit check for retry with follow up command instead?
                     }
@@ -1710,15 +1729,13 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
                 (ataCommandOptions->rtfr.status == 0 ||
                  ((ataCommandOptions->rtfr.status & ATA_STATUS_BIT_ERROR) && ataCommandOptions->rtfr.error == 0)))
             {
-                M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty = true;
-                if (!device->drive_info.passThroughHacks.hacksSetByReportedID &&
+                set_Hack_ATA_Check_Condition_Empty(M_CONST_CAST(tDevice*, device), true, PH_BY_PROBE);
+                if (!has_Reported_ID_Provenance(device) &&
                     !device->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible)
                 {
                     // turn on return response info to try that since the check condition came back empty
-                    M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported =
-                        true;
-                    M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoNeedsTDIR =
-                        true;
+                    set_Hack_ATA_Return_Response_Info_Supported(M_CONST_CAST(tDevice*, device), true, PH_BY_PROBE);
+                    set_Hack_ATA_Return_Response_Info_Needs_TDIR(M_CONST_CAST(tDevice*, device), true, PH_BY_PROBE);
                 }
             }
         }
@@ -1731,17 +1748,16 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
         {
             if (SUCCESS != request_Return_TFRs_From_Device(device, &ataCommandOptions->rtfr))
             {
-                if (!device->drive_info.passThroughHacks.hacksSetByReportedID)
+                if (!has_Reported_ID_Provenance(device))
                 {
-                    M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.returnResponseInfoSupported =
-                        false;
+                    set_Hack_ATA_Return_Response_Info_Supported(M_CONST_CAST(tDevice*, device), false, PH_BY_PROBE);
                     if (device->drive_info.passThroughHacks.ataPTHacks.checkConditionEmpty)
                     {
                         // Set this disable check condition because we already auto tried check condition and got an
                         // empty result We are now here where the follow up command also failed. So to prevent future
                         // retries, also set this field. Basically reusing an existing hack to determine when a retry
                         // has already been tested.
-                        M_CONST_CAST(tDevice*, device)->drive_info.passThroughHacks.ataPTHacks.noRTFRsPossible = true;
+                        set_Hack_ATA_No_RTFRs_Possible(M_CONST_CAST(tDevice*, device), true, PH_BY_PROBE);
                     }
                 }
             }
@@ -1893,14 +1909,28 @@ eReturnValues send_SAT_Passthrough_Command(const tDevice* M_NONNULL         devi
     {
         // if the sense data says "NOT_SUPPORTED", it's highly likely that the SATL didn't like something in the
         // command. Local testing shows that sometimes a SATL likes the mode set to DMA instead of UDMA, so retry
-        // the command with the protocol set to DMA.
+        // the command with the protocol set to DMA. The false argument bounds the fallback to this one
+        // alternate-protocol attempt - a rejection here is returned, not flipped back to UDMA.
         ataCommandOptions->commadProtocol = ATA_PROTOCOL_DMA;
-        ret                               = send_SAT_Passthrough_Command(device, ataCommandOptions);
+        ret                               = send_SAT_Passthrough_Command(device, ataCommandOptions, false);
         if (ret == SUCCESS)
         {
             // if changing back to DMA worked, then we're changing some flags in the ataOptions struct to make sure
             // we have success with future commands.
             M_CONST_CAST(tDevice*, device)->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_DMA;
+        }
+    }
+    else if (udmaRetry)
+    {
+        // reverse direction of the retry above: the SATL rejected the generic DMA protocol field, so it likely
+        // prefers the explicit UDMA protocol. If the retry with UDMA works, persist the mode so future commands
+        // use it without another round of trial and error. The false argument bounds the fallback to this one
+        // alternate-protocol attempt - a rejection here is returned, not flipped back to DMA.
+        ataCommandOptions->commadProtocol = ATA_PROTOCOL_UDMA;
+        ret                               = send_SAT_Passthrough_Command(device, ataCommandOptions, false);
+        if (ret == SUCCESS)
+        {
+            M_CONST_CAST(tDevice*, device)->drive_info.ata_Options.dmaMode = ATA_DMA_MODE_UDMA;
         }
     }
     return ret;
