@@ -1743,11 +1743,14 @@ static void set_vpd_hacks(tDevice* M_NONNULL device, uint8_t pageCode, bool cmdD
     }
 }
 
+//! \brief copies inquiry data to tDevice and updates SCSI version from this data.
+//! \param device the device structure to update
+//! \param pdata pointer to the inquiry data
+//! \param dataLength length of the inquiry data
 M_PARAM_RW(1)
 M_PARAM_RO_SIZE(2, 3)
 static void set_inq_version(tDevice* M_NONNULL device, const uint8_t* M_NONNULL pdata, uint32_t dataLength)
 {
-    uint8_t version = UINT8_C(0);
     if (pdata != device->drive_info.scsiVpdData.inquiryData)
     {
         // this should only be copying std inquiry data to thislocation in the device struct to keep it up to

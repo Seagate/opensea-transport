@@ -3112,14 +3112,12 @@ OPENSEA_TRANSPORT_API eSCSIVersion get_SCSI_Version_From_Raw_Inquiry(const uint8
         const uint8_t versionCode = inquiryData[2];
         // 08h - 0Ch, 40h to 44h, 48h to 4Ch, 80h to 84h, & 88h to 8Ch are obsolete version numbers that need to be converted
         if ((versionCode >= 0x08 && versionCode <= 0x0C) || // ECMA = 001b (SCSI-1)
+            (versionCode >= 0x40 && versionCode <= 0x44) || // ISO = 01b (SCSI-1)
             (versionCode >= 0x48 && versionCode <= 0x4C) || // ISO = 01b (SCSI-1) & ECMA = 001b (SCSI-1)
             (versionCode >= 0x88 && versionCode <= 0x8C))   // ECMA = 001b (SCSI-1)
         {
-            version = SCSI_VERSION_SCSI;
-        }
-        else if (versionCode >= 0x40 && versionCode <= 0x44) // ISO = 01b (SCSI-1)), but ansi maps to other versions
-        {
-            version = M_STATIC_CAST(eSCSIVersion, M_Nibble0(versionCode));
+            eSCSIVersion ansiVersion = get_bit_range_uint8(versionCode, 2, 0);
+            version = M_Max(SCSI_VERSION_SCSI, ansiVersion);// SCSI 1 OR whatever higher version ansi reports for these codes.
         }
         else if (versionCode >= 0x80 && versionCode <= 0x82) // ISO/IEC 9316:1995 or SCSI-2
         {
