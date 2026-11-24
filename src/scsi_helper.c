@@ -1329,7 +1329,7 @@ static M_INLINE void get_Legacy_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSe
                                   uint32_t                 senseDataLength,
                                   legacySenseDataFields*  legacySenseFields)
 {
-    if (ptrSenseData != M_NULLPTR && senseDataLength > 0 && legacySenseFields != M_NULLPTR)
+    if (ptrSenseData != M_NULLPTR && senseDataLength >= 4 && legacySenseFields != M_NULLPTR)
     {
         M_INITIALIZE_STRUCTURE(legacySenseFields, sizeof(legacySenseDataFields));
         legacySenseFields->validStructure = true;
@@ -1338,7 +1338,7 @@ static M_INLINE void get_Legacy_Sense_Data_Fields(const uint8_t* M_NONNULL ptrSe
         legacySenseFields->errorCode      = get_bit_range_uint8(ptrSenseData[0], 3, 0);
         legacySenseFields->vendorSpecific = get_bit_range_uint8(ptrSenseData[1], 7, 5);
         legacySenseFields->logicalBlockAddress =
-            bytes_To_Uint32(ptrSenseData[1] & 0x1F, ptrSenseData[2], ptrSenseData[3], ptrSenseData[4]);
+            bytes_To_Uint32(0, ptrSenseData[1] & 0x1F, ptrSenseData[2], ptrSenseData[3]);
     }
 }
 
