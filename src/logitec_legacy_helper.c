@@ -80,7 +80,7 @@ M_PARAM_RO(1)
         // send the CDB
         ret = scsi_Send_Cdb(device, logitecCDB, M_STATIC_CAST(eCDBLen, LOGITEC_LEGACY_CDB_LEN), ataCommandOptions->ptrData, ataCommandOptions->dataSize,
                             ataCommandOptions->commandDirection, ataCommandOptions->ptrSenseData,
-                            ataCommandOptions->senseDataSize, 0);
+                            ataCommandOptions->senseDataSize, ataCommandOptions->timeout);
         // dummy up RTFRs since the TI documentation doesn't have a way to show them.
         // This is all based on how we interpret the scsi sense data in the scsi level.
         switch (ret)
