@@ -3107,7 +3107,7 @@ M_NONNULL_IF_NONZERO_SIZE(1, 2)
 OPENSEA_TRANSPORT_API eSCSIVersion get_SCSI_Version_From_Raw_Inquiry(const uint8_t *M_NULLABLE inquiryData, size_t inquiryDataLen)
 {
     eSCSIVersion version = SCSI_VERSION_NO_STANDARD;
-    if (inquiryData && inquiryDataLen >= 2)
+    if (inquiryData && inquiryDataLen >= 3)
     {
         const uint8_t versionCode = inquiryData[2];
         // 08h - 0Ch, 40h to 44h, 48h to 4Ch, 80h to 84h, & 88h to 8Ch are obsolete version numbers that need to be converted
